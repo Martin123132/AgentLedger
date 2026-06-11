@@ -262,7 +262,8 @@ and stores the RepoMori output under the run artifacts folder.
 This is the repo-memory and handoff layer.
 
 If RepoMori is missing, AgentLedger keeps running and records a warning artifact
-instead. `agentledger doctor` shows this as partial readiness.
+instead. `agentledger doctor` still reports ready when required checks pass and
+marks RepoMori as an optional integration that is not configured.
 
 ### Memento Mori Jester
 

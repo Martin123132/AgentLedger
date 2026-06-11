@@ -21,7 +21,7 @@ Date: 2026-06-11
 ## What was confusing
 
 - A plain PowerShell session did not initially have `git` on PATH, even though GitHub Desktop has a bundled git available.
-- `doctor` reports `partial` when optional integrations are missing, which is accurate but may look worrying to a first alpha tester.
+- Older `doctor` output reported `partial` when optional integrations were missing, which was accurate but looked worrying to a first alpha tester.
 - `pip` upgrade notices add noise during install and install-check runs.
 - `git init` prints the default-branch hint during smoke tests, which makes the smoke output longer than the useful AgentLedger output.
 - README still includes an older private-repo push checklist that mentions adding `origin` and pushing `alpha-report-review`; that may confuse testers now that `origin/master` already exists.
@@ -55,4 +55,4 @@ For this local pass, adding GitHub Desktop's bundled git to PATH fixed it. The r
 
 ## Readiness call
 
-AgentLedger is ready to hand to one outside private alpha tester. The stale private-repo push checklist was cleaned up, and the Windows Git setup friction now has `scripts/ensure-git.ps1`.
+AgentLedger is ready to hand to one outside private alpha tester. The stale private-repo push checklist was cleaned up, Windows Git setup friction now has `scripts/ensure-git.ps1`, and `doctor` now treats missing optional integrations as ready-with-notes rather than partial readiness.

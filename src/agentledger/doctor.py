@@ -76,27 +76,49 @@ def run_doctor(repo: Path | None = None) -> dict[str, Any]:
     checks.append(Check("codex_home", codex_home.exists(), str(codex_home)))
 
     required_ok = all(check.ok for check in checks if check.required)
-    optional_ok = sum(1 for check in checks if not check.required and check.ok)
-    optional_total = sum(1 for check in checks if not check.required)
-    if required_ok and optional_ok == optional_total:
+    optional_checks = [check for check in checks if not check.required]
+    optional_ok = sum(1 for check in optional_checks if check.ok)
+    missing_optional = [check.name for check in optional_checks if not check.ok]
+    if required_ok:
         status = "ready"
-    elif required_ok:
-        status = "partial"
     else:
         status = "blocked"
 
     return {
         "schema_version": "agentledger.doctor.v1",
         "status": status,
+        "required_ok": required_ok,
+        "optional": {
+            "configured": optional_ok,
+            "total": len(optional_checks),
+            "missing": missing_optional,
+        },
         "checks": [check.to_dict() for check in checks],
     }
 
 
 def format_doctor(report: dict[str, Any]) -> str:
-    lines = [f"AgentLedger doctor: {report['status']}"]
+    optional = report.get("optional", {})
+    missing_optional = optional.get("missing") or []
+    if report["status"] == "ready" and missing_optional:
+        header = "AgentLedger doctor: ready (required checks passed; optional integrations missing)"
+    elif report["status"] == "ready":
+        header = "AgentLedger doctor: ready (all checks passed)"
+    else:
+        header = "AgentLedger doctor: blocked (required setup needs attention)"
+
+    lines = [header]
+    if optional:
+        lines.append(
+            "Optional integrations: "
+            f"{optional.get('configured', 0)}/{optional.get('total', 0)} configured"
+        )
     for check in report["checks"]:
-        mark = "ok" if check["ok"] else "missing"
         required = "required" if check["required"] else "optional"
+        if check["required"]:
+            mark = "ok" if check["ok"] else "missing"
+        else:
+            mark = "available" if check["ok"] else "not configured"
         lines.append(f"- {check['name']}: {mark} ({required}) - {check['detail']}")
     return "\n".join(lines)
 
