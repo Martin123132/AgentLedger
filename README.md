@@ -1,0 +1,187 @@
+# AgentLedger
+
+Local-first black box recorder for AI coding agents.
+
+AgentLedger captures the boring evidence teams need when agents spend tokens,
+run commands, touch repositories, and claim work is done:
+
+- before/after git state
+- command execution evidence
+- changed files and diffs
+- RepoMori snapshots and handoff packs when available
+- Jester diff safety gate when available
+- Tokometer-compatible local usage path evidence
+- Markdown and JSON audit reports
+
+The first product wedge is intentionally simple:
+
+```powershell
+agentledger run --repo C:\path\to\repo -- npm test
+```
+
+That writes a timestamped evidence folder under `.agentledger/` with:
+
+```text
+agentledger-report.md
+agentledger-report.json
+artifacts/
+```
+
+## Why This Exists
+
+AI coding agents are now doing real work, changing code, and burning money, but
+the evidence trail is scattered across chat logs, terminals, git diffs, and
+local tool state. AgentLedger turns one agent work session into a compact audit
+record a human, buyer, teammate, or another agent can inspect.
+
+Short pitch:
+
+```text
+The black box recorder for AI coding agents.
+```
+
+Company pitch:
+
+```text
+Local-first control tools for AI coding agents: usage metering, repo memory,
+execution evidence, and eval gates.
+```
+
+## Quick Start
+
+From this checkout:
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m agentledger snapshot --repo .
+python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
+python -m pytest
+```
+
+After a run:
+
+```powershell
+Get-Content .agentledger\latest.txt
+```
+
+Open the `agentledger-report.md` inside that latest run folder.
+
+## Commands
+
+Capture repository state only:
+
+```powershell
+agentledger snapshot --repo C:\path\to\repo
+```
+
+Capture state around a command:
+
+```powershell
+agentledger run --repo C:\path\to\repo -- npm test
+```
+
+Skip optional integrations:
+
+```powershell
+agentledger run --repo C:\path\to\repo --no-repomori --no-jester --no-tokometer -- pytest
+```
+
+## Current Integrations
+
+### Git
+
+Always on. Captures:
+
+- current branch
+- current HEAD
+- `git status --short`
+- `git diff --stat`
+- full tracked diff
+
+### RepoMori
+
+When `python -m repomori` is available, AgentLedger runs before/after snapshots
+and stores the RepoMori output under the run artifacts folder.
+
+This is the repo-memory and handoff layer.
+
+### Memento Mori Jester
+
+When `jester` or `memento-mori-jester` is on PATH, AgentLedger pipes `git diff`
+into the Jester diff gate.
+
+This is the safety and overconfidence layer.
+
+### Tokometer
+
+AgentLedger currently records Tokometer-compatible local Codex paths. Full
+Tokometer summary ingestion is planned after the core report loop is stable.
+
+This is the cost and usage layer.
+
+## Product Shape
+
+AgentLedger is the wrapper product. It should orchestrate existing assets first
+instead of copying all of their internals.
+
+Core assets it can use:
+
+- Tokometer: token usage, burn rate, cost dashboard
+- RepoMori: repo memory, source-backed context, handoff packs, provenance
+- Memento Mori Jester: command/diff/final-answer safety checks
+- The Marked Bench: eval gates, result cards, scoring/report schemas
+- ChatP2P: signed work packets and verified result records
+- Rat-Trap Proof Kit: buyer-facing proof bundle structure
+- TokenSquash: later compact protocol for repeated agent workflows
+
+## Roadmap
+
+### v0.1 Private Wedge
+
+- CLI evidence capture
+- Markdown/JSON report export
+- before/after git state
+- optional RepoMori/Jester/Tokometer hooks
+- local smoke tests
+
+### v0.2 Evidence Bundle
+
+- zip export
+- HTML report
+- command transcript files
+- test-result parser
+- richer file-touch manifest
+- final-answer verification checklist
+
+### v0.3 Usage + Cost
+
+- direct Tokometer usage summary import
+- per-session token deltas
+- estimated cost model
+- weekly/monthly projections in report
+
+### v0.4 Repo Memory
+
+- first-class RepoMori handoff capsule links
+- changed-file source context
+- before/after pack comparison summary
+- chain/anchor verification section
+
+### v0.5 Eval Gate
+
+- Marked Bench compatible gate schema
+- project-local eval suites
+- pass/warn/block policies
+- result-card export
+
+### v1.0 Buyer Pilot
+
+- desktop dashboard
+- signed evidence bundles
+- team policy config
+- pilot report template
+- private beta installer
+
+## License
+
+Proprietary private repository. Commercial terms TBD.
