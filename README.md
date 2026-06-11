@@ -126,7 +126,13 @@ Notes:
 - Smoke runs use temporary repos and temporary output folders.
 - Do not commit evidence folders or bundles. `.agentledger/`, `*.zip`, and related generated paths are already ignored by `.gitignore`.
 
-If `scripts/smoke.ps1` fails with `git : The term 'git' is not recognized`, ensure your PowerShell session can find git (for example by using the GitHub Desktop git path) and install the package in editable mode first:
+For Windows shells that cannot find `git`, AgentLedger includes a helper that locates common Git installs, including GitHub Desktop's bundled git:
+
+```powershell
+. .\scripts\ensure-git.ps1
+```
+
+Then install the package in editable mode if needed:
 
 ```powershell
 python -m pip install -e ".[dev]"
