@@ -18,6 +18,10 @@ class CommandResult:
     exit_code: int
     stdout_tail: str = ""
     stderr_tail: str = ""
+    stdout_path: str | None = None
+    stderr_path: str | None = None
+    test_detected: bool = False
+    test_framework: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -28,6 +32,10 @@ class CommandResult:
             "exit_code": self.exit_code,
             "stdout_tail": self.stdout_tail,
             "stderr_tail": self.stderr_tail,
+            "stdout_path": self.stdout_path,
+            "stderr_path": self.stderr_path,
+            "test_detected": self.test_detected,
+            "test_framework": self.test_framework,
         }
 
 

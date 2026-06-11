@@ -57,6 +57,7 @@ From this checkout:
 
 ```powershell
 python -m pip install -e ".[dev]"
+python -m agentledger doctor --repo .
 python -m agentledger snapshot --repo .
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
 python -m pytest
@@ -84,6 +85,13 @@ Capture state around a command:
 agentledger run --repo C:\path\to\repo -- npm test
 ```
 
+Check local integration readiness:
+
+```powershell
+agentledger doctor --repo C:\path\to\repo
+agentledger doctor --json
+```
+
 Skip optional integrations:
 
 ```powershell
@@ -102,12 +110,28 @@ Always on. Captures:
 - `git diff --stat`
 - full tracked diff
 
+### Command Transcripts
+
+For `agentledger run`, full stdout and stderr are stored under:
+
+```text
+artifacts/command/stdout.txt
+artifacts/command/stderr.txt
+```
+
+AgentLedger also labels common test commands such as `pytest`, `npm test`,
+`vitest`, `jest`, `go test`, and `cargo test` so reports can distinguish
+verification runs from ordinary shell commands.
+
 ### RepoMori
 
 When `python -m repomori` is available, AgentLedger runs before/after snapshots
 and stores the RepoMori output under the run artifacts folder.
 
 This is the repo-memory and handoff layer.
+
+If RepoMori is missing, AgentLedger keeps running and records a warning artifact
+instead. `agentledger doctor` shows this as partial readiness.
 
 ### Memento Mori Jester
 

@@ -6,6 +6,8 @@ import uuid
 from pathlib import Path
 
 from .bundle import write_zip_bundle
+from .classify import detect_test_command
+from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
 from .gittools import snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
@@ -36,6 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
     snap.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
     snap.add_argument("--no-zip", action="store_true", help="Skip zip bundle export.")
 
+    doctor = sub.add_parser("doctor", help="Check local AgentLedger integration readiness.")
+    doctor.add_argument("--repo", default=None, help="Optional target git repository to validate.")
+    doctor.add_argument("--json", action="store_true", help="Print machine-readable doctor report.")
+
     return parser
 
 
@@ -45,7 +51,7 @@ def _clean_task(task: list[str]) -> list[str]:
     return task
 
 
-def _run_task(command: list[str], repo: Path) -> CommandResult:
+def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandResult:
     started = utc_now_iso()
     try:
         result = run_capture(command, repo)
@@ -57,6 +63,13 @@ def _run_task(command: list[str], repo: Path) -> CommandResult:
         stdout = exc.stdout or ""
         stderr = exc.stderr or "Command timed out."
     ended = utc_now_iso()
+    transcripts = artifacts_dir / "command"
+    transcripts.mkdir(parents=True, exist_ok=True)
+    stdout_path = transcripts / "stdout.txt"
+    stderr_path = transcripts / "stderr.txt"
+    stdout_path.write_text(stdout, encoding="utf-8", errors="replace")
+    stderr_path.write_text(stderr, encoding="utf-8", errors="replace")
+    test_detected, test_framework = detect_test_command(command)
     return CommandResult(
         command=command,
         cwd=str(repo),
@@ -65,6 +78,10 @@ def _run_task(command: list[str], repo: Path) -> CommandResult:
         exit_code=exit_code,
         stdout_tail=tail_text(stdout),
         stderr_tail=tail_text(stderr),
+        stdout_path=str(stdout_path),
+        stderr_path=str(stderr_path),
+        test_detected=test_detected,
+        test_framework=test_framework,
     )
 
 
@@ -87,7 +104,7 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     command_result = None
     command = _clean_task(task or [])
     if command:
-        command_result = _run_task(command, repo)
+        command_result = _run_task(command, repo, artifacts_dir)
     elif task is not None:
         warnings.append("No command supplied after --; captured repository state only.")
 
@@ -125,7 +142,11 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     print(f"AgentLedger report: {run_dir / 'agentledger-report.md'}")
     if command_result and command_result.exit_code != 0:
         return command_result.exit_code
-    blocking = [artifact for artifact in artifacts if artifact.name == "jester_diff" and not artifact.ok]
+    blocking = [
+        artifact
+        for artifact in artifacts
+        if artifact.name == "jester_diff" and not artifact.ok and artifact.exit_code is not None
+    ]
     return 2 if blocking else 0
 
 
@@ -136,5 +157,9 @@ def main(argv: list[str] | None = None) -> int:
         return _capture(args, args.task)
     if args.command_name == "snapshot":
         return _capture(args, None)
+    if args.command_name == "doctor":
+        report = run_doctor(Path(args.repo).resolve() if args.repo else None)
+        print(doctor_json(report) if args.json else format_doctor(report))
+        return 0 if report["status"] in {"ready", "partial"} else 2
     parser.error("unknown command")
     return 2

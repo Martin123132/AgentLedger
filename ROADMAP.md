@@ -12,14 +12,16 @@ evidence. Gate risky outputs.
 ## Build Order
 
 1. CLI evidence loop
-2. Markdown/JSON reports
-3. RepoMori before/after snapshots
-4. Jester safety gate
-5. bounded Tokometer usage summaries
-6. HTML report and zip bundle
-7. Marked Bench eval gate
-8. signed evidence records
-9. desktop dashboard
+2. Markdown/JSON/HTML reports
+3. command transcripts and test-command detection
+4. `doctor` readiness checks
+5. RepoMori before/after snapshots
+6. Jester safety gate
+7. bounded Tokometer usage summaries
+8. zip evidence bundle
+9. Marked Bench eval gate
+10. signed evidence records
+11. desktop dashboard
 
 ## Buyer-Facing MVP
 

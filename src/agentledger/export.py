@@ -4,6 +4,7 @@ import json
 from html import escape
 from pathlib import Path
 
+from .integrations import summarize_repomori_artifact
 from .model import LedgerReport
 
 
@@ -36,8 +37,12 @@ def write_markdown(report: LedgerReport, path: Path) -> None:
             [
                 f"- Command: `{' '.join(command.command)}`",
                 f"- Exit code: `{command.exit_code}`",
+                f"- Test detected: `{command.test_detected}`",
+                f"- Test framework: `{command.test_framework or 'n/a'}`",
                 f"- Started: `{command.started_at}`",
                 f"- Ended: `{command.ended_at}`",
+                f"- Stdout: `{command.stdout_path or 'n/a'}`",
+                f"- Stderr: `{command.stderr_path or 'n/a'}`",
                 "",
             ]
         )
@@ -55,6 +60,10 @@ def write_markdown(report: LedgerReport, path: Path) -> None:
         for artifact in report.artifacts:
             state = "ok" if artifact.ok else "warn"
             lines.append(f"- `{artifact.name}`: {state}. {artifact.summary}")
+            if artifact.name.startswith("repomori_"):
+                repomori_summary = summarize_repomori_artifact(artifact.output_path)
+                if repomori_summary:
+                    lines.append(f"  RepoMori: {repomori_summary}")
             if artifact.output_path:
                 lines.append(f"  Output: `{artifact.output_path}`")
         lines.append("")
@@ -74,13 +83,18 @@ def write_html(report: LedgerReport, path: Path) -> None:
     command = report.command
     command_text = " ".join(command.command) if command else "No command executed"
     exit_code = str(command.exit_code) if command else "n/a"
-    artifacts = "\n".join(
-        f"<li><strong>{escape(artifact.name)}</strong>: "
-        f"{'ok' if artifact.ok else 'warn'} - {escape(artifact.summary)}"
-        + (f"<br><code>{escape(artifact.output_path)}</code>" if artifact.output_path else "")
-        + "</li>"
-        for artifact in report.artifacts
-    )
+    test_text = f"{command.test_framework or 'detected'}" if command and command.test_detected else "not detected"
+    artifact_items = []
+    for artifact in report.artifacts:
+        repomori_summary = summarize_repomori_artifact(artifact.output_path) if artifact.name.startswith("repomori_") else None
+        artifact_items.append(
+            f"<li><strong>{escape(artifact.name)}</strong>: "
+            f"{'ok' if artifact.ok else 'warn'} - {escape(artifact.summary)}"
+            + (f"<br>RepoMori: {escape(repomori_summary)}" if repomori_summary else "")
+            + (f"<br><code>{escape(artifact.output_path)}</code>" if artifact.output_path else "")
+            + "</li>"
+        )
+    artifacts = "\n".join(artifact_items)
     warnings = "\n".join(f"<li>{escape(warning)}</li>" for warning in report.warnings)
     html = f"""<!doctype html>
 <html lang="en">
@@ -106,6 +120,7 @@ def write_html(report: LedgerReport, path: Path) -> None:
     <div class="box"><strong>Repo</strong><br><code>{escape(report.target_repo)}</code></div>
     <div class="box"><strong>Branch</strong><br><code>{escape(report.after.branch or 'detached/unknown')}</code></div>
     <div class="box"><strong>Exit Code</strong><br><code>{escape(exit_code)}</code></div>
+    <div class="box"><strong>Test Command</strong><br><code>{escape(test_text)}</code></div>
   </section>
   <h2>Command</h2>
   <pre>{escape(command_text)}</pre>

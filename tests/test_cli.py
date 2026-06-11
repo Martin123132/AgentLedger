@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from agentledger.cli import main
+from agentledger.doctor import run_doctor
 
 
 def git(repo: Path, *args: str) -> None:
@@ -64,4 +66,76 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     latest = Path((out / "latest.txt").read_text(encoding="utf-8"))
     report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
     assert report["command"]["exit_code"] == 0
+    assert Path(report["command"]["stdout_path"]).exists()
+    assert Path(report["command"]["stderr_path"]).exists()
+    assert report["command"]["test_detected"] is False
     assert "?? note.txt" in report["after"]["status"]
+
+
+def test_run_detects_pytest_command(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    code = main(
+        [
+            "run",
+            "--repo",
+            str(repo),
+            "--out",
+            str(out),
+            "--no-repomori",
+            "--no-jester",
+            "--no-tokometer",
+            "--",
+            "python",
+            "-m",
+            "pytest",
+            "--version",
+        ]
+    )
+
+    assert code == 0
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8"))
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    assert report["command"]["test_detected"] is True
+    assert report["command"]["test_framework"] == "pytest"
+
+
+def test_missing_optional_jester_does_not_fail_successful_command(tmp_path: Path, monkeypatch) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    import agentledger.integrations as integrations
+
+    original_which = integrations.shutil.which
+
+    def fake_which(name: str):
+        if name in {"jester", "memento-mori-jester"}:
+            return None
+        return original_which(name)
+
+    monkeypatch.setattr(integrations.shutil, "which", fake_which)
+
+    code = main(
+        [
+            "run",
+            "--repo",
+            str(repo),
+            "--out",
+            str(out),
+            "--no-repomori",
+            "--no-tokometer",
+            "--",
+            sys.executable,
+            "-c",
+            "print('ok')",
+        ]
+    )
+
+    assert code == 0
+
+
+def test_doctor_returns_status() -> None:
+    report = run_doctor()
+    assert report["schema_version"] == "agentledger.doctor.v1"
+    assert report["status"] in {"ready", "partial", "blocked"}
+    assert report["checks"]

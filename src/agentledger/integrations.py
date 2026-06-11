@@ -36,16 +36,67 @@ def run_repomori_snapshot(repo: Path, out_dir: Path, label: str) -> ToolArtifact
         "AgentLedger evidence snapshot",
         "--json",
     ]
-    result = run_capture(command, repo)
+    try:
+        result = run_capture(command, repo)
+    except FileNotFoundError as exc:
+        report_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": "agentledger.repomori_snapshot.v1",
+                    "ok": False,
+                    "label": label,
+                    "repo": str(repo),
+                    "error": str(exc),
+                    "note": "Python executable was not found or RepoMori could not be launched.",
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return ToolArtifact(
+            name=f"repomori_snapshot_{label}",
+            ok=False,
+            command=command,
+            output_path=str(report_path),
+            summary="RepoMori snapshot skipped because it could not be launched.",
+        )
     report_path.write_text(result.stdout or result.stderr, encoding="utf-8")
+    summary = "RepoMori snapshot captured."
+    if result.returncode != 0:
+        summary = "RepoMori snapshot failed or RepoMori is not installed."
     return ToolArtifact(
         name=f"repomori_snapshot_{label}",
         ok=result.returncode == 0,
         command=command,
         output_path=str(report_path),
-        summary="RepoMori snapshot captured." if result.returncode == 0 else tail_text(result.stderr or result.stdout, 500),
+        summary=summary if result.returncode == 0 else f"{summary} {tail_text(result.stderr or result.stdout, 500)}",
         exit_code=result.returncode,
     )
+
+
+def summarize_repomori_artifact(path: str | None) -> str | None:
+    if not path:
+        return None
+    artifact_path = Path(path)
+    if not artifact_path.exists():
+        return None
+    try:
+        payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if isinstance(payload, dict) and payload.get("ok") is False:
+        return str(payload.get("note") or payload.get("error") or "RepoMori artifact reports failure.")
+    keys = []
+    for key in ("pack", "pack_path", "snapshot", "snapshot_path", "handoff", "handoff_dir", "latest"):
+        value = payload.get(key) if isinstance(payload, dict) else None
+        if value:
+            keys.append(f"{key}={value}")
+    if keys:
+        return "; ".join(keys[:4])
+    if isinstance(payload, dict):
+        return f"RepoMori JSON keys: {', '.join(sorted(payload.keys())[:8])}"
+    return None
 
 
 def run_jester_diff(repo: Path, out_dir: Path) -> ToolArtifact:
