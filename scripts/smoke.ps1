@@ -44,6 +44,7 @@ try {
     )
 
     Invoke-AgentLedger @("open-latest", "--out", $out)
+    Invoke-AgentLedger @("history", "--out", $out)
 
     $run = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)

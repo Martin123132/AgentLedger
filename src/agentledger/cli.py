@@ -62,6 +62,11 @@ def build_parser() -> argparse.ArgumentParser:
     latest = sub.add_parser("open-latest", help="Print latest report paths from a run output directory.")
     latest.add_argument("--out", default=".agentledger", help="Evidence output directory.")
 
+    history = sub.add_parser("history", help="List recent AgentLedger runs from a run output directory.")
+    history.add_argument("--out", default=".agentledger", help="Evidence output directory.")
+    history.add_argument("--limit", type=int, default=10, help="Maximum number of runs to show.")
+    history.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
     compare = sub.add_parser("compare", help="Compare two report folders side by side.")
     compare.add_argument("old_run_dir", help="Path to older run directory.")
     compare.add_argument("new_run_dir", help="Path to newer run directory.")
@@ -83,11 +88,16 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir).resolve()
     if not run_dir.exists():
         print(f"Run directory not found: {run_dir}")
+        print("Expected a run folder containing agentledger-report.json.")
         return 2
     try:
         report = load_report(run_dir)
-    except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as exc:
-        print(f"Unable to read report: {exc}")
+    except FileNotFoundError as exc:
+        print(f"Unable to read report in {run_dir}: {exc}")
+        print("Expected a run folder containing agentledger-report.json.")
+        return 2
+    except (ValueError, json.JSONDecodeError, OSError) as exc:
+        print(f"Unable to read report in {run_dir}: {exc}")
         return 2
 
     exit_code = command_exit_code(report)
@@ -272,23 +282,110 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
 def _handle_open_latest(args: argparse.Namespace) -> int:
     out_root = Path(args.out).resolve()
     latest_path = out_root / "latest.txt"
-    if not latest_path.exists():
-        print(f"No latest.txt found in {out_root}")
+    if not out_root.exists():
+        print(f"No AgentLedger output directory found: {out_root}")
+        print(f"Run a capture first: python -m agentledger run --out {out_root} -- <command>")
         return 2
-    latest_dir = Path(latest_path.read_text(encoding="utf-8").strip())
+    if not latest_path.exists():
+        print(f"No latest run pointer found: {latest_path}")
+        print(f"Run a capture first: python -m agentledger run --out {out_root} -- <command>")
+        return 2
+    latest_value = latest_path.read_text(encoding="utf-8").strip()
+    if not latest_value:
+        print(f"Latest run pointer is empty: {latest_path}")
+        print("Run another capture to refresh latest.txt.")
+        return 2
+    latest_dir = Path(latest_value)
     if not latest_dir.is_absolute():
         latest_dir = latest_dir if latest_dir.exists() else (out_root / latest_dir)
     if not latest_dir.exists():
         print(f"Latest report directory not found: {latest_dir}")
+        print(f"latest.txt points to: {latest_value}")
+        print("Run another capture to refresh latest.txt.")
         return 2
 
-    print(f"Latest report directory: {latest_dir}")
-    print(f"Markdown: {latest_dir / 'agentledger-report.md'}")
-    print(f"JSON: {latest_dir / 'agentledger-report.json'}")
-    print(f"HTML: {latest_dir / 'agentledger-report.html'}")
+    markdown_path = latest_dir / "agentledger-report.md"
+    json_path = latest_dir / "agentledger-report.json"
+    html_path = latest_dir / "agentledger-report.html"
+    missing_reports = [
+        str(path)
+        for path in (markdown_path, json_path, html_path)
+        if not path.exists()
+    ]
+
+    print(f"Latest run: {latest_dir}")
+    print(f"Markdown report: {markdown_path}")
+    print(f"JSON report: {json_path}")
+    print(f"HTML report: {html_path}")
     zip_path = latest_dir.with_suffix(".zip")
     if zip_path.exists():
-        print(f"Zip: {zip_path}")
+        print(f"Zip bundle: {zip_path}")
+    if missing_reports:
+        print("Missing expected report files:")
+        for path in missing_reports:
+            print(f"- {path}")
+        return 2
+    return 0
+
+
+def _report_summary(run_dir: Path) -> dict:
+    report = load_report(run_dir)
+    passed, warned = artifact_status_counts([artifact for artifact in report.get("artifacts", []) if isinstance(artifact, dict)])
+    return {
+        "run_id": str(report.get("run_id") or run_dir.name),
+        "run_dir": str(run_dir),
+        "started_at": report.get("started_at"),
+        "ended_at": report.get("ended_at"),
+        "command": report_command_text(report),
+        "exit_code": command_exit_code(report),
+        "changed_files": changed_file_count(report),
+        "test_framework": command_test_framework(report),
+        "artifacts": {"ok": passed, "warn": warned},
+        "markdown": str(run_dir / "agentledger-report.md"),
+        "json": str(run_dir / "agentledger-report.json"),
+        "html": str(run_dir / "agentledger-report.html"),
+        "zip": str(run_dir.with_suffix(".zip")) if run_dir.with_suffix(".zip").exists() else None,
+    }
+
+
+def _handle_history(args: argparse.Namespace) -> int:
+    out_root = Path(args.out).resolve()
+    if args.limit <= 0:
+        print("--limit must be greater than zero.")
+        return 2
+    if not out_root.exists():
+        print(f"No AgentLedger output directory found: {out_root}")
+        print(f"Run a capture first: python -m agentledger run --out {out_root} -- <command>")
+        return 2
+
+    run_dirs = sorted(
+        [
+            child
+            for child in out_root.iterdir()
+            if child.is_dir() and (child / "agentledger-report.json").exists()
+        ],
+        key=lambda path: path.name,
+        reverse=True,
+    )[: args.limit]
+
+    summaries = [_report_summary(run_dir) for run_dir in run_dirs]
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps({"out": str(out_root), "runs": summaries}, indent=2))
+        return 0
+
+    if not summaries:
+        print(f"No AgentLedger runs found in {out_root}")
+        return 0
+
+    print(f"AgentLedger runs in {out_root}:")
+    for item in summaries:
+        exit_code = item["exit_code"] if item["exit_code"] is not None else "n/a"
+        print(
+            f"{item['run_id']} | exit={exit_code} | changed={item['changed_files']} | "
+            f"test={item['test_framework']} | command={item['command']}"
+        )
+        print(f"  report={item['markdown']}")
     return 0
 
 
@@ -406,6 +503,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_inspect_report(args)
     if args.command_name == "open-latest":
         return _handle_open_latest(args)
+    if args.command_name == "history":
+        return _handle_history(args)
     if args.command_name == "compare":
         return _handle_compare(args)
     if args.command_name == "verify-bundle":

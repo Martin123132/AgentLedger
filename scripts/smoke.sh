@@ -30,6 +30,7 @@ python -m agentledger run \
   -- python -c "from pathlib import Path; Path('note.txt').write_text('hello')"
 
 python -m agentledger open-latest --out "$OUT"
+python -m agentledger history --out "$OUT"
 
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"

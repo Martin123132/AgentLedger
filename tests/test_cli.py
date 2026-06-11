@@ -160,10 +160,54 @@ def test_open_latest_prints_report_paths(tmp_path: Path, capsys) -> None:
     assert latest_dir.exists()
     assert cli.main(["open-latest", "--out", str(out)]) == 0
     output = capsys.readouterr().out
-    assert "Latest report directory:" in output
-    assert f"Markdown: {latest_dir / 'agentledger-report.md'}" in output
-    assert f"JSON: {latest_dir / 'agentledger-report.json'}" in output
-    assert f"HTML: {latest_dir / 'agentledger-report.html'}" in output
+    assert "Latest run:" in output
+    assert f"Markdown report: {latest_dir / 'agentledger-report.md'}" in output
+    assert f"JSON report: {latest_dir / 'agentledger-report.json'}" in output
+    assert f"HTML report: {latest_dir / 'agentledger-report.html'}" in output
+
+
+def test_open_latest_missing_pointer_prints_hint(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "ledger"
+    out.mkdir()
+
+    assert cli.main(["open-latest", "--out", str(out)]) == 2
+    output = capsys.readouterr().out
+    assert "No latest run pointer found:" in output
+    assert "Run a capture first:" in output
+
+
+def test_history_lists_recent_runs(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"]) == 0
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["history", "--out", str(out)]) == 0
+    output = capsys.readouterr().out
+    assert "AgentLedger runs in" in output
+    assert latest_dir.name in output
+    assert "exit=n/a" in output
+    assert "command=No command executed" in output
+    assert f"report={latest_dir / 'agentledger-report.md'}" in output
+
+
+def test_history_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"]) == 0
+    capsys.readouterr()
+
+    assert cli.main(["history", "--format", "json", "--out", str(out)]) == 0
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["out"] == str(out.resolve())
+    assert len(payload["runs"]) == 1
+    assert payload["runs"][0]["command"] == "No command executed"
+    assert payload["runs"][0]["exit_code"] is None
+    assert payload["runs"][0]["changed_files"] == 0
 
 
 def test_inspect_report_summarizes_command(tmp_path: Path, capsys) -> None:
