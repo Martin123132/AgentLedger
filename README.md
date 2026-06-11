@@ -71,6 +71,15 @@ Get-Content .agentledger\latest.txt
 
 Open the `agentledger-report.md` inside that latest run folder.
 
+Quick review loop:
+
+```powershell
+python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
+python -m agentledger open-latest --out .agentledger
+python -m agentledger inspect-report .agentledger\latest
+python -m agentledger verify-bundle .agentledger\latest.zip
+```
+
 ## Commands
 
 Capture repository state only:
@@ -96,6 +105,30 @@ Skip optional integrations:
 
 ```powershell
 agentledger run --repo C:\path\to\repo --no-repomori --no-jester --no-tokometer -- pytest
+```
+
+Inspect a specific run:
+
+```powershell
+agentledger inspect-report .agentledger\2026-06-11T120000Z-abc12345
+```
+
+Open the latest run summary paths:
+
+```powershell
+agentledger open-latest --out .agentledger
+```
+
+Compare two runs:
+
+```powershell
+agentledger compare .agentledger\2026-06-11T120000Z-abc12345 .agentledger\2026-06-11T120100Z-def67890
+```
+
+Verify a produced zip bundle:
+
+```powershell
+agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip
 ```
 
 ## Current Integrations

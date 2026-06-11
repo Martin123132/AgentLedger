@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+from zipfile import ZipFile
 import subprocess
 import sys
 from pathlib import Path
 
 from agentledger import cli
 from agentledger.doctor import run_doctor
+from agentledger import report_reader
 
 
 def git(repo: Path, *args: str) -> None:
@@ -259,6 +261,165 @@ def test_inspect_report_includes_integration_warnings_and_tokometer(tmp_path: Pa
     assert "Warning: jester_diff: Jester CLI was not found on PATH; skipped diff safety gate." in output
 
 
-def test_changed_file_count_parsing() -> None:
-    report = {"after": {"diff_stat": " 2 files changed, 5 insertions(+), 1 deletion(-)"}}
-    assert cli._changed_file_count(report) == 2
+def test_inspect_report_counts_status_files(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                "python",
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+
+    assert cli.main(["inspect-report", str(run_dir)]) == 0
+    output = capsys.readouterr().out
+    assert "Changed files: 1" in output
+
+
+def test_changed_file_count_uses_status_untracked() -> None:
+    report = {
+        "after": {
+            "diff_stat": "",
+            "status": " M README.md\n?? note.txt\n D old.txt\n R  src/a.txt -> src/b.txt\nA  src/new.txt",
+        }
+    }
+    assert report_reader.changed_file_count(report) == 5
+
+
+def test_compare_reports(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                "python",
+                "-c",
+                "from pathlib import Path; Path('README.md').write_text('hello one')",
+            ]
+        )
+        == 0
+    )
+    first = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                "python",
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('new'); Path('README.md').write_text('hello two')",
+            ]
+        )
+        == 0
+    )
+    second = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+
+    first_report = json.loads((first / "agentledger-report.json").read_text(encoding="utf-8"))
+    second_report = json.loads((second / "agentledger-report.json").read_text(encoding="utf-8"))
+    first_summary = {"latest": {"total": 500, "active": 25}}
+    second_summary = {"latest": {"total": 600, "active": 30}}
+    (first / "tokometer-summary.json").write_text(json.dumps(first_summary) + "\n", encoding="utf-8")
+    (second / "tokometer-summary.json").write_text(json.dumps(second_summary) + "\n", encoding="utf-8")
+    first_report["artifacts"].append(
+        {
+            "name": "tokometer_summary",
+            "ok": True,
+            "command": [],
+            "output_path": str(first / "tokometer-summary.json"),
+            "summary": "Tokometer",
+            "exit_code": 0,
+        }
+    )
+    second_report["artifacts"].append(
+        {
+            "name": "tokometer_summary",
+            "ok": True,
+            "command": [],
+            "output_path": str(second / "tokometer-summary.json"),
+            "summary": "Tokometer",
+            "exit_code": 0,
+        }
+    )
+    (first / "agentledger-report.json").write_text(json.dumps(first_report) + "\n", encoding="utf-8")
+    (second / "agentledger-report.json").write_text(json.dumps(second_report) + "\n", encoding="utf-8")
+
+    assert cli.main(["compare", str(first), str(second)]) == 0
+    output = capsys.readouterr().out
+    assert "Comparing reports:" in output
+    assert "Old command:" in output
+    assert "New command:" in output
+    assert "Changed files: 1 -> 2 (+1)" in output
+    assert "Artifacts:" in output
+    assert "Tokometer: ok: total=500; active=25 -> ok: total=600; active=30" in output
+
+
+def test_verify_bundle_command(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+
+    assert cli.main(["verify-bundle", str(bundle)]) == 0
+    output = capsys.readouterr().out
+    assert f"Bundle OK: {bundle}" in output
+    assert "Report:" in output
+
+    broken = out / "broken.zip"
+    with ZipFile(bundle) as src, ZipFile(broken, "w") as dst:
+        for name in src.namelist():
+            if name.endswith("agentledger-report.json"):
+                continue
+            dst.writestr(name, src.read(name))
+
+    assert cli.main(["verify-bundle", str(broken)]) == 2
+    output = capsys.readouterr().out
+    assert "Missing agentledger-report.json" in output
