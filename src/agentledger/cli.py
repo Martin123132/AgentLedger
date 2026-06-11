@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import uuid
+from zipfile import BadZipFile, ZipFile
 from pathlib import Path
 
 from .bundle import write_zip_bundle
@@ -13,6 +15,17 @@ from .gittools import snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
 from .model import CommandResult, LedgerReport, utc_now_iso
 from .process import run_capture, tail_text
+from .report_reader import (
+    artifact_status_counts,
+    changed_file_count,
+    command_exit_code,
+    command_exit_trend,
+    command_test_framework,
+    integration_warnings,
+    load_report,
+    report_command_text,
+    tokometer_summary,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,6 +55,21 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--repo", default=None, help="Optional target git repository to validate.")
     doctor.add_argument("--json", action="store_true", help="Print machine-readable doctor report.")
 
+    inspect = sub.add_parser("inspect-report", help="Print a concise summary of an existing run report folder.")
+    inspect.add_argument("run_dir", help="Path to run directory.")
+    inspect.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    latest = sub.add_parser("open-latest", help="Print latest report paths from a run output directory.")
+    latest.add_argument("--out", default=".agentledger", help="Evidence output directory.")
+
+    compare = sub.add_parser("compare", help="Compare two report folders side by side.")
+    compare.add_argument("old_run_dir", help="Path to older run directory.")
+    compare.add_argument("new_run_dir", help="Path to newer run directory.")
+    compare.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    verify = sub.add_parser("verify-bundle", help="Validate a zip evidence bundle.")
+    verify.add_argument("bundle", help="Path to bundle zip file.")
+
     return parser
 
 
@@ -49,6 +77,219 @@ def _clean_task(task: list[str]) -> list[str]:
     if task and task[0] == "--":
         return task[1:]
     return task
+
+
+def _handle_inspect_report(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir).resolve()
+    if not run_dir.exists():
+        print(f"Run directory not found: {run_dir}")
+        return 2
+    try:
+        report = load_report(run_dir)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as exc:
+        print(f"Unable to read report: {exc}")
+        return 2
+
+    exit_code = command_exit_code(report)
+    test_framework = command_test_framework(report)
+    changed_files = changed_file_count(report)
+    passed, warned = artifact_status_counts([artifact for artifact in report.get("artifacts", []) if isinstance(artifact, dict)])
+    warnings = integration_warnings(report)
+    tokometer = tokometer_summary(report)
+    after = report.get("after") or {}
+
+    if getattr(args, "format", "text") == "json":
+        payload = {
+            "run_dir": str(run_dir),
+            "command": report_command_text(report),
+            "exit_code": exit_code if exit_code is not None else None,
+            "test_framework": test_framework,
+            "changed_files": changed_files,
+            "artifacts": {"ok": passed, "warn": warned},
+            "tokometer": tokometer,
+        }
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print(f"Report: {run_dir / 'agentledger-report.json'}")
+    print(f"Command: {report_command_text(report)}")
+    print(f"Exit code: {exit_code if exit_code is not None else 'n/a'}")
+    print(f"Test framework: {test_framework}")
+    print(f"Diff stat: {after.get('diff_stat') or 'no tracked diff'}")
+    print(f"Changed files: {changed_files}")
+    print(f"Artifacts: {passed} ok, {warned} warn")
+    if tokometer:
+        print(f"Tokometer: {tokometer}")
+    for warning in warnings:
+        print(f"Warning: {warning}")
+    zip_path = run_dir.with_suffix(".zip")
+    if zip_path.exists():
+        print(f"Zip bundle: {zip_path}")
+    return 0
+
+
+def _find_bundle_member(names: list[str], target: str) -> str | None:
+    for name in names:
+        if name == target or name.endswith(f"/{target}"):
+            return name
+    return None
+
+
+def _handle_compare(args: argparse.Namespace) -> int:
+    old_dir = Path(args.old_run_dir).resolve()
+    new_dir = Path(args.new_run_dir).resolve()
+    try:
+        old_report = load_report(old_dir)
+        new_report = load_report(new_dir)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as exc:
+        print(f"Unable to read report: {exc}")
+        return 2
+
+    old_changed = changed_file_count(old_report)
+    new_changed = changed_file_count(new_report)
+    old_exit = command_exit_code(old_report)
+    new_exit = command_exit_code(new_report)
+    old_passed, old_warned = artifact_status_counts([artifact for artifact in old_report.get("artifacts", []) if isinstance(artifact, dict)])
+    new_passed, new_warned = artifact_status_counts([artifact for artifact in new_report.get("artifacts", []) if isinstance(artifact, dict)])
+    changed_delta = new_changed - old_changed
+    changed_delta_text = f"+{changed_delta}" if changed_delta > 0 else str(changed_delta)
+    trend = command_exit_trend(old_exit, new_exit)
+    old_tokometer = tokometer_summary(old_report)
+    new_tokometer = tokometer_summary(new_report)
+
+    if getattr(args, "format", "text") == "json":
+        print(
+            json.dumps(
+                {
+                    "changed_files": {
+                        "old": old_changed,
+                        "new": new_changed,
+                        "delta": changed_delta,
+                        "delta_text": changed_delta_text,
+                    },
+                    "exit_code": {
+                        "old": old_exit,
+                        "new": new_exit,
+                        "trend": trend,
+                    },
+                    "artifacts": {
+                        "old": {"ok": old_passed, "warn": old_warned},
+                        "new": {"ok": new_passed, "warn": new_warned},
+                    },
+                    "command": {
+                        "old": report_command_text(old_report),
+                        "new": report_command_text(new_report),
+                    },
+                    "tokometer": {
+                        "old": old_tokometer,
+                        "new": new_tokometer,
+                    },
+                    "test_framework": {
+                        "old": command_test_framework(old_report),
+                        "new": command_test_framework(new_report),
+                    },
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    print(f"Comparing reports:")
+    print(f"Old: {old_dir}")
+    print(f"New: {new_dir}")
+    print(f"Old command: {report_command_text(old_report)}")
+    print(f"New command: {report_command_text(new_report)}")
+    print(f"Changed files: {old_changed} -> {new_changed} ({changed_delta_text})")
+    print(
+        "Exit code: "
+        f"{old_exit if old_exit is not None else 'n/a'} -> {new_exit if new_exit is not None else 'n/a'} "
+        f"({trend})"
+    )
+    print(
+        f"Artifacts: {old_passed} ok/{old_warned} warn -> "
+        f"{new_passed} ok/{new_warned} warn"
+    )
+    if old_tokometer or new_tokometer:
+        print(f"Tokometer: {old_tokometer or 'n/a'} -> {new_tokometer or 'n/a'}")
+    print(f"Test framework: {command_test_framework(old_report)} -> {command_test_framework(new_report)}")
+    return 0
+
+
+def _handle_verify_bundle(args: argparse.Namespace) -> int:
+    zip_path = Path(args.bundle).resolve()
+    if not zip_path.exists():
+        print(f"Bundle not found: {zip_path}")
+        return 2
+
+    missing_members = []
+
+    try:
+        with ZipFile(zip_path, "r") as archive:
+            members = archive.namelist()
+            report_member = _find_bundle_member(members, "agentledger-report.json")
+            if report_member is None:
+                print(f"Missing agentledger-report.json in {zip_path}")
+                return 2
+            markdown_member = _find_bundle_member(members, "agentledger-report.md")
+            html_member = _find_bundle_member(members, "agentledger-report.html")
+            if markdown_member is None:
+                missing_members.append("Missing markdown report in bundle.")
+            if html_member is None:
+                missing_members.append("Missing HTML report in bundle.")
+            try:
+                payload = json.loads(archive.read(report_member).decode("utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                print(f"Invalid JSON in {report_member}")
+                return 2
+            if not isinstance(payload, dict):
+                print("Bundle report payload is not a JSON object")
+                return 2
+            if payload.get("schema_version") != "agentledger.report.v1":
+                print(f"Unexpected report schema: {payload.get('schema_version')}")
+                return 2
+    except (OSError, BadZipFile):
+        print(f"Unable to open zip file: {zip_path}")
+        return 2
+
+    if missing_members:
+        for message in missing_members:
+            print(message)
+        return 2
+
+    changed = changed_file_count(payload)
+    passed, warned = artifact_status_counts([artifact for artifact in payload.get("artifacts", []) if isinstance(artifact, dict)])
+    print(f"Bundle OK: {zip_path}")
+    print(f"Run ID: {payload.get('run_id', '(missing run_id)')}")
+    print(f"Report: {report_member}")
+    print(f"Markdown: {markdown_member}")
+    print(f"HTML: {html_member}")
+    print(f"Command: {report_command_text(payload)}")
+    print(f"Changed files: {changed}")
+    print(f"Artifacts: {passed} ok, {warned} warn")
+    return 0
+
+
+def _handle_open_latest(args: argparse.Namespace) -> int:
+    out_root = Path(args.out).resolve()
+    latest_path = out_root / "latest.txt"
+    if not latest_path.exists():
+        print(f"No latest.txt found in {out_root}")
+        return 2
+    latest_dir = Path(latest_path.read_text(encoding="utf-8").strip())
+    if not latest_dir.is_absolute():
+        latest_dir = latest_dir if latest_dir.exists() else (out_root / latest_dir)
+    if not latest_dir.exists():
+        print(f"Latest report directory not found: {latest_dir}")
+        return 2
+
+    print(f"Latest report directory: {latest_dir}")
+    print(f"Markdown: {latest_dir / 'agentledger-report.md'}")
+    print(f"JSON: {latest_dir / 'agentledger-report.json'}")
+    print(f"HTML: {latest_dir / 'agentledger-report.html'}")
+    zip_path = latest_dir.with_suffix(".zip")
+    if zip_path.exists():
+        print(f"Zip: {zip_path}")
+    return 0
 
 
 def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandResult:
@@ -161,5 +402,13 @@ def main(argv: list[str] | None = None) -> int:
         report = run_doctor(Path(args.repo).resolve() if args.repo else None)
         print(doctor_json(report) if args.json else format_doctor(report))
         return 0 if report["status"] in {"ready", "partial"} else 2
+    if args.command_name == "inspect-report":
+        return _handle_inspect_report(args)
+    if args.command_name == "open-latest":
+        return _handle_open_latest(args)
+    if args.command_name == "compare":
+        return _handle_compare(args)
+    if args.command_name == "verify-bundle":
+        return _handle_verify_bundle(args)
     parser.error("unknown command")
     return 2

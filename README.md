@@ -71,6 +71,60 @@ Get-Content .agentledger\latest.txt
 
 Open the `agentledger-report.md` inside that latest run folder.
 
+Quick review loop:
+
+```powershell
+python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
+python -m agentledger open-latest --out .agentledger
+$run = (Get-Content .agentledger\latest.txt).Trim()
+python -m agentledger inspect-report $run
+python -m agentledger verify-bundle "${run}.zip"
+```
+
+## CI and smoke checks
+
+Local checks:
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m pytest
+powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+```
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+bash ./scripts/smoke.sh
+```
+
+There are also private-repo GitHub Actions for the same flow (pytest + smoke) under `.github/workflows/ci.yml`.
+
+Notes:
+
+- Smoke runs use temporary repos and temporary output folders.
+- Do not commit evidence folders or bundles. `.agentledger/`, `*.zip`, and related generated paths are already ignored by `.gitignore`.
+
+If `scripts/smoke.ps1` fails with `git : The term 'git' is not recognized`, ensure your PowerShell session can find git (for example by using the GitHub Desktop git path) and install the package in editable mode first:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+Private-repo push checklist:
+
+```powershell
+git remote -v
+git status --short
+git branch --show-current
+```
+
+From there (when you have your private repo URL):
+
+```powershell
+git remote add origin <git@github.com:OWNER/REPO.git>
+git push -u origin alpha-report-review
+```
+
 ## Commands
 
 Capture repository state only:
@@ -96,6 +150,30 @@ Skip optional integrations:
 
 ```powershell
 agentledger run --repo C:\path\to\repo --no-repomori --no-jester --no-tokometer -- pytest
+```
+
+Inspect a specific run:
+
+```powershell
+agentledger inspect-report .agentledger\2026-06-11T120000Z-abc12345
+```
+
+Open the latest run summary paths:
+
+```powershell
+agentledger open-latest --out .agentledger
+```
+
+Compare two runs:
+
+```powershell
+agentledger compare .agentledger\2026-06-11T120000Z-abc12345 .agentledger\2026-06-11T120100Z-def67890
+```
+
+Verify a produced zip bundle:
+
+```powershell
+agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip
 ```
 
 ## Current Integrations

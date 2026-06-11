@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import json
 from html import escape
-from pathlib import Path
 
 from .integrations import summarize_repomori_artifact
 from .model import LedgerReport
+from .report_reader import changed_file_count, tokometer_summary
 
 
-def write_json(report: LedgerReport, path: Path) -> None:
+def write_json(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
 
 
-def write_markdown(report: LedgerReport, path: Path) -> None:
+def write_markdown(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     command = report.command
     before_dirty = "yes" if report.before.status else "no"
@@ -78,12 +78,16 @@ def write_markdown(report: LedgerReport, path: Path) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_html(report: LedgerReport, path: Path) -> None:
+def write_html(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     command = report.command
     command_text = " ".join(command.command) if command else "No command executed"
     exit_code = str(command.exit_code) if command else "n/a"
     test_text = f"{command.test_framework or 'detected'}" if command and command.test_detected else "not detected"
+    changed_files = changed_file_count(report.to_dict())
+    artifact_ok = sum(1 for artifact in report.artifacts if artifact.ok)
+    artifact_warn = sum(1 for artifact in report.artifacts if not artifact.ok)
+    tokometer_text = tokometer_summary(report.to_dict()) or "n/a"
     artifact_items = []
     for artifact in report.artifacts:
         repomori_summary = summarize_repomori_artifact(artifact.output_path) if artifact.name.startswith("repomori_") else None
@@ -121,6 +125,9 @@ def write_html(report: LedgerReport, path: Path) -> None:
     <div class="box"><strong>Branch</strong><br><code>{escape(report.after.branch or 'detached/unknown')}</code></div>
     <div class="box"><strong>Exit Code</strong><br><code>{escape(exit_code)}</code></div>
     <div class="box"><strong>Test Command</strong><br><code>{escape(test_text)}</code></div>
+    <div class="box"><strong>Changed Files</strong><br><code>{changed_files}</code></div>
+    <div class="box"><strong>Artifact Results</strong><br><code>{artifact_ok} ok / {artifact_warn} warn</code></div>
+    <div class="box"><strong>Tokometer</strong><br><code>{escape(tokometer_text)}</code></div>
   </section>
   <h2>Command</h2>
   <pre>{escape(command_text)}</pre>
