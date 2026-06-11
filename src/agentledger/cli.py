@@ -7,6 +7,7 @@ import uuid
 from zipfile import BadZipFile, ZipFile
 from pathlib import Path
 
+from . import __version__
 from .bundle import write_zip_bundle
 from .classify import detect_test_command
 from .doctor import doctor_json, format_doctor, run_doctor
@@ -33,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="agentledger",
         description="Local-first black box recorder for AI coding-agent work.",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command_name", required=True)
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")

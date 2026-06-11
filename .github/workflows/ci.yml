@@ -27,6 +27,11 @@ jobs:
       - name: Run pytest
         run: python -m pytest
 
+      - name: Run install check (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1
+
       - name: Run smoke checks (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
