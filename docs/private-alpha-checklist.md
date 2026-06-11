@@ -13,6 +13,20 @@
 
 ## First local smoke
 
+Preferred one-command alpha pass:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+```
+
+Expected result:
+
+- Install check, smoke check, doctor, captured pytest, inspect, and verify all pass.
+- A short summary is printed for the tester to send back.
+- `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
+
+Manual fallback flow:
+
 Run this exact flow from repo root:
 
 ```powershell
