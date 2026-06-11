@@ -106,6 +106,13 @@ bash ./scripts/smoke.sh
 
 There are also private-repo GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
 
+Private alpha docs:
+
+- `docs/private-alpha-checklist.md`
+- `docs/private-alpha-tester-guide.md`
+- `docs/private-alpha-feedback-template.md`
+- `docs/private-alpha-notes.md`
+
 Private alpha install check:
 
 ```powershell
