@@ -10,8 +10,9 @@ run commands, touch repositories, and claim work is done:
 - changed files and diffs
 - RepoMori snapshots and handoff packs when available
 - Jester diff safety gate when available
-- Tokometer-compatible local usage path evidence
-- Markdown and JSON audit reports
+- Tokometer local usage summary when available
+- Markdown, JSON, and HTML audit reports
+- zip evidence bundle
 
 The first product wedge is intentionally simple:
 
@@ -24,8 +25,11 @@ That writes a timestamped evidence folder under `.agentledger/` with:
 ```text
 agentledger-report.md
 agentledger-report.json
+agentledger-report.html
 artifacts/
 ```
+
+It also writes a sibling `.zip` bundle for easy handoff.
 
 ## Why This Exists
 
@@ -114,10 +118,19 @@ This is the safety and overconfidence layer.
 
 ### Tokometer
 
-AgentLedger currently records Tokometer-compatible local Codex paths. Full
-Tokometer summary ingestion is planned after the core report loop is stable.
+AgentLedger imports Tokometer's local `getUsageSummary` parser through a small
+Node/TS bridge when `npx tsx` and the Tokometer checkout are available. The
+artifact is intentionally bounded: it keeps usage totals, windows, limits,
+freshness, alerts, top sessions, and parser counts, but omits the full scanned
+session-file list.
 
 This is the cost and usage layer.
+
+Override the Tokometer checkout path when needed:
+
+```powershell
+$env:AGENTLEDGER_TOKOMETER_ROOT='C:\path\to\codex-token-gauge'
+```
 
 ## Product Shape
 

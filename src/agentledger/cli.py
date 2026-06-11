@@ -5,7 +5,8 @@ import subprocess
 import uuid
 from pathlib import Path
 
-from .export import write_json, write_markdown
+from .bundle import write_zip_bundle
+from .export import write_html, write_json, write_markdown
 from .gittools import snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
 from .model import CommandResult, LedgerReport, utc_now_iso
@@ -25,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--no-repomori", action="store_true", help="Skip RepoMori snapshot hooks.")
     run.add_argument("--no-jester", action="store_true", help="Skip Jester diff gate.")
     run.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
+    run.add_argument("--no-zip", action="store_true", help="Skip zip bundle export.")
     run.add_argument("task", nargs=argparse.REMAINDER, help="Command to run after --.")
 
     snap = sub.add_parser("snapshot", help="Capture repository state without running a command.")
@@ -32,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     snap.add_argument("--out", default=".agentledger", help="Evidence output directory.")
     snap.add_argument("--no-repomori", action="store_true", help="Skip RepoMori snapshot hook.")
     snap.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
+    snap.add_argument("--no-zip", action="store_true", help="Skip zip bundle export.")
 
     return parser
 
@@ -112,6 +115,10 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     )
     write_json(report, run_dir / "agentledger-report.json")
     write_markdown(report, run_dir / "agentledger-report.md")
+    write_html(report, run_dir / "agentledger-report.html")
+    if not getattr(args, "no_zip", False):
+        bundle_path = write_zip_bundle(run_dir)
+        print(f"AgentLedger bundle: {bundle_path}")
     latest = out_root / "latest.txt"
     latest.write_text(str(run_dir), encoding="utf-8")
 

@@ -15,7 +15,7 @@ evidence. Gate risky outputs.
 2. Markdown/JSON reports
 3. RepoMori before/after snapshots
 4. Jester safety gate
-5. Tokometer usage summaries
+5. bounded Tokometer usage summaries
 6. HTML report and zip bundle
 7. Marked Bench eval gate
 8. signed evidence records

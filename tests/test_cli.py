@@ -35,6 +35,8 @@ def test_snapshot_writes_json_and_markdown(tmp_path: Path) -> None:
     assert report["schema_version"] == "agentledger.report.v1"
     assert report["target_repo"] == str(repo.resolve())
     assert (latest / "agentledger-report.md").exists()
+    assert (latest / "agentledger-report.html").exists()
+    assert latest.with_suffix(".zip").exists()
 
 
 def test_run_captures_command_and_diff(tmp_path: Path) -> None:

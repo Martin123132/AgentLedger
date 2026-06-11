@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from .model import ToolArtifact
@@ -13,8 +14,11 @@ def _python_executable() -> str:
     return os.environ.get("AGENTLEDGER_PYTHON", "python")
 
 
-def _node_executable() -> str:
-    return os.environ.get("AGENTLEDGER_NODE", "node")
+def _npx_executable() -> str:
+    configured = os.environ.get("AGENTLEDGER_NPX")
+    if configured:
+        return configured
+    return shutil.which("npx") or shutil.which("npx.cmd") or "npx"
 
 
 def run_repomori_snapshot(repo: Path, out_dir: Path, label: str) -> ToolArtifact:
@@ -76,22 +80,86 @@ def run_jester_diff(repo: Path, out_dir: Path) -> ToolArtifact:
 
 def read_tokometer_usage(out_dir: Path) -> ToolArtifact:
     out_dir.mkdir(parents=True, exist_ok=True)
-    report_path = out_dir / "tokometer-local-paths.json"
+    report_path = out_dir / "tokometer-summary.json"
     codex_home = Path(os.environ.get("TOKEN_GAUGE_CODEX_HOME", Path.home() / ".codex"))
     sessions = codex_home / "sessions"
     archived = codex_home / "archived_sessions"
-    payload = {
-        "codex_home": str(codex_home),
-        "sessions_exists": sessions.exists(),
-        "archived_sessions_exists": archived.exists(),
-        "note": "AgentLedger currently records Tokometer-compatible local paths. Full token summary API integration is planned.",
-    }
-    report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    script = Path(__file__).resolve().parents[2] / "scripts" / "tokometer-summary.mjs"
+    tokometer_root = Path(os.environ.get("AGENTLEDGER_TOKOMETER_ROOT", Path.home() / "OneDrive" / "Documents" / "codex-token-gauge"))
+    command = [
+        _npx_executable(),
+        "-y",
+        "tsx",
+        str(script),
+        "--tokometer-root",
+        str(tokometer_root),
+        "--out",
+        str(report_path),
+    ]
+    try:
+        result = run_capture(command, out_dir)
+    except FileNotFoundError as exc:
+        payload = {
+            "schema_version": "agentledger.tokometer_summary.v1",
+            "codex_home": str(codex_home),
+            "sessions_exists": sessions.exists(),
+            "archived_sessions_exists": archived.exists(),
+            "tokometer_root": str(tokometer_root),
+            "error": str(exc),
+            "note": "npx/tsx was not available; recorded local Codex/Tokometer paths instead.",
+        }
+        report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return ToolArtifact(
+            name="tokometer_summary",
+            ok=False,
+            command=command,
+            output_path=str(report_path),
+            summary="Tokometer summary import skipped because npx/tsx was not available.",
+        )
+    except subprocess.SubprocessError as exc:
+        payload = {
+            "schema_version": "agentledger.tokometer_summary.v1",
+            "codex_home": str(codex_home),
+            "sessions_exists": sessions.exists(),
+            "archived_sessions_exists": archived.exists(),
+            "tokometer_root": str(tokometer_root),
+            "error": str(exc),
+            "note": "Tokometer summary subprocess failed; recorded local Codex/Tokometer paths instead.",
+        }
+        report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return ToolArtifact(
+            name="tokometer_summary",
+            ok=False,
+            command=command,
+            output_path=str(report_path),
+            summary="Tokometer summary import failed before completion.",
+        )
+    if result.returncode != 0:
+        payload = {
+            "schema_version": "agentledger.tokometer_summary.v1",
+            "codex_home": str(codex_home),
+            "sessions_exists": sessions.exists(),
+            "archived_sessions_exists": archived.exists(),
+            "tokometer_root": str(tokometer_root),
+            "error": tail_text(result.stderr or result.stdout, 2000),
+            "note": "Direct Tokometer summary failed; recorded local Codex/Tokometer paths instead.",
+        }
+        report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return ToolArtifact(
+            name="tokometer_summary",
+            ok=False,
+            command=command,
+            output_path=str(report_path),
+            summary="Tokometer summary import failed; fallback path evidence recorded.",
+            exit_code=result.returncode,
+        )
     return ToolArtifact(
-        name="tokometer_paths",
-        ok=sessions.exists() or archived.exists(),
+        name="tokometer_summary",
+        ok=True,
+        command=command,
         output_path=str(report_path),
-        summary="Recorded local Codex/Tokometer paths for usage evidence.",
+        summary="Imported Tokometer local usage summary.",
+        exit_code=result.returncode,
     )
 
 
