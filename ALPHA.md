@@ -1,12 +1,15 @@
-# AgentLedger Private Alpha
+# AgentLedger Alpha
 
-This private alpha checks one thing: can you run AgentLedger locally, capture a real test run, inspect the evidence, and tell us where the experience feels unclear?
+This alpha checks one thing: can you run AgentLedger locally, capture a real test run, inspect the evidence, and tell us where the experience feels unclear?
+
+AgentLedger is source-available for non-commercial use. See `LICENSE` and
+`COMMERCIAL.md` before using it outside evaluation or hobby/research contexts.
 
 ## Before you start
 
 You need:
 
-- access to this private repository
+- access to this repository
 - Windows PowerShell
 - Python 3.12 or newer
 - Git installed locally

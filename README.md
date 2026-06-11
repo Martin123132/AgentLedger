@@ -2,6 +2,9 @@
 
 Local-first black box recorder for AI coding agents.
 
+Source-available for non-commercial use under the PolyForm Noncommercial
+License 1.0.0. Commercial use requires separate permission.
+
 AgentLedger captures the boring evidence teams need when agents spend tokens,
 run commands, touch repositories, and claim work is done:
 
@@ -105,9 +108,9 @@ python -m pytest
 bash ./scripts/smoke.sh
 ```
 
-There are also private-repo GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
+There are also GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
 
-Private alpha docs:
+Alpha docs:
 
 - `ALPHA.md`
 - `docs/private-alpha-checklist.md`
@@ -148,7 +151,7 @@ Then install the package in editable mode if needed:
 python -m pip install -e ".[dev]"
 ```
 
-Current private-repo sync checklist:
+Repository sync checklist:
 
 ```powershell
 git remote -v
@@ -156,7 +159,7 @@ git status --short --branch
 git branch --show-current
 ```
 
-When a committed local change should go to the private GitHub repo:
+When a committed local change should go to GitHub:
 
 ```powershell
 git push origin master
@@ -363,4 +366,6 @@ Core assets it can use:
 
 ## License
 
-Proprietary private repository. Commercial terms TBD.
+AgentLedger is source-available under the PolyForm Noncommercial License 1.0.0.
+This is not an OSI open-source license because commercial use is restricted.
+See `LICENSE` for terms and `COMMERCIAL.md` for commercial-use enquiries.
