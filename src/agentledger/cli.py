@@ -500,7 +500,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command_name == "doctor":
         report = run_doctor(Path(args.repo).resolve() if args.repo else None)
         print(doctor_json(report) if args.json else format_doctor(report))
-        return 0 if report["status"] in {"ready", "partial"} else 2
+        return 0 if report["status"] == "ready" else 2
     if args.command_name == "inspect-report":
         return _handle_inspect_report(args)
     if args.command_name == "open-latest":

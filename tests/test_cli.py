@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from agentledger import cli
-from agentledger.doctor import run_doctor
+from agentledger.doctor import format_doctor, run_doctor
 from agentledger import report_reader
 
 
@@ -158,8 +158,51 @@ def test_missing_optional_jester_does_not_fail_successful_command(tmp_path: Path
 def test_doctor_returns_status() -> None:
     report = run_doctor()
     assert report["schema_version"] == "agentledger.doctor.v1"
-    assert report["status"] in {"ready", "partial", "blocked"}
+    assert report["status"] in {"ready", "blocked"}
+    assert "required_ok" in report
+    assert "optional" in report
     assert report["checks"]
+
+
+def test_doctor_formats_missing_optional_as_ready() -> None:
+    report = {
+        "schema_version": "agentledger.doctor.v1",
+        "status": "ready",
+        "required_ok": True,
+        "optional": {
+            "configured": 1,
+            "total": 2,
+            "missing": ["repomori"],
+        },
+        "checks": [
+            {
+                "name": "git",
+                "ok": True,
+                "detail": "C:\\Git\\cmd\\git.exe",
+                "required": True,
+            },
+            {
+                "name": "repomori",
+                "ok": False,
+                "detail": "No module named repomori",
+                "required": False,
+            },
+            {
+                "name": "npx",
+                "ok": True,
+                "detail": "C:\\nodejs\\npx.cmd",
+                "required": False,
+            },
+        ],
+    }
+
+    output = format_doctor(report)
+
+    assert "AgentLedger doctor: ready (required checks passed; optional integrations missing)" in output
+    assert "Optional integrations: 1/2 configured" in output
+    assert "- git: ok (required)" in output
+    assert "- repomori: not configured (optional)" in output
+    assert "- npx: available (optional)" in output
 
 
 def test_cli_version(capsys) -> None:
