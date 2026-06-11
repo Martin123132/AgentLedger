@@ -76,6 +76,7 @@ Quick review loop:
 ```powershell
 python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 python -m agentledger open-latest --out .agentledger
+python -m agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger verify-bundle "${run}.zip"
@@ -162,6 +163,25 @@ Open the latest run summary paths:
 
 ```powershell
 agentledger open-latest --out .agentledger
+```
+
+List recent runs:
+
+```powershell
+agentledger history --out .agentledger
+agentledger history --out .agentledger --format json
+agentledger history --out .agentledger --limit 5
+```
+
+The normal local review loop is:
+
+```powershell
+agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
+agentledger open-latest --out .agentledger
+agentledger history --out .agentledger
+$run = (Get-Content .agentledger\latest.txt).Trim()
+agentledger inspect-report $run
+agentledger verify-bundle "${run}.zip"
 ```
 
 Compare two runs:
