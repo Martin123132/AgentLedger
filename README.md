@@ -81,6 +81,29 @@ python -m agentledger inspect-report $run
 python -m agentledger verify-bundle "${run}.zip"
 ```
 
+## CI and smoke checks
+
+Local checks:
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m pytest
+powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+```
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+bash ./scripts/smoke.sh
+```
+
+There are also private-repo GitHub Actions for the same flow (pytest + smoke) under `.github/workflows/ci.yml`.
+
+Notes:
+
+- Smoke runs use temporary repos and temporary output folders.
+- Do not commit evidence folders or bundles. `.agentledger/`, `*.zip`, and related generated paths are already ignored by `.gitignore`.
+
 ## Commands
 
 Capture repository state only:
