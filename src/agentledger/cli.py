@@ -57,6 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect = sub.add_parser("inspect-report", help="Print a concise summary of an existing run report folder.")
     inspect.add_argument("run_dir", help="Path to run directory.")
+    inspect.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     latest = sub.add_parser("open-latest", help="Print latest report paths from a run output directory.")
     latest.add_argument("--out", default=".agentledger", help="Evidence output directory.")
@@ -64,6 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare = sub.add_parser("compare", help="Compare two report folders side by side.")
     compare.add_argument("old_run_dir", help="Path to older run directory.")
     compare.add_argument("new_run_dir", help="Path to newer run directory.")
+    compare.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     verify = sub.add_parser("verify-bundle", help="Validate a zip evidence bundle.")
     verify.add_argument("bundle", help="Path to bundle zip file.")
@@ -95,6 +97,19 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     warnings = integration_warnings(report)
     tokometer = tokometer_summary(report)
     after = report.get("after") or {}
+
+    if getattr(args, "format", "text") == "json":
+        payload = {
+            "run_dir": str(run_dir),
+            "command": report_command_text(report),
+            "exit_code": exit_code if exit_code is not None else None,
+            "test_framework": test_framework,
+            "changed_files": changed_files,
+            "artifacts": {"ok": passed, "warn": warned},
+            "tokometer": tokometer,
+        }
+        print(json.dumps(payload, indent=2))
+        return 0
 
     print(f"Report: {run_dir / 'agentledger-report.json'}")
     print(f"Command: {report_command_text(report)}")
@@ -138,6 +153,46 @@ def _handle_compare(args: argparse.Namespace) -> int:
     new_passed, new_warned = artifact_status_counts([artifact for artifact in new_report.get("artifacts", []) if isinstance(artifact, dict)])
     changed_delta = new_changed - old_changed
     changed_delta_text = f"+{changed_delta}" if changed_delta > 0 else str(changed_delta)
+    trend = command_exit_trend(old_exit, new_exit)
+    old_tokometer = tokometer_summary(old_report)
+    new_tokometer = tokometer_summary(new_report)
+
+    if getattr(args, "format", "text") == "json":
+        print(
+            json.dumps(
+                {
+                    "changed_files": {
+                        "old": old_changed,
+                        "new": new_changed,
+                        "delta": changed_delta,
+                        "delta_text": changed_delta_text,
+                    },
+                    "exit_code": {
+                        "old": old_exit,
+                        "new": new_exit,
+                        "trend": trend,
+                    },
+                    "artifacts": {
+                        "old": {"ok": old_passed, "warn": old_warned},
+                        "new": {"ok": new_passed, "warn": new_warned},
+                    },
+                    "command": {
+                        "old": report_command_text(old_report),
+                        "new": report_command_text(new_report),
+                    },
+                    "tokometer": {
+                        "old": old_tokometer,
+                        "new": new_tokometer,
+                    },
+                    "test_framework": {
+                        "old": command_test_framework(old_report),
+                        "new": command_test_framework(new_report),
+                    },
+                },
+                indent=2,
+            )
+        )
+        return 0
 
     print(f"Comparing reports:")
     print(f"Old: {old_dir}")
@@ -148,14 +203,12 @@ def _handle_compare(args: argparse.Namespace) -> int:
     print(
         "Exit code: "
         f"{old_exit if old_exit is not None else 'n/a'} -> {new_exit if new_exit is not None else 'n/a'} "
-        f"({command_exit_trend(old_exit, new_exit)})"
+        f"({trend})"
     )
     print(
         f"Artifacts: {old_passed} ok/{old_warned} warn -> "
         f"{new_passed} ok/{new_warned} warn"
     )
-    old_tokometer = tokometer_summary(old_report)
-    new_tokometer = tokometer_summary(new_report)
     if old_tokometer or new_tokometer:
         print(f"Tokometer: {old_tokometer or 'n/a'} -> {new_tokometer or 'n/a'}")
     print(f"Test framework: {command_test_framework(old_report)} -> {command_test_framework(new_report)}")
@@ -168,6 +221,8 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
         print(f"Bundle not found: {zip_path}")
         return 2
 
+    missing_members = []
+
     try:
         with ZipFile(zip_path, "r") as archive:
             members = archive.namelist()
@@ -177,9 +232,13 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
                 return 2
             markdown_member = _find_bundle_member(members, "agentledger-report.md")
             html_member = _find_bundle_member(members, "agentledger-report.html")
+            if markdown_member is None:
+                missing_members.append("Missing markdown report in bundle.")
+            if html_member is None:
+                missing_members.append("Missing HTML report in bundle.")
             try:
                 payload = json.loads(archive.read(report_member).decode("utf-8"))
-            except (OSError, json.JSONDecodeError):
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
                 print(f"Invalid JSON in {report_member}")
                 return 2
             if not isinstance(payload, dict):
@@ -192,24 +251,21 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
         print(f"Unable to open zip file: {zip_path}")
         return 2
 
+    if missing_members:
+        for message in missing_members:
+            print(message)
+        return 2
+
     changed = changed_file_count(payload)
     passed, warned = artifact_status_counts([artifact for artifact in payload.get("artifacts", []) if isinstance(artifact, dict)])
     print(f"Bundle OK: {zip_path}")
     print(f"Run ID: {payload.get('run_id', '(missing run_id)')}")
     print(f"Report: {report_member}")
-    if markdown_member:
-        print(f"Markdown: {markdown_member}")
-    else:
-        print("Missing markdown report in bundle.")
-    if html_member:
-        print(f"HTML: {html_member}")
-    else:
-        print("Missing HTML report in bundle.")
+    print(f"Markdown: {markdown_member}")
+    print(f"HTML: {html_member}")
     print(f"Command: {report_command_text(payload)}")
     print(f"Changed files: {changed}")
     print(f"Artifacts: {passed} ok, {warned} warn")
-    if not markdown_member or not html_member:
-        return 2
     return 0
 
 

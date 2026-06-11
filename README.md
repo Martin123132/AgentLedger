@@ -76,8 +76,9 @@ Quick review loop:
 ```powershell
 python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 python -m agentledger open-latest --out .agentledger
-python -m agentledger inspect-report .agentledger\latest
-python -m agentledger verify-bundle .agentledger\latest.zip
+$run = (Get-Content .agentledger\latest.txt).Trim()
+python -m agentledger inspect-report $run
+python -m agentledger verify-bundle "${run}.zip"
 ```
 
 ## Commands

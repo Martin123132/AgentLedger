@@ -52,11 +52,12 @@ def changed_file_count(report: dict[str, Any]) -> int:
     diff_stat = str(after.get("diff_stat") or "").strip()
     tracked_from_diff = _parse_diff_stat_count(diff_stat)
     if tracked_from_diff is None:
-        tracked_from_diff = sum(1 for line in str(after.get("diff") or "").splitlines() if line.startswith("diff --git "))
+        tracked_from_diff = 0
+    diff_tracked = sum(1 for line in str(after.get("diff") or "").splitlines() if line.startswith("diff --git "))
+    if diff_tracked > tracked_from_diff:
+        tracked_from_diff = diff_tracked
     status_tracked, status_untracked = _status_entries(str(after.get("status") or ""))
-    if tracked_from_diff:
-        return tracked_from_diff + status_untracked
-    return status_tracked + status_untracked
+    return max(tracked_from_diff, status_tracked) + status_untracked
 
 
 def _first_non_empty(payload: dict[str, Any] | None, keys: tuple[str, ...]) -> Any | None:
@@ -163,8 +164,10 @@ def command_test_framework(report: dict[str, Any]) -> str:
 def command_exit_trend(old_code: int | None, new_code: int | None) -> str:
     if old_code is None or new_code is None:
         return "not comparable"
-    if new_code < old_code:
+    if old_code == 0 and new_code == 0:
+        return "unchanged"
+    if old_code != 0 and new_code == 0:
         return "improved"
-    if new_code > old_code:
+    if old_code == 0 and new_code != 0:
         return "regressed"
-    return "unchanged"
+    return "still failing"
