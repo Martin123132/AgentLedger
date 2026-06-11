@@ -125,19 +125,18 @@ If `scripts/smoke.ps1` fails with `git : The term 'git' is not recognized`, ensu
 python -m pip install -e ".[dev]"
 ```
 
-Private-repo push checklist:
+Current private-repo sync checklist:
 
 ```powershell
 git remote -v
-git status --short
+git status --short --branch
 git branch --show-current
 ```
 
-From there (when you have your private repo URL):
+When a committed local change should go to the private GitHub repo:
 
 ```powershell
-git remote add origin <git@github.com:OWNER/REPO.git>
-git push -u origin alpha-report-review
+git push origin master
 ```
 
 ## Commands
