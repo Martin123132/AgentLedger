@@ -95,6 +95,7 @@ agentledger --version
 python -m pytest
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+powershell -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
 ```
 
 ```bash
@@ -120,6 +121,14 @@ powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 ```
 
 That script installs AgentLedger from the local checkout into a temporary virtual environment using local packaging tools, verifies `agentledger --version`, verifies `python -m agentledger --version`, and removes the temporary environment when it finishes.
+
+Private alpha one-command pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+```
+
+That script runs install verification, smoke verification, doctor, a captured pytest pass, report inspection, bundle verification, and prints the short summary an alpha tester should send back.
 
 Notes:
 

@@ -31,6 +31,22 @@ Expected result:
 - `doctor` should say `ready` when required checks pass
 - Missing RepoMori, Jester, or Tokometer warnings are OK for this alpha
 
+## One-command alpha pass
+
+Run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+```
+
+Expected result:
+
+- install check passes
+- smoke check passes
+- a real pytest run is captured under `.agentledger/`
+- latest/history/inspect/verify commands all succeed
+- the script prints a short summary to send back
+
 ## Smoke test
 
 Run:
