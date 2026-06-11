@@ -104,6 +104,27 @@ Notes:
 - Smoke runs use temporary repos and temporary output folders.
 - Do not commit evidence folders or bundles. `.agentledger/`, `*.zip`, and related generated paths are already ignored by `.gitignore`.
 
+If `scripts/smoke.ps1` fails with `git : The term 'git' is not recognized`, ensure your PowerShell session can find git (for example by using the GitHub Desktop git path) and install the package in editable mode first:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+Private-repo push checklist:
+
+```powershell
+git remote -v
+git status --short
+git branch --show-current
+```
+
+From there (when you have your private repo URL):
+
+```powershell
+git remote add origin <git@github.com:OWNER/REPO.git>
+git push -u origin alpha-report-review
+```
+
 ## Commands
 
 Capture repository state only:
