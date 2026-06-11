@@ -34,10 +34,10 @@ When `git` is not on PATH, tests and smoke flows that create temporary git repos
 git : The term 'git' is not recognized as the name of a cmdlet, function, script file, or operable program.
 ```
 
-For this local pass, adding GitHub Desktop's bundled git to PATH fixed it:
+For this local pass, adding GitHub Desktop's bundled git to PATH fixed it. The repo now includes a helper for that setup:
 
 ```powershell
-$env:Path = "C:\Users\ollet\AppData\Local\GitHubDesktop\app-3.5.4\resources\app\git\cmd;" + $env:Path
+. .\scripts\ensure-git.ps1
 ```
 
 ## Report readability
@@ -55,4 +55,4 @@ $env:Path = "C:\Users\ollet\AppData\Local\GitHubDesktop\app-3.5.4\resources\app\
 
 ## Readiness call
 
-AgentLedger is ready to hand to one outside private alpha tester after one small docs cleanup: remove or update the stale private-repo push checklist in README so testers do not follow the old `alpha-report-review` instructions.
+AgentLedger is ready to hand to one outside private alpha tester. The stale private-repo push checklist was cleaned up, and the Windows Git setup friction now has `scripts/ensure-git.ps1`.

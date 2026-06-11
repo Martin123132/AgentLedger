@@ -1,5 +1,7 @@
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "ensure-git.ps1") -Quiet
+
 function Invoke-AgentLedger {
     param(
         [Parameter(Mandatory = $true)]

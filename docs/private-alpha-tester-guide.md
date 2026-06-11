@@ -9,10 +9,10 @@ AgentLedger is a local-first evidence recorder for AI coding-agent work. This pr
 - Git available in PowerShell
 - Access to the private AgentLedger repository
 
-If `git` is installed through GitHub Desktop but PowerShell cannot find it, add GitHub Desktop's bundled git to the current session:
+If PowerShell cannot find `git`, let AgentLedger locate a common Git install for the current session:
 
 ```powershell
-$env:Path = "C:\Users\ollet\AppData\Local\GitHubDesktop\app-3.5.4\resources\app\git\cmd;" + $env:Path
+. .\scripts\ensure-git.ps1
 ```
 
 ## Setup
