@@ -59,6 +59,7 @@ From this checkout:
 
 ```powershell
 python -m pip install -e ".[dev]"
+agentledger --version
 python -m agentledger doctor --repo .
 python -m agentledger snapshot --repo .
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
@@ -90,17 +91,28 @@ Local checks:
 
 ```powershell
 python -m pip install -e ".[dev]"
+agentledger --version
 python -m pytest
+powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 ```
 
 ```bash
 python -m pip install -e ".[dev]"
+agentledger --version
 python -m pytest
 bash ./scripts/smoke.sh
 ```
 
-There are also private-repo GitHub Actions for the same flow (pytest + smoke) under `.github/workflows/ci.yml`.
+There are also private-repo GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
+
+Private alpha install check:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
+```
+
+That script installs AgentLedger from the local checkout into a temporary virtual environment using local packaging tools, verifies `agentledger --version`, verifies `python -m agentledger --version`, and removes the temporary environment when it finishes.
 
 Notes:
 
@@ -147,6 +159,13 @@ Check local integration readiness:
 ```powershell
 agentledger doctor --repo C:\path\to\repo
 agentledger doctor --json
+```
+
+Check the installed CLI version:
+
+```powershell
+agentledger --version
+python -m agentledger --version
 ```
 
 Skip optional integrations:

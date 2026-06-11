@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from agentledger import cli
 from agentledger.doctor import run_doctor
 from agentledger import report_reader
@@ -158,6 +160,14 @@ def test_doctor_returns_status() -> None:
     assert report["schema_version"] == "agentledger.doctor.v1"
     assert report["status"] in {"ready", "partial", "blocked"}
     assert report["checks"]
+
+
+def test_cli_version(capsys) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--version"])
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert "agentledger 0.1.0" in output
 
 
 def test_open_latest_prints_report_paths(tmp_path: Path, capsys) -> None:
