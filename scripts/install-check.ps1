@@ -11,7 +11,15 @@ try {
     $python = Join-Path $venv "Scripts\python.exe"
     $agentledger = Join-Path $venv "Scripts\agentledger.exe"
 
-    & $python -m pip install --no-build-isolation --no-deps --no-index $repoRoot
+    & $python -c "import setuptools.build_meta" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        & $python -m pip install "setuptools>=68" wheel
+        if ($LASTEXITCODE -ne 0) {
+            throw "build tool install failed with code $LASTEXITCODE"
+        }
+    }
+
+    & $python -m pip install --no-build-isolation --no-deps $repoRoot
     if ($LASTEXITCODE -ne 0) {
         throw "pip install failed with code $LASTEXITCODE"
     }
