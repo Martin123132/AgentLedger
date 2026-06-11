@@ -79,6 +79,16 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     assert Path(report["command"]["stderr_path"]).exists()
     assert report["command"]["test_detected"] is False
     assert "?? note.txt" in report["after"]["status"]
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    html = (latest / "agentledger-report.html").read_text(encoding="utf-8")
+    assert "## Review Summary" in markdown
+    assert "- Outcome: `command passed`" in markdown
+    assert "- Changed files: `1`" in markdown
+    assert "## Human Review Checklist" in markdown
+    assert "Confirm the command matches the intended task." in markdown
+    assert '<span class="badge ok">command passed</span>' in html
+    assert "Human Review Checklist" in html
+    assert "Review focus:" in html
 
 
 def test_run_detects_pytest_command(tmp_path: Path) -> None:
