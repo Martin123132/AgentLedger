@@ -109,6 +109,7 @@ There are also private-repo GitHub Actions for the same flow (pytest + install c
 
 Private alpha docs:
 
+- `ALPHA.md`
 - `docs/private-alpha-checklist.md`
 - `docs/private-alpha-tester-guide.md`
 - `docs/private-alpha-feedback-template.md`
