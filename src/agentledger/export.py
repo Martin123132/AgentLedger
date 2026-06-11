@@ -8,6 +8,27 @@ from .model import LedgerReport
 from .report_reader import changed_file_count, tokometer_summary
 
 
+def _command_text(report: LedgerReport) -> str:
+    return " ".join(report.command.command) if report.command else "No command executed"
+
+
+def _run_outcome(report: LedgerReport) -> str:
+    if report.command is None:
+        return "snapshot only"
+    return "command passed" if report.command.exit_code == 0 else "command failed"
+
+
+def _artifact_counts(report: LedgerReport) -> tuple[int, int]:
+    return (
+        sum(1 for artifact in report.artifacts if artifact.ok),
+        sum(1 for artifact in report.artifacts if not artifact.ok),
+    )
+
+
+def _dirty_text(status: str) -> str:
+    return "yes" if status else "no"
+
+
 def write_json(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
@@ -16,10 +37,32 @@ def write_json(report: LedgerReport, path):
 def write_markdown(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     command = report.command
-    before_dirty = "yes" if report.before.status else "no"
-    after_dirty = "yes" if report.after.status else "no"
+    changed_files = changed_file_count(report.to_dict())
+    artifact_ok, artifact_warn = _artifact_counts(report)
+    before_dirty = _dirty_text(report.before.status)
+    after_dirty = _dirty_text(report.after.status)
+    outcome = _run_outcome(report)
+    command_text = _command_text(report)
+    zip_path = path.parent.with_suffix(".zip")
     lines = [
         "# AgentLedger Evidence Report",
+        "",
+        "## Review Summary",
+        "",
+        f"- Outcome: `{outcome}`",
+        f"- Changed files: `{changed_files}`",
+        f"- Artifacts: `{artifact_ok} ok / {artifact_warn} warn`",
+        f"- Evidence bundle: `{zip_path}`",
+        f"- Command: `{command_text}`",
+        "",
+        "## Human Review Checklist",
+        "",
+        "- [ ] Confirm the command matches the intended task.",
+        "- [ ] Review changed files and diff for unexpected edits.",
+        "- [ ] Open stdout/stderr transcripts if command output matters.",
+        "- [ ] Check artifact warnings before trusting optional integrations.",
+        "",
+        "## Run Metadata",
         "",
         f"- Run ID: `{report.run_id}`",
         f"- Started: `{report.started_at}`",
@@ -35,7 +78,7 @@ def write_markdown(report: LedgerReport, path):
     if command:
         lines.extend(
             [
-                f"- Command: `{' '.join(command.command)}`",
+                f"- Command: `{command_text}`",
                 f"- Exit code: `{command.exit_code}`",
                 f"- Test detected: `{command.test_detected}`",
                 f"- Test framework: `{command.test_framework or 'n/a'}`",
@@ -46,6 +89,12 @@ def write_markdown(report: LedgerReport, path):
                 "",
             ]
         )
+        if command.stdout_tail or command.stderr_tail:
+            lines.extend(["### Command Tail", ""])
+            if command.stdout_tail:
+                lines.extend(["Stdout:", "", "```text", command.stdout_tail, "```", ""])
+            if command.stderr_tail:
+                lines.extend(["Stderr:", "", "```text", command.stderr_tail, "```", ""])
     else:
         lines.append("No command was executed; this report captured repository state only.\n")
 
@@ -81,12 +130,13 @@ def write_markdown(report: LedgerReport, path):
 def write_html(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     command = report.command
-    command_text = " ".join(command.command) if command else "No command executed"
+    command_text = _command_text(report)
     exit_code = str(command.exit_code) if command else "n/a"
     test_text = f"{command.test_framework or 'detected'}" if command and command.test_detected else "not detected"
     changed_files = changed_file_count(report.to_dict())
-    artifact_ok = sum(1 for artifact in report.artifacts if artifact.ok)
-    artifact_warn = sum(1 for artifact in report.artifacts if not artifact.ok)
+    artifact_ok, artifact_warn = _artifact_counts(report)
+    outcome = _run_outcome(report)
+    outcome_class = "ok" if outcome in {"command passed", "snapshot only"} else "warn"
     tokometer_text = tokometer_summary(report.to_dict()) or "n/a"
     artifact_items = []
     for artifact in report.artifacts:
@@ -100,6 +150,21 @@ def write_html(report: LedgerReport, path):
         )
     artifacts = "\n".join(artifact_items)
     warnings = "\n".join(f"<li>{escape(warning)}</li>" for warning in report.warnings)
+    checklist = "\n".join(
+        f"<li>{escape(item)}</li>"
+        for item in (
+            "Confirm the command matches the intended task.",
+            "Review changed files and diff for unexpected edits.",
+            "Open stdout/stderr transcripts if command output matters.",
+            "Check artifact warnings before trusting optional integrations.",
+        )
+    )
+    command_tail_parts = []
+    if command and command.stdout_tail:
+        command_tail_parts.extend(["Stdout:", command.stdout_tail])
+    if command and command.stderr_tail:
+        command_tail_parts.extend(["Stderr:", command.stderr_tail])
+    command_tail = "\n\n".join(command_tail_parts) if command_tail_parts else "No command tail captured."
     html = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -107,18 +172,40 @@ def write_html(report: LedgerReport, path):
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AgentLedger Evidence Report</title>
   <style>
-    body {{ font-family: Arial, sans-serif; margin: 2rem; line-height: 1.45; color: #18202a; }}
+    :root {{
+      --ink: #172033;
+      --muted: #526071;
+      --line: #d7dde6;
+      --panel: #f7f9fb;
+      --ok: #176b49;
+      --warn: #a33f16;
+      --accent: #245d8f;
+    }}
+    body {{ font-family: "Segoe UI", Arial, sans-serif; margin: 2rem; line-height: 1.45; color: var(--ink); background: #ffffff; }}
     main {{ max-width: 1100px; margin: 0 auto; }}
     h1, h2 {{ line-height: 1.1; }}
+    h1 {{ margin-bottom: 0.25rem; }}
+    .lede {{ margin-top: 0; color: var(--muted); }}
     .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; }}
-    .box {{ border: 1px solid #d8dee8; border-radius: 6px; padding: 0.8rem; background: #fafbfc; }}
+    .box {{ border: 1px solid var(--line); border-radius: 6px; padding: 0.8rem; background: var(--panel); }}
+    .summary {{ border-left: 4px solid var(--accent); padding-left: 1rem; margin: 1rem 0 1.25rem; }}
+    .badge {{ display: inline-block; border-radius: 999px; padding: 0.2rem 0.55rem; color: #ffffff; font-size: 0.85rem; font-weight: 700; }}
+    .ok {{ background: var(--ok); }}
+    .warn {{ background: var(--warn); }}
+    .checklist {{ columns: 2 260px; padding-left: 1.25rem; }}
     code, pre {{ font-family: Consolas, Monaco, monospace; }}
-    pre {{ overflow: auto; border: 1px solid #d8dee8; border-radius: 6px; padding: 1rem; background: #f6f8fa; }}
+    pre {{ overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 1rem; background: #f6f8fa; }}
+    .muted {{ color: var(--muted); }}
   </style>
 </head>
 <body>
 <main>
   <h1>AgentLedger Evidence Report</h1>
+  <p class="lede">Local evidence for one AI-assisted repository work session.</p>
+  <section class="summary">
+    <p><span class="badge {outcome_class}">{escape(outcome)}</span></p>
+    <p><strong>Review focus:</strong> inspect the command, changed files, artifact warnings, and evidence bundle before accepting the work.</p>
+  </section>
   <section class="grid">
     <div class="box"><strong>Run ID</strong><br><code>{escape(report.run_id)}</code></div>
     <div class="box"><strong>Repo</strong><br><code>{escape(report.target_repo)}</code></div>
@@ -129,8 +216,14 @@ def write_html(report: LedgerReport, path):
     <div class="box"><strong>Artifact Results</strong><br><code>{artifact_ok} ok / {artifact_warn} warn</code></div>
     <div class="box"><strong>Tokometer</strong><br><code>{escape(tokometer_text)}</code></div>
   </section>
+  <h2>Human Review Checklist</h2>
+  <ul class="checklist">{checklist}</ul>
   <h2>Command</h2>
   <pre>{escape(command_text)}</pre>
+  <p class="muted">Stdout transcript: <code>{escape(command.stdout_path if command and command.stdout_path else 'n/a')}</code><br>
+  Stderr transcript: <code>{escape(command.stderr_path if command and command.stderr_path else 'n/a')}</code></p>
+  <h2>Command Tail</h2>
+  <pre>{escape(command_tail)}</pre>
   <h2>Changes</h2>
   <pre>{escape(report.after.diff_stat or 'No tracked file diff.')}</pre>
   <h2>Artifacts</h2>

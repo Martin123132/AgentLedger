@@ -30,6 +30,8 @@ artifacts/
 ```
 
 It also writes a sibling `.zip` bundle for easy handoff.
+The Markdown and HTML reports start with a review summary and a short human
+checklist so the latest run can be triaged quickly before accepting the work.
 
 ## Why This Exists
 
