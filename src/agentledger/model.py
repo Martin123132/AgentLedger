@@ -89,6 +89,7 @@ class LedgerReport:
     command: CommandResult | None
     before: GitSnapshot
     after: GitSnapshot
+    privacy_mode: str = "standard"
     artifacts: list[ToolArtifact] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -102,6 +103,7 @@ class LedgerReport:
             "command": self.command.to_dict() if self.command else None,
             "before": self.before.to_dict(),
             "after": self.after.to_dict(),
+            "privacy_mode": self.privacy_mode,
             "artifacts": [artifact.to_dict() for artifact in self.artifacts],
             "warnings": self.warnings,
         }
