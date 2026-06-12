@@ -96,6 +96,13 @@ python -m agentledger inspect-report $run
 python -m agentledger verify-bundle "${run}.zip"
 ```
 
+Use summary privacy mode when you want counts, paths, and metadata without full
+command transcripts or full diffs in the report/bundle:
+
+```powershell
+python -m agentledger run --repo . --privacy-mode summary -- python -m pytest
+```
+
 ## CI and smoke checks
 
 Local checks:
@@ -193,6 +200,17 @@ Capture state around a command:
 agentledger run --repo C:\path\to\repo -- npm test
 ```
 
+Capture a lower-detail report:
+
+```powershell
+agentledger run --repo C:\path\to\repo --privacy-mode summary -- npm test
+agentledger snapshot --repo C:\path\to\repo --privacy-mode summary
+```
+
+`--privacy-mode summary` omits command transcript content and full diffs from
+the generated reports and bundles. It also skips optional integrations that can
+add detailed local artifacts.
+
 Check local integration readiness:
 
 ```powershell
@@ -283,6 +301,9 @@ verification runs from ordinary shell commands.
 
 Command transcripts and report tails are redacted for common secret-looking
 patterns before they are written to disk.
+
+For lower-detail sharing, use `--privacy-mode summary` to omit transcript
+content and full diffs entirely.
 
 ### RepoMori
 

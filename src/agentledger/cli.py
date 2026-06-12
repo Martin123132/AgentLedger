@@ -30,6 +30,9 @@ from .report_reader import (
 )
 
 
+PRIVACY_OMISSION = "[omitted by privacy-mode summary]"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="agentledger",
@@ -45,6 +48,12 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--no-jester", action="store_true", help="Skip Jester diff gate.")
     run.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
     run.add_argument("--no-zip", action="store_true", help="Skip zip bundle export.")
+    run.add_argument(
+        "--privacy-mode",
+        choices=["standard", "summary"],
+        default="standard",
+        help="Evidence detail level. summary omits command transcript content and full diffs.",
+    )
     run.add_argument("task", nargs=argparse.REMAINDER, help="Command to run after --.")
 
     snap = sub.add_parser("snapshot", help="Capture repository state without running a command.")
@@ -53,6 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
     snap.add_argument("--no-repomori", action="store_true", help="Skip RepoMori snapshot hook.")
     snap.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
     snap.add_argument("--no-zip", action="store_true", help="Skip zip bundle export.")
+    snap.add_argument(
+        "--privacy-mode",
+        choices=["standard", "summary"],
+        default="standard",
+        help="Evidence detail level. summary omits full diffs from reports and bundles.",
+    )
 
     doctor = sub.add_parser("doctor", help="Check local AgentLedger integration readiness.")
     doctor.add_argument("--repo", default=None, help="Optional target git repository to validate.")
@@ -120,6 +135,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
             "changed_files": changed_files,
             "artifacts": {"ok": passed, "warn": warned},
             "tokometer": tokometer,
+            "privacy_mode": report.get("privacy_mode", "standard"),
         }
         print(json.dumps(payload, indent=2))
         return 0
@@ -128,6 +144,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     print(f"Command: {report_command_text(report)}")
     print(f"Exit code: {exit_code if exit_code is not None else 'n/a'}")
     print(f"Test framework: {test_framework}")
+    print(f"Privacy mode: {report.get('privacy_mode', 'standard')}")
     print(f"Diff stat: {after.get('diff_stat') or 'no tracked diff'}")
     print(f"Changed files: {changed_files}")
     print(f"Artifacts: {passed} ok, {warned} warn")
@@ -169,6 +186,8 @@ def _handle_compare(args: argparse.Namespace) -> int:
     trend = command_exit_trend(old_exit, new_exit)
     old_tokometer = tokometer_summary(old_report)
     new_tokometer = tokometer_summary(new_report)
+    old_privacy = str(old_report.get("privacy_mode") or "standard")
+    new_privacy = str(new_report.get("privacy_mode") or "standard")
 
     if getattr(args, "format", "text") == "json":
         print(
@@ -201,6 +220,10 @@ def _handle_compare(args: argparse.Namespace) -> int:
                         "old": command_test_framework(old_report),
                         "new": command_test_framework(new_report),
                     },
+                    "privacy_mode": {
+                        "old": old_privacy,
+                        "new": new_privacy,
+                    },
                 },
                 indent=2,
             )
@@ -225,6 +248,7 @@ def _handle_compare(args: argparse.Namespace) -> int:
     if old_tokometer or new_tokometer:
         print(f"Tokometer: {old_tokometer or 'n/a'} -> {new_tokometer or 'n/a'}")
     print(f"Test framework: {command_test_framework(old_report)} -> {command_test_framework(new_report)}")
+    print(f"Privacy mode: {old_privacy} -> {new_privacy}")
     return 0
 
 
@@ -343,6 +367,7 @@ def _report_summary(run_dir: Path) -> dict:
         "exit_code": command_exit_code(report),
         "changed_files": changed_file_count(report),
         "test_framework": command_test_framework(report),
+        "privacy_mode": str(report.get("privacy_mode") or "standard"),
         "artifacts": {"ok": passed, "warn": warned},
         "markdown": str(run_dir / "agentledger-report.md"),
         "json": str(run_dir / "agentledger-report.json"),
@@ -386,7 +411,7 @@ def _handle_history(args: argparse.Namespace) -> int:
         exit_code = item["exit_code"] if item["exit_code"] is not None else "n/a"
         print(
             f"{item['run_id']} | exit={exit_code} | changed={item['changed_files']} | "
-            f"test={item['test_framework']} | command={item['command']}"
+            f"test={item['test_framework']} | privacy={item['privacy_mode']} | command={item['command']}"
         )
         print(f"  report={item['markdown']}")
     return 0
@@ -428,6 +453,32 @@ def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandRes
     )
 
 
+def _run_task_with_privacy(command: list[str], repo: Path, artifacts_dir: Path, privacy_mode: str) -> CommandResult:
+    result = _run_task(command, repo, artifacts_dir)
+    if privacy_mode != "summary":
+        return result
+
+    stdout_path = Path(result.stdout_path) if result.stdout_path else None
+    stderr_path = Path(result.stderr_path) if result.stderr_path else None
+    if stdout_path:
+        stdout_path.write_text(f"Command stdout {PRIVACY_OMISSION}.\n", encoding="utf-8")
+    if stderr_path:
+        stderr_path.write_text(f"Command stderr {PRIVACY_OMISSION}.\n", encoding="utf-8")
+    result.stdout_tail = ""
+    result.stderr_tail = ""
+    return result
+
+
+def _apply_privacy_mode(report: LedgerReport, privacy_mode: str) -> None:
+    if privacy_mode != "summary":
+        return
+    report.before.diff = ""
+    report.after.diff = ""
+    report.warnings.append(
+        "Privacy mode summary omitted command transcript content and full diffs from reports and bundles."
+    )
+
+
 def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     repo = Path(args.repo).resolve()
     out_root = Path(args.out).resolve()
@@ -440,25 +491,32 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     artifacts = []
     started = utc_now_iso()
     before = snapshot(repo)
+    privacy_summary = args.privacy_mode == "summary"
 
-    if not getattr(args, "no_repomori", False):
+    if not getattr(args, "no_repomori", False) and not privacy_summary:
         artifacts.append(run_repomori_snapshot(repo, artifacts_dir, "before"))
+    elif privacy_summary and not getattr(args, "no_repomori", False):
+        warnings.append("Privacy mode summary skipped RepoMori snapshots.")
 
     command_result = None
     command = _clean_task(task or [])
     if command:
-        command_result = _run_task(command, repo, artifacts_dir)
+        command_result = _run_task_with_privacy(command, repo, artifacts_dir, args.privacy_mode)
     elif task is not None:
         warnings.append("No command supplied after --; captured repository state only.")
 
     after = snapshot(repo)
 
-    if not getattr(args, "no_repomori", False):
+    if not getattr(args, "no_repomori", False) and not privacy_summary:
         artifacts.append(run_repomori_snapshot(repo, artifacts_dir, "after"))
-    if not getattr(args, "no_jester", False) and hasattr(args, "no_jester"):
+    if not getattr(args, "no_jester", False) and hasattr(args, "no_jester") and not privacy_summary:
         artifacts.append(run_jester_diff(repo, artifacts_dir))
-    if not getattr(args, "no_tokometer", False):
+    elif privacy_summary and not getattr(args, "no_jester", False) and hasattr(args, "no_jester"):
+        warnings.append("Privacy mode summary skipped Jester diff gate.")
+    if not getattr(args, "no_tokometer", False) and not privacy_summary:
         artifacts.append(read_tokometer_usage(artifacts_dir))
+    elif privacy_summary and not getattr(args, "no_tokometer", False):
+        warnings.append("Privacy mode summary skipped Tokometer path evidence.")
 
     ended = utc_now_iso()
     report = LedgerReport(
@@ -470,9 +528,11 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
         command=command_result,
         before=before,
         after=after,
+        privacy_mode=args.privacy_mode,
         artifacts=artifacts,
         warnings=warnings,
     )
+    _apply_privacy_mode(report, args.privacy_mode)
     write_json(report, run_dir / "agentledger-report.json")
     write_markdown(report, run_dir / "agentledger-report.md")
     write_html(report, run_dir / "agentledger-report.html")

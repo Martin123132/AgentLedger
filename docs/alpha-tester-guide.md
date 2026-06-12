@@ -27,7 +27,7 @@ python -m agentledger doctor --repo .
 
 Expected result:
 
-- `agentledger --version` prints `agentledger 0.1.0`
+- `agentledger --version` prints the installed AgentLedger version
 - `doctor` should say `ready` when required checks pass
 - Missing RepoMori, Jester, or Tokometer warnings are OK for this alpha
 

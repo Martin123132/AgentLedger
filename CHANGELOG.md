@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added `--privacy-mode summary` to omit command transcript content and full
+  diffs from generated reports and bundles.
+
+## 0.1.1-alpha
+
 - Added best-effort redaction for obvious secrets in command output, report
   tails, tracked diffs, and optional integration artifact text.
 

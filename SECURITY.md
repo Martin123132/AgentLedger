@@ -8,6 +8,10 @@ AgentLedger applies best-effort redaction for common token, password, API key,
 authorization header, and private-key patterns before writing reports and command
 transcripts. This is a safety net, not a guarantee.
 
+Use `--privacy-mode summary` for lower-detail evidence. Summary mode keeps
+metadata and counts but omits command transcript content and full diffs from the
+generated reports and bundles.
+
 ## Supported Versions
 
 Only the current `master` branch is supported during the public alpha.
@@ -30,4 +34,6 @@ describes the affected area without including sensitive data.
   asked AgentLedger to run.
 - Assume unusual or project-specific credentials may need manual review even
   when common secret patterns are redacted.
+- Use `--privacy-mode summary` before sharing evidence outside your machine when
+  full diffs or command output are not needed.
 - Rotate any credential that appears in a generated report or bundle.

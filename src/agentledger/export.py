@@ -29,6 +29,14 @@ def _dirty_text(status: str) -> str:
     return "yes" if status else "no"
 
 
+def _diff_text(report: LedgerReport) -> str:
+    if report.after.diff:
+        return report.after.diff
+    if report.privacy_mode == "summary":
+        return "Full diff omitted by privacy-mode summary."
+    return ""
+
+
 def write_json(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
@@ -69,6 +77,7 @@ def write_markdown(report: LedgerReport, path):
         f"- Ended: `{report.ended_at}`",
         f"- Repo: `{report.target_repo}`",
         f"- Branch: `{report.after.branch or 'detached/unknown'}`",
+        f"- Privacy mode: `{report.privacy_mode}`",
         f"- Before dirty: `{before_dirty}`",
         f"- After dirty: `{after_dirty}`",
         "",
@@ -123,7 +132,7 @@ def write_markdown(report: LedgerReport, path):
             lines.append(f"- {warning}")
         lines.append("")
 
-    lines.extend(["## Diff", "", "```diff", report.after.diff or "", "```", ""])
+    lines.extend(["## Diff", "", "```diff", _diff_text(report), "```", ""])
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -210,6 +219,7 @@ def write_html(report: LedgerReport, path):
     <div class="box"><strong>Run ID</strong><br><code>{escape(report.run_id)}</code></div>
     <div class="box"><strong>Repo</strong><br><code>{escape(report.target_repo)}</code></div>
     <div class="box"><strong>Branch</strong><br><code>{escape(report.after.branch or 'detached/unknown')}</code></div>
+    <div class="box"><strong>Privacy Mode</strong><br><code>{escape(report.privacy_mode)}</code></div>
     <div class="box"><strong>Exit Code</strong><br><code>{escape(exit_code)}</code></div>
     <div class="box"><strong>Test Command</strong><br><code>{escape(test_text)}</code></div>
     <div class="box"><strong>Changed Files</strong><br><code>{changed_files}</code></div>
@@ -231,7 +241,7 @@ def write_html(report: LedgerReport, path):
   <h2>Warnings</h2>
   <ul>{warnings or '<li>No warnings.</li>'}</ul>
   <h2>Diff</h2>
-  <pre>{escape(report.after.diff or '')}</pre>
+  <pre>{escape(_diff_text(report))}</pre>
 </main>
 </body>
 </html>

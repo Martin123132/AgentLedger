@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from agentledger import cli
+from agentledger import __version__, cli
 from agentledger.doctor import format_doctor, run_doctor
 from agentledger import report_reader
 
@@ -206,6 +206,59 @@ def test_snapshot_redacts_obvious_secrets_from_git_diff(tmp_path: Path) -> None:
     assert "OPENAI_API_KEY=[REDACTED]" in combined
 
 
+def test_run_privacy_summary_omits_transcripts_and_full_diff(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    stdout_detail = "summary-stdout-detail-12345"
+    diff_detail = "summary-diff-detail-12345"
+    (repo / "emit.py").write_text(
+        (
+            "from pathlib import Path\n"
+            f"print('{stdout_detail}')\n"
+            f"Path('README.md').write_text('# Demo\\n{diff_detail}\\n', encoding='utf-8')\n"
+        ),
+        encoding="utf-8",
+    )
+    git(repo, "add", "emit.py")
+    git(repo, "commit", "-m", "add emitter")
+
+    code = cli.main(
+        [
+            "run",
+            "--repo",
+            str(repo),
+            "--out",
+            str(out),
+            "--privacy-mode",
+            "summary",
+            "--",
+            sys.executable,
+            "emit.py",
+        ]
+    )
+
+    assert code == 0
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_json = (latest / "agentledger-report.json").read_text(encoding="utf-8")
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    html = (latest / "agentledger-report.html").read_text(encoding="utf-8")
+    stdout = (latest / "artifacts" / "command" / "stdout.txt").read_text(encoding="utf-8")
+    bundle_text = _bundle_text(latest.with_suffix(".zip"))
+    combined = "\n".join([report_json, markdown, html, stdout, bundle_text])
+    report = json.loads(report_json)
+
+    assert report["privacy_mode"] == "summary"
+    assert report["after"]["diff"] == ""
+    assert report["command"]["stdout_tail"] == ""
+    assert stdout_detail not in combined
+    assert diff_detail not in combined
+    assert "Command stdout [omitted by privacy-mode summary]." in combined
+    assert "Full diff omitted by privacy-mode summary." in combined
+    assert "Privacy mode summary skipped RepoMori snapshots." in report["warnings"]
+    assert "Privacy mode summary skipped Jester diff gate." in report["warnings"]
+    assert "Privacy mode summary skipped Tokometer path evidence." in report["warnings"]
+
+
 def test_missing_optional_jester_does_not_fail_successful_command(tmp_path: Path, monkeypatch) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
@@ -294,7 +347,7 @@ def test_cli_version(capsys) -> None:
         cli.main(["--version"])
     assert exc.value.code == 0
     output = capsys.readouterr().out
-    assert "agentledger 0.1.0" in output
+    assert f"agentledger {__version__}" in output
 
 
 def test_open_latest_prints_report_paths(tmp_path: Path, capsys) -> None:
