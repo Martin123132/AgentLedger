@@ -2,6 +2,9 @@
 
 Local-first black box recorder for AI coding agents.
 
+[![CI](https://github.com/Martin123132/AgentLedger/actions/workflows/ci.yml/badge.svg)](https://github.com/Martin123132/AgentLedger/actions/workflows/ci.yml)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE)
+
 Source-available for non-commercial use under the PolyForm Noncommercial
 License 1.0.0. Commercial use requires separate permission.
 
@@ -64,9 +67,7 @@ From this checkout:
 python -m pip install -e ".[dev]"
 agentledger --version
 python -m agentledger doctor --repo .
-python -m agentledger snapshot --repo .
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
-python -m pytest
 ```
 
 After a run:
@@ -77,7 +78,13 @@ Get-Content .agentledger\latest.txt
 
 Open the `agentledger-report.md` inside that latest run folder.
 
-Quick review loop:
+Five-minute public alpha check:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
+```
+
+Manual review loop:
 
 ```powershell
 python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
@@ -98,7 +105,7 @@ agentledger --version
 python -m pytest
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
-powershell -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 ```bash
@@ -113,12 +120,14 @@ There are also GitHub Actions for the same flow (pytest + install check + smoke)
 Alpha docs:
 
 - `ALPHA.md`
-- `docs/private-alpha-checklist.md`
-- `docs/private-alpha-tester-guide.md`
-- `docs/private-alpha-feedback-template.md`
-- `docs/private-alpha-notes.md`
+- `docs/alpha-checklist.md`
+- `docs/alpha-tester-guide.md`
+- `docs/alpha-feedback-template.md`
+- `docs/alpha-notes.md`
+- `SECURITY.md`
+- `CHANGELOG.md`
 
-Private alpha install check:
+Alpha install check:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
@@ -126,10 +135,10 @@ powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 
 That script installs AgentLedger from the local checkout into a temporary virtual environment using local packaging tools, verifies `agentledger --version`, verifies `python -m agentledger --version`, and removes the temporary environment when it finishes.
 
-Private alpha one-command pass:
+Alpha one-command pass:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 That script runs install verification, smoke verification, doctor, a captured pytest pass, report inspection, bundle verification, and prints the short summary an alpha tester should send back.
@@ -138,6 +147,7 @@ Notes:
 
 - Smoke runs use temporary repos and temporary output folders.
 - Do not commit evidence folders or bundles. `.agentledger/`, `*.zip`, and related generated paths are already ignored by `.gitignore`.
+- Treat evidence reports as local proof first; review them before sharing because they can contain command output, file paths, and repository metadata.
 
 For Windows shells that cannot find `git`, AgentLedger includes a helper that locates common Git installs, including GitHub Desktop's bundled git:
 
@@ -151,7 +161,7 @@ Then install the package in editable mode if needed:
 python -m pip install -e ".[dev]"
 ```
 
-Repository sync checklist:
+Contributor sync checklist:
 
 ```powershell
 git remote -v
@@ -159,11 +169,14 @@ git status --short --branch
 git branch --show-current
 ```
 
-When a committed local change should go to GitHub:
+For a contribution branch:
 
 ```powershell
-git push origin master
+git switch -c my-agentledger-branch
+git push -u origin my-agentledger-branch
 ```
+
+Open a pull request for review rather than pushing directly to `master`.
 
 ## Commands
 
@@ -318,7 +331,7 @@ Core assets it can use:
 
 ## Roadmap
 
-### v0.1 Private Wedge
+### v0.1 Public Alpha Wedge
 
 - CLI evidence capture
 - Markdown/JSON report export
@@ -362,7 +375,7 @@ Core assets it can use:
 - signed evidence bundles
 - team policy config
 - pilot report template
-- private beta installer
+- packaged alpha installer
 
 ## License
 

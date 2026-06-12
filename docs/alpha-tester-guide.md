@@ -1,13 +1,13 @@
-# Private Alpha Tester Guide
+# Alpha Tester Guide
 
-AgentLedger is a local-first evidence recorder for AI coding-agent work. This private alpha is only checking the core loop: install, run a command under AgentLedger, inspect the evidence, and report where the experience feels unclear.
+AgentLedger is a local-first evidence recorder for AI coding-agent work. This alpha is checking the core loop: install, run a command under AgentLedger, inspect the evidence, and report where the experience feels unclear.
 
 ## What you need
 
 - Windows PowerShell
 - Python 3.12 or newer
 - Git available in PowerShell
-- Access to the private AgentLedger repository
+- Access to an AgentLedger checkout
 
 If PowerShell cannot find `git`, let AgentLedger locate a common Git install for the current session:
 
@@ -36,7 +36,7 @@ Expected result:
 Run:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 Expected result:
@@ -103,7 +103,7 @@ Each run includes:
 - `artifacts/`
 - a sibling `.zip` bundle
 
-Do not commit `.agentledger/`, zip bundles, logs, screenshots, or private evidence.
+Do not commit `.agentledger/`, zip bundles, logs, screenshots, or sensitive evidence.
 
 ## Feedback focus
 
@@ -115,4 +115,4 @@ Please report:
 - whether the latest/history/inspect/verify flow made sense
 - whether anything looked unsafe to share or too noisy
 
-Use `docs/private-alpha-feedback-template.md` for notes.
+Use `docs/alpha-feedback-template.md` for notes.

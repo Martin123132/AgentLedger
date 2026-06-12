@@ -21,7 +21,7 @@ If PowerShell cannot find `git`, the alpha script will try common Windows Git lo
 From the repository root:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 The script runs:
@@ -42,8 +42,8 @@ Send back this summary:
 
 Send back:
 
-- the final summary printed by `scripts/private-alpha.ps1`
-- notes from `docs/private-alpha-feedback-template.md`
+- the final summary printed by `scripts/alpha.ps1`
+- notes from `docs/alpha-feedback-template.md`
 - the first command or message that felt confusing
 - whether the generated report was clear enough to trust
 
@@ -53,7 +53,7 @@ Do not send or commit:
 
 - `.agentledger/`
 - zip evidence bundles
-- private source code
+- non-public source code
 - secrets, tokens, or credentials
 - full evidence reports unless explicitly requested
 
@@ -61,6 +61,6 @@ Generated evidence is local proof for you first. We only need your summary and n
 
 ## More detail
 
-- Tester guide: `docs/private-alpha-tester-guide.md`
-- Checklist: `docs/private-alpha-checklist.md`
-- Feedback template: `docs/private-alpha-feedback-template.md`
+- Tester guide: `docs/alpha-tester-guide.md`
+- Checklist: `docs/alpha-checklist.md`
+- Feedback template: `docs/alpha-feedback-template.md`
