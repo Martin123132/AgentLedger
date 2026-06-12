@@ -95,7 +95,7 @@ try {
     $versionSummary = ($versionOutput | Select-Object -First 1)
 
     Write-Host ""
-    Write-Host "== Private alpha complete =="
+    Write-Host "== Alpha complete =="
     Write-Host "Send back this summary:"
     Write-Host "- OS: $([System.Environment]::OSVersion.VersionString)"
     Write-Host "- Python: $pythonVersion"
@@ -107,8 +107,8 @@ try {
     Write-Host "- First confusing command, if any: <fill in>"
     Write-Host "- Report clarity: <clear / unclear + notes>"
     Write-Host ""
-    Write-Host "Do not send or commit .agentledger folders, zip bundles, secrets, or private evidence unless explicitly requested."
-    Write-Host "Use docs/private-alpha-feedback-template.md for fuller notes."
+    Write-Host "Do not send or commit .agentledger folders, zip bundles, secrets, or sensitive evidence unless explicitly requested."
+    Write-Host "Use docs/alpha-feedback-template.md for fuller notes."
 }
 finally {
     Set-Location -LiteralPath $originalLocation

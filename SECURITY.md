@@ -1,0 +1,27 @@
+# Security Policy
+
+AgentLedger is a local-first alpha tool. It writes evidence to local folders such
+as `.agentledger/` and may capture command output, file paths, git status, diffs,
+and integration summaries.
+
+## Supported Versions
+
+Only the current `master` branch is supported during the public alpha.
+
+## Reporting A Security Issue
+
+Do not open a public issue that contains secrets, non-public source code, evidence
+bundles, or full `.agentledger/` output.
+
+If you find a security issue, use GitHub's private vulnerability reporting if it
+is available for this repository. Otherwise, open a minimal public issue that
+describes the affected area without including sensitive data.
+
+## Evidence Safety
+
+- Do not commit `.agentledger/` folders.
+- Do not commit zip evidence bundles.
+- Review reports before sharing them outside your machine.
+- Assume command transcripts can contain sensitive output from the command you
+  asked AgentLedger to run.
+- Rotate any credential that appears in a generated report or bundle.

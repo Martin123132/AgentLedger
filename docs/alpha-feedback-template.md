@@ -1,4 +1,4 @@
-# Private Alpha Feedback Template
+# Alpha Feedback Template
 
 Tester:
 
@@ -73,6 +73,6 @@ Would you trust this enough to use after an AI coding-agent session?
 
 What one thing should be fixed before the next tester?
 
-## Private data reminder
+## Sensitive data reminder
 
-Do not paste private source code, secrets, tokens, zip bundles, `.agentledger/` folders, or full evidence reports into public channels.
+Do not paste non-public source code, secrets, tokens, zip bundles, `.agentledger/` folders, or full evidence reports into public channels.

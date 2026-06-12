@@ -1,4 +1,4 @@
-# Private Alpha Notes
+# Alpha Notes
 
 Date: 2026-06-11
 
@@ -24,7 +24,7 @@ Date: 2026-06-11
 - Older `doctor` output reported `partial` when optional integrations were missing, which was accurate but looked worrying to a first alpha tester.
 - `pip` upgrade notices add noise during install and install-check runs.
 - `git init` prints the default-branch hint during smoke tests, which makes the smoke output longer than the useful AgentLedger output.
-- README still includes an older private-repo push checklist that mentions adding `origin` and pushing `alpha-report-review`; that may confuse testers now that `origin/master` already exists.
+- Earlier README drafts included internal sync notes that could confuse public testers; the public quick-start flow now points at `scripts/alpha.ps1`.
 
 ## Exact setup friction
 
@@ -55,4 +55,4 @@ For this local pass, adding GitHub Desktop's bundled git to PATH fixed it. The r
 
 ## Readiness call
 
-AgentLedger is ready to hand to one outside private alpha tester. The stale private-repo push checklist was cleaned up, Windows Git setup friction now has `scripts/ensure-git.ps1`, and `doctor` now treats missing optional integrations as ready-with-notes rather than partial readiness.
+AgentLedger is ready to hand to one outside alpha tester. The stale direct-push checklist was cleaned up, Windows Git setup friction now has `scripts/ensure-git.ps1`, and `doctor` now treats missing optional integrations as ready-with-notes rather than partial readiness.

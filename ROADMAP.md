@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build the first private version of a local-first agent control product:
+Build the first public alpha of a local-first agent control product:
 
 ```text
 Track agent spend. Capture repo state. Prove what changed. Export audit

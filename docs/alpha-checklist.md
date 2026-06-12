@@ -1,4 +1,4 @@
-# Private Alpha Checklist
+# Alpha Checklist
 
 ## Before first run
 
@@ -16,7 +16,7 @@
 Preferred one-command alpha pass:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 Expected result:
