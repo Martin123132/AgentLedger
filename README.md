@@ -14,6 +14,7 @@ run commands, touch repositories, and claim work is done:
 - before/after git state
 - command execution evidence
 - changed files and diffs
+- best-effort redaction for obvious secrets in captured text
 - RepoMori snapshots and handoff packs when available
 - Jester diff safety gate when available
 - Tokometer local usage summary when available
@@ -147,7 +148,7 @@ Notes:
 
 - Smoke runs use temporary repos and temporary output folders.
 - Do not commit evidence folders or bundles. `.agentledger/`, `*.zip`, and related generated paths are already ignored by `.gitignore`.
-- Treat evidence reports as local proof first; review them before sharing because they can contain command output, file paths, and repository metadata.
+- Treat evidence reports as local proof first. AgentLedger redacts common token, password, API key, and private-key patterns, but you should still review reports before sharing because they can contain command output, file paths, and repository metadata.
 
 For Windows shells that cannot find `git`, AgentLedger includes a helper that locates common Git installs, including GitHub Desktop's bundled git:
 
@@ -265,7 +266,7 @@ Always on. Captures:
 - current HEAD
 - `git status --short`
 - `git diff --stat`
-- full tracked diff
+- redacted tracked diff
 
 ### Command Transcripts
 
@@ -279,6 +280,9 @@ artifacts/command/stderr.txt
 AgentLedger also labels common test commands such as `pytest`, `npm test`,
 `vitest`, `jest`, `go test`, and `cargo test` so reports can distinguish
 verification runs from ordinary shell commands.
+
+Command transcripts and report tails are redacted for common secret-looking
+patterns before they are written to disk.
 
 ### RepoMori
 

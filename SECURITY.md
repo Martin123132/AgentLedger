@@ -4,6 +4,10 @@ AgentLedger is a local-first alpha tool. It writes evidence to local folders suc
 as `.agentledger/` and may capture command output, file paths, git status, diffs,
 and integration summaries.
 
+AgentLedger applies best-effort redaction for common token, password, API key,
+authorization header, and private-key patterns before writing reports and command
+transcripts. This is a safety net, not a guarantee.
+
 ## Supported Versions
 
 Only the current `master` branch is supported during the public alpha.
@@ -24,4 +28,6 @@ describes the affected area without including sensitive data.
 - Review reports before sharing them outside your machine.
 - Assume command transcripts can contain sensitive output from the command you
   asked AgentLedger to run.
+- Assume unusual or project-specific credentials may need manual review even
+  when common secret patterns are redacted.
 - Rotate any credential that appears in a generated report or bundle.
