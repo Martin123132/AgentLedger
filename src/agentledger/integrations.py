@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .model import ToolArtifact
 from .process import run_capture, tail_text
+from .redaction import redact_command, redact_text
 
 
 def _python_executable() -> str:
@@ -46,7 +47,7 @@ def run_repomori_snapshot(repo: Path, out_dir: Path, label: str) -> ToolArtifact
                     "ok": False,
                     "label": label,
                     "repo": str(repo),
-                    "error": str(exc),
+                    "error": redact_text(str(exc)),
                     "note": "Python executable was not found or RepoMori could not be launched.",
                 },
                 indent=2,
@@ -57,20 +58,20 @@ def run_repomori_snapshot(repo: Path, out_dir: Path, label: str) -> ToolArtifact
         return ToolArtifact(
             name=f"repomori_snapshot_{label}",
             ok=False,
-            command=command,
+            command=redact_command(command),
             output_path=str(report_path),
             summary="RepoMori snapshot skipped because it could not be launched.",
         )
-    report_path.write_text(result.stdout or result.stderr, encoding="utf-8")
+    report_path.write_text(redact_text(result.stdout or result.stderr), encoding="utf-8")
     summary = "RepoMori snapshot captured."
     if result.returncode != 0:
         summary = "RepoMori snapshot failed or RepoMori is not installed."
     return ToolArtifact(
         name=f"repomori_snapshot_{label}",
         ok=result.returncode == 0,
-        command=command,
+        command=redact_command(command),
         output_path=str(report_path),
-        summary=summary if result.returncode == 0 else f"{summary} {tail_text(result.stderr or result.stdout, 500)}",
+        summary=summary if result.returncode == 0 else f"{summary} {tail_text(redact_text(result.stderr or result.stdout), 500)}",
         exit_code=result.returncode,
     )
 
@@ -112,7 +113,7 @@ def run_jester_diff(repo: Path, out_dir: Path) -> ToolArtifact:
         )
     diff = run_capture(["git", "diff"], repo)
     result = run_capture([jester, "diff", "--fail-on", "block"], repo, input_text=diff.stdout)
-    report_path.write_text((result.stdout or "") + (result.stderr or ""), encoding="utf-8")
+    report_path.write_text(redact_text((result.stdout or "") + (result.stderr or "")), encoding="utf-8")
     if not diff.stdout.strip():
         summary = "No tracked diff to review."
     elif result.returncode == 0:
@@ -122,7 +123,7 @@ def run_jester_diff(repo: Path, out_dir: Path) -> ToolArtifact:
     return ToolArtifact(
         name="jester_diff",
         ok=result.returncode == 0,
-        command=[jester, "diff", "--fail-on", "block"],
+        command=redact_command([jester, "diff", "--fail-on", "block"]),
         output_path=str(report_path),
         summary=summary,
         exit_code=result.returncode,
@@ -156,14 +157,14 @@ def read_tokometer_usage(out_dir: Path) -> ToolArtifact:
             "sessions_exists": sessions.exists(),
             "archived_sessions_exists": archived.exists(),
             "tokometer_root": str(tokometer_root),
-            "error": str(exc),
+            "error": redact_text(str(exc)),
             "note": "npx/tsx was not available; recorded local Codex/Tokometer paths instead.",
         }
         report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         return ToolArtifact(
             name="tokometer_summary",
             ok=False,
-            command=command,
+            command=redact_command(command),
             output_path=str(report_path),
             summary="Tokometer summary import skipped because npx/tsx was not available.",
         )
@@ -174,14 +175,14 @@ def read_tokometer_usage(out_dir: Path) -> ToolArtifact:
             "sessions_exists": sessions.exists(),
             "archived_sessions_exists": archived.exists(),
             "tokometer_root": str(tokometer_root),
-            "error": str(exc),
+            "error": redact_text(str(exc)),
             "note": "Tokometer summary subprocess failed; recorded local Codex/Tokometer paths instead.",
         }
         report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         return ToolArtifact(
             name="tokometer_summary",
             ok=False,
-            command=command,
+            command=redact_command(command),
             output_path=str(report_path),
             summary="Tokometer summary import failed before completion.",
         )
@@ -192,14 +193,14 @@ def read_tokometer_usage(out_dir: Path) -> ToolArtifact:
             "sessions_exists": sessions.exists(),
             "archived_sessions_exists": archived.exists(),
             "tokometer_root": str(tokometer_root),
-            "error": tail_text(result.stderr or result.stdout, 2000),
+            "error": tail_text(redact_text(result.stderr or result.stdout), 2000),
             "note": "Direct Tokometer summary failed; recorded local Codex/Tokometer paths instead.",
         }
         report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         return ToolArtifact(
             name="tokometer_summary",
             ok=False,
-            command=command,
+            command=redact_command(command),
             output_path=str(report_path),
             summary="Tokometer summary import failed; fallback path evidence recorded.",
             exit_code=result.returncode,
@@ -207,7 +208,7 @@ def read_tokometer_usage(out_dir: Path) -> ToolArtifact:
     return ToolArtifact(
         name="tokometer_summary",
         ok=True,
-        command=command,
+        command=redact_command(command),
         output_path=str(report_path),
         summary="Imported Tokometer local usage summary.",
         exit_code=result.returncode,
@@ -219,11 +220,11 @@ def run_tokensquash_reply(report_summary: str, out_dir: Path) -> ToolArtifact:
     report_path = out_dir / "tokensquash-reply.txt"
     command = [_python_executable(), "-m", "tokensquash", "reply", "encode", "--summary", report_summary]
     result = run_capture(command, Path.cwd())
-    report_path.write_text((result.stdout or "") + (result.stderr or ""), encoding="utf-8")
+    report_path.write_text(redact_text((result.stdout or "") + (result.stderr or "")), encoding="utf-8")
     return ToolArtifact(
         name="tokensquash_reply",
         ok=result.returncode == 0,
-        command=command,
+        command=redact_command(command),
         output_path=str(report_path),
         summary="Compact reply encoded." if result.returncode == 0 else "TokenSquash not available or encode failed; skipped.",
         exit_code=result.returncode,

@@ -16,6 +16,7 @@ from .gittools import snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
 from .model import CommandResult, LedgerReport, utc_now_iso
 from .process import run_capture, tail_text
+from .redaction import redact_command, redact_text
 from .report_reader import (
     artifact_status_counts,
     changed_file_count,
@@ -403,21 +404,23 @@ def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandRes
         stdout = exc.stdout or ""
         stderr = exc.stderr or "Command timed out."
     ended = utc_now_iso()
+    redacted_stdout = redact_text(stdout)
+    redacted_stderr = redact_text(stderr)
     transcripts = artifacts_dir / "command"
     transcripts.mkdir(parents=True, exist_ok=True)
     stdout_path = transcripts / "stdout.txt"
     stderr_path = transcripts / "stderr.txt"
-    stdout_path.write_text(stdout, encoding="utf-8", errors="replace")
-    stderr_path.write_text(stderr, encoding="utf-8", errors="replace")
+    stdout_path.write_text(redacted_stdout, encoding="utf-8", errors="replace")
+    stderr_path.write_text(redacted_stderr, encoding="utf-8", errors="replace")
     test_detected, test_framework = detect_test_command(command)
     return CommandResult(
-        command=command,
+        command=redact_command(command),
         cwd=str(repo),
         started_at=started,
         ended_at=ended,
         exit_code=exit_code,
-        stdout_tail=tail_text(stdout),
-        stderr_tail=tail_text(stderr),
+        stdout_tail=tail_text(redacted_stdout),
+        stderr_tail=tail_text(redacted_stderr),
         stdout_path=str(stdout_path),
         stderr_path=str(stderr_path),
         test_detected=test_detected,

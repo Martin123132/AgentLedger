@@ -24,6 +24,15 @@ def _parse_json_output(output: str) -> dict:
     return json.loads(output[start : end + 1])
 
 
+def _bundle_text(bundle: Path) -> str:
+    chunks = []
+    with ZipFile(bundle) as archive:
+        for name in archive.namelist():
+            if name.endswith((".json", ".md", ".html", ".txt")):
+                chunks.append(archive.read(name).decode("utf-8", errors="replace"))
+    return "\n".join(chunks)
+
+
 def make_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -120,6 +129,81 @@ def test_run_detects_pytest_command(tmp_path: Path) -> None:
     report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
     assert report["command"]["test_detected"] is True
     assert report["command"]["test_framework"] == "pytest"
+
+
+def test_run_redacts_obvious_secrets_from_reports_and_bundle(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    output_secret = "super-secret-output-12345"
+    bearer_secret = "abcdefghijklmnop123456"
+    flag_secret = "flag-password-12345"
+
+    code = cli.main(
+        [
+            "run",
+            "--repo",
+            str(repo),
+            "--out",
+            str(out),
+            "--no-repomori",
+            "--no-jester",
+            "--no-tokometer",
+            "--",
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                f"print('API_KEY={output_secret}'); "
+                f"print('Authorization: Bearer {bearer_secret}', file=sys.stderr)"
+            ),
+            "--password",
+            flag_secret,
+        ]
+    )
+
+    assert code == 0
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_json = (latest / "agentledger-report.json").read_text(encoding="utf-8")
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    html = (latest / "agentledger-report.html").read_text(encoding="utf-8")
+    stdout = (latest / "artifacts" / "command" / "stdout.txt").read_text(encoding="utf-8")
+    stderr = (latest / "artifacts" / "command" / "stderr.txt").read_text(encoding="utf-8")
+    bundle_text = _bundle_text(latest.with_suffix(".zip"))
+    combined = "\n".join([report_json, markdown, html, stdout, stderr, bundle_text])
+
+    assert output_secret not in combined
+    assert bearer_secret not in combined
+    assert flag_secret not in combined
+    assert "API_KEY=[REDACTED]" in combined
+    assert "Bearer [REDACTED]" in combined
+    report = json.loads(report_json)
+    assert report["command"]["command"][-1] == "[REDACTED]"
+
+
+def test_snapshot_redacts_obvious_secrets_from_git_diff(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    password_secret = "diff-password-12345"
+    openai_secret = "sk-" + "abcdefghijklmnopqrstuvwxyz123456"
+    (repo / "README.md").write_text(
+        f"# Demo\nPASSWORD={password_secret}\nOPENAI_API_KEY={openai_secret}\n",
+        encoding="utf-8",
+    )
+
+    code = cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"])
+
+    assert code == 0
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_json = (latest / "agentledger-report.json").read_text(encoding="utf-8")
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    html = (latest / "agentledger-report.html").read_text(encoding="utf-8")
+    bundle_text = _bundle_text(latest.with_suffix(".zip"))
+    combined = "\n".join([report_json, markdown, html, bundle_text])
+
+    assert password_secret not in combined
+    assert openai_secret not in combined
+    assert "PASSWORD=[REDACTED]" in combined
+    assert "OPENAI_API_KEY=[REDACTED]" in combined
 
 
 def test_missing_optional_jester_does_not_fail_successful_command(tmp_path: Path, monkeypatch) -> None:

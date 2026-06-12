@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .model import GitSnapshot
 from .process import run_capture
+from .redaction import redact_text
 
 
 def git_output(repo: Path, args: list[str]) -> tuple[int, str, str]:
@@ -29,7 +30,7 @@ def snapshot(repo: Path) -> GitSnapshot:
         repo=root or str(repo),
         head=head if head_code == 0 else None,
         branch=branch if branch_code == 0 and branch else None,
-        status=status,
-        diff_stat=diff_stat,
-        diff=diff,
+        status=redact_text(status),
+        diff_stat=redact_text(diff_stat),
+        diff=redact_text(diff),
     )
