@@ -12,6 +12,11 @@ Use `--privacy-mode summary` for lower-detail evidence. Summary mode keeps
 metadata and counts but omits command transcript content and full diffs from the
 generated reports and bundles.
 
+Repos can set `privacy_mode = "summary"` or `zip = false` in
+`.agentledger.toml` when lower-detail local defaults are safer for day-to-day
+work. Command-line flags still override privacy and output choices for a single
+run.
+
 ## Supported Versions
 
 Only the current `master` branch is supported during the public alpha.
@@ -36,4 +41,6 @@ describes the affected area without including sensitive data.
   when common secret patterns are redacted.
 - Use `--privacy-mode summary` before sharing evidence outside your machine when
   full diffs or command output are not needed.
+- Consider a repo `.agentledger.toml` for safer default capture behavior before
+  alpha testing or sharing evidence.
 - Rotate any credential that appears in a generated report or bundle.
