@@ -10,6 +10,7 @@ from pathlib import Path
 from . import __version__
 from .bundle import write_zip_bundle
 from .classify import detect_test_command
+from .config import AgentLedgerConfig, ConfigError, load_config
 from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
 from .gittools import snapshot
@@ -31,6 +32,8 @@ from .report_reader import (
 
 
 PRIVACY_OMISSION = "[omitted by privacy-mode summary]"
+DEFAULT_OUT = ".agentledger"
+DEFAULT_PRIVACY_MODE = "standard"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,7 +46,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")
     run.add_argument("--repo", default=".", help="Target git repository.")
-    run.add_argument("--out", default=".agentledger", help="Evidence output directory.")
+    run.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    run.add_argument("--out", default=None, help="Evidence output directory.")
     run.add_argument("--no-repomori", action="store_true", help="Skip RepoMori snapshot hooks.")
     run.add_argument("--no-jester", action="store_true", help="Skip Jester diff gate.")
     run.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
@@ -51,21 +55,22 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--privacy-mode",
         choices=["standard", "summary"],
-        default="standard",
+        default=None,
         help="Evidence detail level. summary omits command transcript content and full diffs.",
     )
     run.add_argument("task", nargs=argparse.REMAINDER, help="Command to run after --.")
 
     snap = sub.add_parser("snapshot", help="Capture repository state without running a command.")
     snap.add_argument("--repo", default=".", help="Target git repository.")
-    snap.add_argument("--out", default=".agentledger", help="Evidence output directory.")
+    snap.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    snap.add_argument("--out", default=None, help="Evidence output directory.")
     snap.add_argument("--no-repomori", action="store_true", help="Skip RepoMori snapshot hook.")
     snap.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
     snap.add_argument("--no-zip", action="store_true", help="Skip zip bundle export.")
     snap.add_argument(
         "--privacy-mode",
         choices=["standard", "summary"],
-        default="standard",
+        default=None,
         help="Evidence detail level. summary omits full diffs from reports and bundles.",
     )
 
@@ -78,10 +83,14 @@ def build_parser() -> argparse.ArgumentParser:
     inspect.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     latest = sub.add_parser("open-latest", help="Print latest report paths from a run output directory.")
-    latest.add_argument("--out", default=".agentledger", help="Evidence output directory.")
+    latest.add_argument("--repo", default=".", help="Target git repository for config lookup.")
+    latest.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    latest.add_argument("--out", default=None, help="Evidence output directory.")
 
     history = sub.add_parser("history", help="List recent AgentLedger runs from a run output directory.")
-    history.add_argument("--out", default=".agentledger", help="Evidence output directory.")
+    history.add_argument("--repo", default=".", help="Target git repository for config lookup.")
+    history.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    history.add_argument("--out", default=None, help="Evidence output directory.")
     history.add_argument("--limit", type=int, default=10, help="Maximum number of runs to show.")
     history.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
@@ -306,8 +315,36 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_cli_config(args: argparse.Namespace, repo: Path) -> AgentLedgerConfig:
+    return load_config(repo, getattr(args, "config", None))
+
+
+def _load_output_config(args: argparse.Namespace, repo: Path) -> AgentLedgerConfig:
+    if args.out is not None and getattr(args, "config", None) is None:
+        return AgentLedgerConfig()
+    return _load_cli_config(args, repo)
+
+
+def _resolve_out_root(args: argparse.Namespace, repo: Path, config: AgentLedgerConfig) -> Path:
+    if args.out is not None:
+        return Path(args.out).resolve()
+    if config.out is None:
+        return Path(DEFAULT_OUT).resolve()
+
+    configured = Path(config.out)
+    if configured.is_absolute():
+        return configured.resolve()
+    return (repo / configured).resolve()
+
+
 def _handle_open_latest(args: argparse.Namespace) -> int:
-    out_root = Path(args.out).resolve()
+    repo = Path(args.repo).resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        print(f"Config error: {exc}")
+        return 2
+    out_root = _resolve_out_root(args, repo, config)
     latest_path = out_root / "latest.txt"
     if not out_root.exists():
         print(f"No AgentLedger output directory found: {out_root}")
@@ -377,7 +414,13 @@ def _report_summary(run_dir: Path) -> dict:
 
 
 def _handle_history(args: argparse.Namespace) -> int:
-    out_root = Path(args.out).resolve()
+    repo = Path(args.repo).resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        print(f"Config error: {exc}")
+        return 2
+    out_root = _resolve_out_root(args, repo, config)
     if args.limit <= 0:
         print("--limit must be greater than zero.")
         return 2
@@ -481,7 +524,18 @@ def _apply_privacy_mode(report: LedgerReport, privacy_mode: str) -> None:
 
 def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     repo = Path(args.repo).resolve()
-    out_root = Path(args.out).resolve()
+    try:
+        config = _load_cli_config(args, repo)
+    except ConfigError as exc:
+        print(f"Config error: {exc}")
+        return 2
+    out_root = _resolve_out_root(args, repo, config)
+    privacy_mode = args.privacy_mode or config.privacy_mode or DEFAULT_PRIVACY_MODE
+    skip_repomori = getattr(args, "no_repomori", False) or config.repomori is False
+    skip_jester = getattr(args, "no_jester", False) or config.jester is False
+    skip_tokometer = getattr(args, "no_tokometer", False) or config.tokometer is False
+    skip_zip = getattr(args, "no_zip", False) or config.zip is False
+    has_jester = hasattr(args, "no_jester")
     run_id = f"{utc_now_iso().replace(':', '').replace('+', 'Z')}-{uuid.uuid4().hex[:8]}"
     run_dir = out_root / run_id
     artifacts_dir = run_dir / "artifacts"
@@ -491,31 +545,31 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     artifacts = []
     started = utc_now_iso()
     before = snapshot(repo)
-    privacy_summary = args.privacy_mode == "summary"
+    privacy_summary = privacy_mode == "summary"
 
-    if not getattr(args, "no_repomori", False) and not privacy_summary:
+    if not skip_repomori and not privacy_summary:
         artifacts.append(run_repomori_snapshot(repo, artifacts_dir, "before"))
-    elif privacy_summary and not getattr(args, "no_repomori", False):
+    elif privacy_summary and not skip_repomori:
         warnings.append("Privacy mode summary skipped RepoMori snapshots.")
 
     command_result = None
     command = _clean_task(task or [])
     if command:
-        command_result = _run_task_with_privacy(command, repo, artifacts_dir, args.privacy_mode)
+        command_result = _run_task_with_privacy(command, repo, artifacts_dir, privacy_mode)
     elif task is not None:
         warnings.append("No command supplied after --; captured repository state only.")
 
     after = snapshot(repo)
 
-    if not getattr(args, "no_repomori", False) and not privacy_summary:
+    if not skip_repomori and not privacy_summary:
         artifacts.append(run_repomori_snapshot(repo, artifacts_dir, "after"))
-    if not getattr(args, "no_jester", False) and hasattr(args, "no_jester") and not privacy_summary:
+    if not skip_jester and has_jester and not privacy_summary:
         artifacts.append(run_jester_diff(repo, artifacts_dir))
-    elif privacy_summary and not getattr(args, "no_jester", False) and hasattr(args, "no_jester"):
+    elif privacy_summary and not skip_jester and has_jester:
         warnings.append("Privacy mode summary skipped Jester diff gate.")
-    if not getattr(args, "no_tokometer", False) and not privacy_summary:
+    if not skip_tokometer and not privacy_summary:
         artifacts.append(read_tokometer_usage(artifacts_dir))
-    elif privacy_summary and not getattr(args, "no_tokometer", False):
+    elif privacy_summary and not skip_tokometer:
         warnings.append("Privacy mode summary skipped Tokometer path evidence.")
 
     ended = utc_now_iso()
@@ -528,15 +582,15 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
         command=command_result,
         before=before,
         after=after,
-        privacy_mode=args.privacy_mode,
+        privacy_mode=privacy_mode,
         artifacts=artifacts,
         warnings=warnings,
     )
-    _apply_privacy_mode(report, args.privacy_mode)
+    _apply_privacy_mode(report, privacy_mode)
     write_json(report, run_dir / "agentledger-report.json")
     write_markdown(report, run_dir / "agentledger-report.md")
     write_html(report, run_dir / "agentledger-report.html")
-    if not getattr(args, "no_zip", False):
+    if not skip_zip:
         bundle_path = write_zip_bundle(run_dir)
         print(f"AgentLedger bundle: {bundle_path}")
     latest = out_root / "latest.txt"

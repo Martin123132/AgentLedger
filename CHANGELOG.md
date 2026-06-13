@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added `.agentledger.toml` policy config support for default privacy mode,
+  output location, optional integration skips, and zip export behavior.
+
+## 0.1.2-alpha
+
 - Added `--privacy-mode summary` to omit command transcript content and full
   diffs from generated reports and bundles.
 

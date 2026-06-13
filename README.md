@@ -103,6 +103,22 @@ command transcripts or full diffs in the report/bundle:
 python -m agentledger run --repo . --privacy-mode summary -- python -m pytest
 ```
 
+You can also set repo defaults in `.agentledger.toml`:
+
+```toml
+privacy_mode = "summary"
+out = ".agentledger"
+repomori = false
+jester = false
+tokometer = false
+zip = true
+```
+
+`run`, `snapshot`, `open-latest`, and `history` read that file from the target
+repo when it exists. `--out` and `--privacy-mode` override the config for a
+single command; boolean entries disable optional integrations or zip export by
+default.
+
 ## CI and smoke checks
 
 Local checks:
@@ -260,6 +276,15 @@ agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger verify-bundle "${run}.zip"
+```
+
+With a repo `.agentledger.toml`, the same loop can use the configured output
+folder and privacy mode:
+
+```powershell
+agentledger run --repo . -- python -m pytest
+agentledger open-latest --repo .
+agentledger history --repo .
 ```
 
 Compare two runs:

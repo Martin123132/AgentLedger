@@ -259,6 +259,124 @@ def test_run_privacy_summary_omits_transcripts_and_full_diff(tmp_path: Path) -> 
     assert "Privacy mode summary skipped Tokometer path evidence." in report["warnings"]
 
 
+def test_config_file_sets_run_defaults(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    config_out = repo / "ledger-from-config"
+    (repo / ".agentledger.toml").write_text(
+        "\n".join(
+            [
+                'privacy_mode = "summary"',
+                'out = "ledger-from-config"',
+                "repomori = false",
+                "jester = false",
+                "tokometer = false",
+                "zip = false",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (repo / "emit.py").write_text(
+        (
+            "from pathlib import Path\n"
+            "print('config-policy-output-detail')\n"
+            "Path('README.md').write_text('# Demo\\nconfig-policy-diff-detail\\n', encoding='utf-8')\n"
+        ),
+        encoding="utf-8",
+    )
+    git(repo, "add", "emit.py")
+    git(repo, "commit", "-m", "add emitter")
+
+    code = cli.main(["run", "--repo", str(repo), "--", sys.executable, "emit.py"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    latest = Path((config_out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    combined = "\n".join(
+        [
+            (latest / "agentledger-report.json").read_text(encoding="utf-8"),
+            (latest / "agentledger-report.md").read_text(encoding="utf-8"),
+            (latest / "agentledger-report.html").read_text(encoding="utf-8"),
+            (latest / "artifacts" / "command" / "stdout.txt").read_text(encoding="utf-8"),
+        ]
+    )
+
+    assert report["privacy_mode"] == "summary"
+    assert report["after"]["diff"] == ""
+    assert report["command"]["stdout_tail"] == ""
+    assert "config-policy-output-detail" not in combined
+    assert "config-policy-diff-detail" not in combined
+    assert "Privacy mode summary skipped RepoMori snapshots." not in report["warnings"]
+    assert "Privacy mode summary skipped Jester diff gate." not in report["warnings"]
+    assert "Privacy mode summary skipped Tokometer path evidence." not in report["warnings"]
+    assert "AgentLedger bundle:" not in output
+    assert not latest.with_suffix(".zip").exists()
+
+    assert cli.main(["open-latest", "--repo", str(repo)]) == 0
+    open_output = capsys.readouterr().out
+    assert str(config_out) in open_output
+
+    assert cli.main(["history", "--repo", str(repo), "--format", "json"]) == 0
+    history_output = capsys.readouterr().out
+    history_payload = _parse_json_output(history_output)
+    assert history_payload["out"] == str(config_out.resolve())
+
+
+def test_cli_out_and_privacy_mode_override_config(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    cli_out = tmp_path / "cli-ledger"
+    (repo / ".agentledger.toml").write_text(
+        "\n".join(
+            [
+                'privacy_mode = "summary"',
+                'out = "ledger-from-config"',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    code = cli.main(
+        [
+            "run",
+            "--repo",
+            str(repo),
+            "--out",
+            str(cli_out),
+            "--privacy-mode",
+            "standard",
+            "--no-repomori",
+            "--no-jester",
+            "--no-tokometer",
+            "--",
+            sys.executable,
+            "-c",
+            "print('cli-override-output-detail')",
+        ]
+    )
+
+    assert code == 0
+    latest = Path((cli_out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    assert report["privacy_mode"] == "standard"
+    assert "cli-override-output-detail" in report["command"]["stdout_tail"]
+    assert latest.with_suffix(".zip").exists()
+    assert not (repo / "ledger-from-config").exists()
+
+
+def test_invalid_config_prints_clear_error(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    (repo / ".agentledger.toml").write_text('privacy_mode = "loud"\n', encoding="utf-8")
+
+    code = cli.main(["snapshot", "--repo", str(repo)])
+
+    assert code == 2
+    output = capsys.readouterr().out
+    assert "Config error:" in output
+    assert "privacy_mode must be 'standard' or 'summary'" in output
+
+
 def test_missing_optional_jester_does_not_fail_successful_command(tmp_path: Path, monkeypatch) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
