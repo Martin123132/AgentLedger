@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.3-alpha
+
 - Added `.agentledger.toml` policy config support for default privacy mode,
   output location, optional integration skips, and zip export behavior.
 
