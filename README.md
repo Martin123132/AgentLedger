@@ -93,6 +93,7 @@ Manual review loop:
 ```powershell
 python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 python -m agentledger review --out .agentledger --allow-warnings
+python -m agentledger status --out .agentledger --allow-warnings
 python -m agentledger open-latest --out .agentledger
 python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
@@ -136,7 +137,7 @@ check_max_changed_files = 20
 check_allow_warnings = false
 ```
 
-`run`, `snapshot`, `open-latest`, and `history` read that file from the target
+`run`, `snapshot`, `open-latest`, `history`, and `status` read that file from the target
 repo when it exists. `--out` and `--privacy-mode` override the config for a
 single command; boolean entries disable optional integrations or zip export by
 default. `check_*` entries tune the local review policy used by
@@ -358,6 +359,16 @@ agentledger review --format json --out .agentledger --allow-warnings
 adds the Markdown/JSON/HTML report paths, zip bundle path when present, warning
 or blocking rule summaries, and a short next-action hint.
 
+Show the latest run status, evidence paths, feedback counts, and next action:
+
+```powershell
+agentledger status --out .agentledger --allow-warnings
+agentledger status --out .agentledger --format json --allow-warnings
+```
+
+`status` uses the same pass/warn/block policy as `review`, then adds local
+feedback counts so an alpha pass can start from one compact command.
+
 You can tune the default check policy in `.agentledger.toml`:
 
 ```toml
@@ -425,6 +436,7 @@ The normal local review loop is:
 ```powershell
 agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 agentledger review --out .agentledger --allow-warnings
+agentledger status --out .agentledger --allow-warnings
 agentledger open-latest --out .agentledger
 agentledger open-latest --out .agentledger --format json
 agentledger history --out .agentledger
@@ -444,6 +456,7 @@ folder and privacy mode:
 ```powershell
 agentledger run --repo . -- python -m pytest
 agentledger review --repo . --allow-warnings
+agentledger status --repo . --allow-warnings
 agentledger open-latest --repo .
 agentledger history --repo .
 agentledger feedback --repo . --note "First confusing thing: ..."

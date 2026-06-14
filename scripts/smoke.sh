@@ -39,6 +39,8 @@ python -m agentledger run \
 python -m agentledger open-latest --out "$OUT"
 python -m agentledger open-latest --format json --out "$OUT"
 python -m agentledger history --out "$OUT"
+python -m agentledger status --out "$OUT" --allow-warnings
+python -m agentledger status --format json --out "$OUT" --allow-warnings
 python -m agentledger feedback --out "$OUT" --note "Smoke feedback note." --category friction --severity low
 python -m agentledger feedback --out "$OUT" --list
 python -m agentledger feedback --format json --out "$OUT" --list
