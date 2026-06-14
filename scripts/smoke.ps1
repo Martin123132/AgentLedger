@@ -100,6 +100,7 @@ try {
     )
 
     Invoke-AgentLedger @("open-latest", "--out", $out)
+    Invoke-AgentLedger @("open-latest", "--format", "json", "--out", $out)
     Invoke-AgentLedger @("history", "--out", $out)
 
     $run = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
@@ -109,8 +110,10 @@ try {
     Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings")
     Invoke-AgentLedgerJsonCheck -Run $run -OutputPath $checkJson
     Invoke-AgentLedger @("verify-bundle", "${run}.zip")
+    Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--format", "json")
     Invoke-AgentLedger @("sign-bundle", "${run}.zip", "--key-file", $signatureKey)
     Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--signature-key-file", $signatureKey)
+    Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--format", "json", "--signature-key-file", $signatureKey)
 
     Invoke-AgentLedger @(
         "run",

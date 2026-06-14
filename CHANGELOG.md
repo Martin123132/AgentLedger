@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added JSON output for `agentledger open-latest` and `agentledger
+  verify-bundle` so CI and agent handoffs can consume report paths and bundle
+  validation results without scraping text output.
 - Added optional `agentledger sign-bundle` HMAC-SHA256 signatures over bundle
   manifests, plus signature verification flags for `verify-bundle`.
 - Added `agentledger-bundle-manifest.json` inside zip bundles and made

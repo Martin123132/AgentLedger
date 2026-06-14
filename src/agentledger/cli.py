@@ -94,6 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
     latest.add_argument("--repo", default=".", help="Target git repository for config lookup.")
     latest.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
     latest.add_argument("--out", default=None, help="Evidence output directory.")
+    latest.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     history = sub.add_parser("history", help="List recent AgentLedger runs from a run output directory.")
     history.add_argument("--repo", default=".", help="Target git repository for config lookup.")
@@ -143,6 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Require and verify a bundle signature. Must be used with --signature-key-file.",
     )
+    verify.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     sign = sub.add_parser("sign-bundle", help="Add or replace an HMAC-SHA256 bundle signature.")
     sign.add_argument("bundle", help="Path to bundle zip file.")
@@ -308,21 +310,52 @@ def _handle_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def _bundle_manifest_summary(member: str | None, manifest: dict) -> dict[str, object]:
+    return {
+        "member": member,
+        "schema_version": manifest.get("schema_version"),
+        "digest_algorithm": manifest.get("digest_algorithm"),
+        "file_count": manifest.get("file_count"),
+        "run_id": manifest.get("run_id"),
+    }
+
+
 def _handle_verify_bundle(args: argparse.Namespace) -> int:
     zip_path = Path(args.bundle).resolve()
+    output_format = getattr(args, "format", "text")
+    signature_payload: dict[str, object] = {
+        "required": bool(args.require_signature),
+        "member": None,
+        "status": "not_present",
+        "verified": False,
+    }
+
+    def fail(messages: str | list[str], **extra: object) -> int:
+        errors = [messages] if isinstance(messages, str) else messages
+        if output_format == "json":
+            payload: dict[str, object] = {
+                "schema_version": "agentledger.verify_bundle.v1",
+                "ok": False,
+                "bundle": str(zip_path),
+                "errors": errors,
+            }
+            payload.update(extra)
+            print(json.dumps(payload, indent=2))
+        else:
+            for message in errors:
+                print(message)
+        return 2
+
     if not zip_path.exists():
-        print(f"Bundle not found: {zip_path}")
-        return 2
+        return fail(f"Bundle not found: {zip_path}")
     if args.require_signature and args.signature_key_file is None:
-        print("--require-signature requires --signature-key-file.")
-        return 2
+        return fail("--require-signature requires --signature-key-file.", signature=signature_payload)
     signature_key = None
     if args.signature_key_file is not None:
         try:
             signature_key = _read_signature_key(Path(args.signature_key_file))
         except BundleError as exc:
-            print(f"Signature key error: {exc}")
-            return 2
+            return fail(f"Signature key error: {exc}", signature=signature_payload)
 
     missing_members = []
     signature_status = "Signature: not present"
@@ -335,14 +368,24 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
             signature_member = find_bundle_signature_member(members)
             if signature_key is not None:
                 signature_member, _signature, signature_errors = validate_bundle_signature(archive, signature_key)
+                if signature_member is not None:
+                    signature_payload["member"] = signature_member
+                    signature_payload["status"] = "invalid"
                 if not signature_errors and signature_member is not None:
+                    signature_payload["status"] = "verified"
+                    signature_payload["verified"] = True
                     signature_status = f"Signature: {signature_member} verified"
             elif signature_member is not None:
+                signature_payload["member"] = signature_member
+                signature_payload["status"] = "present_unverified"
                 signature_status = f"Signature: {signature_member} present (not verified; pass --signature-key-file to verify)"
             report_member = _find_bundle_member(members, "agentledger-report.json")
             if report_member is None:
-                print(f"Missing agentledger-report.json in {zip_path}")
-                return 2
+                return fail(
+                    f"Missing agentledger-report.json in {zip_path}",
+                    manifest=_bundle_manifest_summary(manifest_member, manifest),
+                    signature=signature_payload,
+                )
             markdown_member = _find_bundle_member(members, "agentledger-report.md")
             html_member = _find_bundle_member(members, "agentledger-report.html")
             if markdown_member is None:
@@ -352,26 +395,60 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
             try:
                 payload = json.loads(archive.read(report_member).decode("utf-8"))
             except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-                print(f"Invalid JSON in {report_member}")
-                return 2
+                return fail(
+                    f"Invalid JSON in {report_member}",
+                    manifest=_bundle_manifest_summary(manifest_member, manifest),
+                    signature=signature_payload,
+                    reports={"json": report_member, "markdown": markdown_member, "html": html_member},
+                )
             if not isinstance(payload, dict):
-                print("Bundle report payload is not a JSON object")
-                return 2
+                return fail(
+                    "Bundle report payload is not a JSON object",
+                    manifest=_bundle_manifest_summary(manifest_member, manifest),
+                    signature=signature_payload,
+                    reports={"json": report_member, "markdown": markdown_member, "html": html_member},
+                )
             if payload.get("schema_version") != "agentledger.report.v1":
-                print(f"Unexpected report schema: {payload.get('schema_version')}")
-                return 2
+                return fail(
+                    f"Unexpected report schema: {payload.get('schema_version')}",
+                    manifest=_bundle_manifest_summary(manifest_member, manifest),
+                    signature=signature_payload,
+                    reports={"json": report_member, "markdown": markdown_member, "html": html_member},
+                )
     except (OSError, BadZipFile):
-        print(f"Unable to open zip file: {zip_path}")
-        return 2
+        return fail(f"Unable to open zip file: {zip_path}", signature=signature_payload)
 
     problems = missing_members + manifest_errors + signature_errors
     if problems:
-        for message in problems:
-            print(message)
-        return 2
+        return fail(
+            problems,
+            manifest=_bundle_manifest_summary(manifest_member, manifest),
+            signature=signature_payload,
+            reports={"json": report_member, "markdown": markdown_member, "html": html_member},
+        )
 
     changed = changed_file_count(payload)
     passed, warned = artifact_status_counts([artifact for artifact in payload.get("artifacts", []) if isinstance(artifact, dict)])
+    if output_format == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": "agentledger.verify_bundle.v1",
+                    "ok": True,
+                    "bundle": str(zip_path),
+                    "run_id": payload.get("run_id"),
+                    "manifest": _bundle_manifest_summary(manifest_member, manifest),
+                    "signature": signature_payload,
+                    "reports": {"json": report_member, "markdown": markdown_member, "html": html_member},
+                    "command": report_command_text(payload),
+                    "changed_files": changed,
+                    "artifacts": {"ok": passed, "warn": warned},
+                    "errors": [],
+                },
+                indent=2,
+            )
+        )
+        return 0
     print(f"Bundle OK: {zip_path}")
     print(f"Run ID: {payload.get('run_id', '(missing run_id)')}")
     print(f"Manifest: {manifest_member}")
@@ -549,32 +626,89 @@ def _resolve_latest_run_dir(out_root: Path) -> tuple[Path | None, list[str]]:
 
 def _handle_open_latest(args: argparse.Namespace) -> int:
     repo = Path(args.repo or ".").resolve()
+    output_format = getattr(args, "format", "text")
     try:
         config = _load_output_config(args, repo)
     except ConfigError as exc:
-        print(f"Config error: {exc}")
+        if output_format == "json":
+            print(
+                json.dumps(
+                    {
+                        "schema_version": "agentledger.open_latest.v1",
+                        "ok": False,
+                        "repo": str(repo),
+                        "out": None,
+                        "latest_run": None,
+                        "paths": {},
+                        "missing_reports": [],
+                        "errors": [f"Config error: {exc}"],
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(f"Config error: {exc}")
         return 2
     out_root = _resolve_out_root(args, repo, config)
     latest_dir, errors = _resolve_latest_run_dir(out_root)
     if latest_dir is None:
-        for message in errors:
-            print(message)
+        if output_format == "json":
+            print(
+                json.dumps(
+                    {
+                        "schema_version": "agentledger.open_latest.v1",
+                        "ok": False,
+                        "repo": str(repo),
+                        "out": str(out_root),
+                        "latest_run": None,
+                        "paths": {},
+                        "missing_reports": [],
+                        "errors": errors,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            for message in errors:
+                print(message)
         return 2
 
     markdown_path = latest_dir / "agentledger-report.md"
     json_path = latest_dir / "agentledger-report.json"
     html_path = latest_dir / "agentledger-report.html"
+    zip_path = latest_dir.with_suffix(".zip")
     missing_reports = [
         str(path)
         for path in (markdown_path, json_path, html_path)
         if not path.exists()
     ]
+    if output_format == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": "agentledger.open_latest.v1",
+                    "ok": not missing_reports,
+                    "repo": str(repo),
+                    "out": str(out_root),
+                    "latest_run": str(latest_dir),
+                    "paths": {
+                        "markdown": str(markdown_path),
+                        "json": str(json_path),
+                        "html": str(html_path),
+                        "zip": str(zip_path) if zip_path.exists() else None,
+                    },
+                    "missing_reports": missing_reports,
+                    "errors": [f"Missing expected report file: {path}" for path in missing_reports],
+                },
+                indent=2,
+            )
+        )
+        return 2 if missing_reports else 0
 
     print(f"Latest run: {latest_dir}")
     print(f"Markdown report: {markdown_path}")
     print(f"JSON report: {json_path}")
     print(f"HTML report: {html_path}")
-    zip_path = latest_dir.with_suffix(".zip")
     if zip_path.exists():
         print(f"Zip bundle: {zip_path}")
     if missing_reports:

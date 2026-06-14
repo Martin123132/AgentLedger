@@ -74,12 +74,14 @@ Inspect the run:
 
 ```powershell
 python -m agentledger open-latest --out .agentledger
+python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
 python -m agentledger review --out .agentledger --allow-warnings
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --repo . $run
 python -m agentledger verify-bundle "$run.zip"
+python -m agentledger verify-bundle "$run.zip" --format json
 ```
 
 Expected result:
@@ -90,6 +92,7 @@ Expected result:
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
+- `open-latest --format json` and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
 - Optional: `sign-bundle` adds a shared-key HMAC signature that `verify-bundle --signature-key-file --require-signature` can verify
 
 ## Evidence location
