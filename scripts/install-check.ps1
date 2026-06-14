@@ -11,7 +11,17 @@ try {
     $python = Join-Path $venv "Scripts\python.exe"
     $agentledger = Join-Path $venv "Scripts\agentledger.exe"
 
-    & $python -c "import setuptools.build_meta" 2>$null
+    $backendProbe = @(
+        "import importlib",
+        "import sys",
+        "",
+        "try:",
+        "    importlib.import_module('setuptools.build_meta')",
+        "except Exception:",
+        "    sys.exit(1)",
+        "sys.exit(0)"
+    ) -join "`n"
+    & $python -c $backendProbe 2>$null
     if ($LASTEXITCODE -ne 0) {
         & $python -m pip install "setuptools>=68" wheel
         if ($LASTEXITCODE -ne 0) {
