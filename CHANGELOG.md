@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added release process documentation consistency tests to keep version examples
+  and release gates aligned with the release tooling.
 - Added `docs/release-process.md` with the end-to-end alpha release checklist.
 - Added the build backend to the `dev` extra so packaging metadata tests can
   build wheels without network build isolation.
