@@ -1,0 +1,54 @@
+name: Release Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      require_clean_git:
+        description: Require a clean working tree during release readiness checks
+        required: true
+        default: true
+        type: boolean
+      skip_editable_install:
+        description: Skip the editable install step inside scripts/release-check.ps1
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-check:
+    name: release check (windows-2025-vs2026, 3.12)
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    env:
+      REQUIRE_CLEAN_GIT: ${{ inputs.require_clean_git }}
+      SKIP_EDITABLE_INSTALL: ${{ inputs.skip_editable_install }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run release readiness check
+        shell: pwsh
+        run: |
+          $arguments = @()
+          if ($env:SKIP_EDITABLE_INSTALL -eq "true") {
+              $arguments += "-SkipEditableInstall"
+          }
+          if ($env:REQUIRE_CLEAN_GIT -eq "true") {
+              $arguments += "-RequireCleanGit"
+          }
+
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 @arguments
