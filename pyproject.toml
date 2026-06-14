@@ -13,7 +13,7 @@ authors = [{ name = "Martin Ollett" }]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "setuptools>=68"]
 
 [project.scripts]
 agentledger = "agentledger.cli:main"

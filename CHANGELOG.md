@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added the build backend to the `dev` extra so packaging metadata tests can
+  build wheels without network build isolation.
 - Made packaging metadata tests avoid network build-isolation setup while
   leaving isolated wheel validation in release readiness.
 - Added optional release-notes draft output to `scripts/prepare_release.py` so
