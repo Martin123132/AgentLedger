@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Made packaging metadata tests avoid network build-isolation setup while
+  leaving isolated wheel validation in release readiness.
+- Added optional release-notes draft output to `scripts/prepare_release.py` so
+  release prep can generate the GitHub release body from the prepared changelog.
 - Added release prep tooling to update package versions and move Unreleased
   changelog entries into a dated release section in one guarded step.
 - Added a release-readiness guard that verifies the package version has a

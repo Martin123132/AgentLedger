@@ -3,12 +3,14 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from datetime import date
+import importlib.util
 from pathlib import Path
 import re
 import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_NOTES_SCRIPT = ROOT / "scripts" / "release_notes.py"
 
 PACKAGE_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:a\d+)?$")
 PEP440_ALPHA_RE = re.compile(r"^(?P<base>\d+\.\d+\.\d+)a(?P<number>\d+)$")
@@ -25,6 +27,7 @@ class ReleasePrepResult:
     release_version: str
     release_date: str
     changed_files: tuple[str, ...]
+    release_notes_output: str | None
     dry_run: bool
 
 
@@ -150,11 +153,38 @@ def prepare_changelog(changelog_text: str, package_version: str, release_date: s
     return "\n".join(updated_lines).rstrip() + "\n"
 
 
+def load_release_notes_module():
+    spec = importlib.util.spec_from_file_location("agentledger_release_notes", RELEASE_NOTES_SCRIPT)
+    if spec is None or spec.loader is None:
+        raise ReleasePrepError(f"Could not load release notes script: {RELEASE_NOTES_SCRIPT}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def build_release_notes_from_changelog(*, package_version: str, changelog_text: str) -> str:
+    release_notes = load_release_notes_module()
+    try:
+        return release_notes.build_release_notes(
+            version=package_version,
+            changelog_text=changelog_text,
+        )
+    except release_notes.ReleaseNotesError as error:
+        raise ReleasePrepError(str(error)) from error
+
+
+def resolve_output_path(repo_root: Path, output: Path) -> Path:
+    if output.is_absolute():
+        return output
+    return repo_root / output
+
+
 def prepare_release(
     *,
     repo_root: Path,
     version: str,
     release_date: str,
+    release_notes_output: Path | None = None,
     dry_run: bool = False,
 ) -> ReleasePrepResult:
     package_version = validate_package_version(version)
@@ -186,19 +216,36 @@ def prepare_release(
         ),
     }
 
-    changed_files = tuple(name for name, path in files.items() if path.read_text(encoding="utf-8-sig") != updated[name])
+    changed_files = tuple(
+        name
+        for name, path in files.items()
+        if path.read_text(encoding="utf-8-sig") != updated[name]
+    )
     if not changed_files:
         raise ReleasePrepError("Release prep would not change any files.")
+
+    output_path: Path | None = None
+    output_text: str | None = None
+    if release_notes_output is not None:
+        output_path = resolve_output_path(root, release_notes_output)
+        output_text = build_release_notes_from_changelog(
+            package_version=package_version,
+            changelog_text=updated["CHANGELOG.md"],
+        )
 
     if not dry_run:
         for name in changed_files:
             files[name].write_text(updated[name], encoding="utf-8")
+        if output_path is not None and output_text is not None:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output_text, encoding="utf-8")
 
     return ReleasePrepResult(
         package_version=package_version,
         release_version=changelog_version(package_version),
         release_date=normalized_date,
         changed_files=changed_files,
+        release_notes_output=str(output_path) if output_path else None,
         dry_run=dry_run,
     )
 
@@ -224,6 +271,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Repository root. Defaults to this script's parent repository.",
     )
     parser.add_argument(
+        "--release-notes-output",
+        type=Path,
+        help="Optional path for draft GitHub release notes generated from the prepared changelog.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate and report planned changes without writing files.",
@@ -238,6 +290,7 @@ def main(argv: list[str] | None = None) -> int:
             repo_root=args.repo_root,
             version=args.version,
             release_date=args.date,
+            release_notes_output=args.release_notes_output,
             dry_run=args.dry_run,
         )
     except (OSError, ReleasePrepError) as error:
@@ -251,6 +304,9 @@ def main(argv: list[str] | None = None) -> int:
     print("Changed files:")
     for path in result.changed_files:
         print(f"- {path}")
+    if result.release_notes_output:
+        label = "Planned release notes" if result.dry_run else "Release notes"
+        print(f"{label}: {result.release_notes_output}")
     return 0
 
 

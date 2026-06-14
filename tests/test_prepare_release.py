@@ -96,6 +96,40 @@ def test_prepare_release_dry_run_does_not_write_files(tmp_path: Path) -> None:
     assert (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8") == before
 
 
+def test_prepare_release_writes_release_notes_from_prepared_changelog(tmp_path: Path) -> None:
+    write_release_repo(tmp_path)
+    notes = tmp_path / "release-notes.md"
+
+    result = prepare_release.prepare_release(
+        repo_root=tmp_path,
+        version="0.1.8a0",
+        release_date="2026-06-15",
+        release_notes_output=notes,
+    )
+
+    assert result.release_notes_output == str(notes)
+    text = notes.read_text(encoding="utf-8")
+    assert text.startswith("## Highlights\n\n- Added release prep.")
+    assert "- TODO: Tag CI passed for `v0.1.8-alpha`." in text
+    assert "This is an alpha prerelease." in text
+
+
+def test_prepare_release_dry_run_does_not_write_release_notes(tmp_path: Path) -> None:
+    write_release_repo(tmp_path)
+    notes = tmp_path / "release-notes.md"
+
+    result = prepare_release.prepare_release(
+        repo_root=tmp_path,
+        version="0.1.8a0",
+        release_date="2026-06-15",
+        release_notes_output=notes,
+        dry_run=True,
+    )
+
+    assert result.release_notes_output == str(notes)
+    assert not notes.exists()
+
+
 def test_prepare_release_rejects_existing_release_section(tmp_path: Path) -> None:
     write_release_repo(tmp_path)
 
@@ -137,6 +171,8 @@ def test_main_dry_run_reports_changed_files(tmp_path: Path, capsys) -> None:
             "0.1.8a0",
             "--date",
             "2026-06-15",
+            "--release-notes-output",
+            "draft-release.md",
             "--dry-run",
         ]
     )
@@ -146,3 +182,4 @@ def test_main_dry_run_reports_changed_files(tmp_path: Path, capsys) -> None:
     assert "Release prep: 0.1.8a0 -> 0.1.8-alpha" in output
     assert "Dry run: no files written." in output
     assert "- CHANGELOG.md" in output
+    assert f"Planned release notes: {tmp_path / 'draft-release.md'}" in output
