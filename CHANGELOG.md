@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added release notes tooling to draft GitHub prerelease notes from a
+  `CHANGELOG.md` version section.
 - Fixed the install-check build backend probe so release-readiness CI can
   install missing build tooling instead of stopping on an import traceback.
 - Added a manual GitHub Actions release-readiness workflow for pre-tag
