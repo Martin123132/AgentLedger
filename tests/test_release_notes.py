@@ -134,7 +134,26 @@ def test_validate_publish_ready_rejects_todo_release_notes() -> None:
     with pytest.raises(release_notes.ReleaseNotesError) as error:
         release_notes.validate_publish_ready(version="0.1.7-alpha", notes_text=notes)
 
-    assert "TODO placeholders" in str(error.value)
+    assert "TODO validation placeholders" in str(error.value)
+
+
+def test_validate_publish_ready_allows_todo_word_in_highlights() -> None:
+    changelog = """# Changelog
+
+## 0.1.7-alpha
+
+- Added a checker that catches TODO validation placeholders before release.
+"""
+    notes = release_notes.build_release_notes(
+        version="0.1.7-alpha",
+        changelog_text=changelog,
+        validation_lines=[
+            "- Local release-check passed from a clean branch.",
+            "- Tag CI passed for `v0.1.7-alpha`: https://github.com/Martin123132/AgentLedger/actions/runs/789.",
+        ],
+    )
+
+    release_notes.validate_publish_ready(version="0.1.7-alpha", notes_text=notes)
 
 
 def test_validate_publish_ready_reports_missing_release_sections() -> None:
@@ -238,7 +257,7 @@ This is an alpha prerelease. Do not commit or upload `.agentledger/` evidence fo
     )
 
     assert exit_code == 2
-    assert "TODO placeholders" in capsys.readouterr().err
+    assert "TODO validation placeholders" in capsys.readouterr().err
 
 
 def test_main_check_mode_accepts_project_alpha_version(tmp_path: Path, capsys) -> None:
