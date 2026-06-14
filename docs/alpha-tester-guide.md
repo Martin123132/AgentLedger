@@ -89,7 +89,7 @@ Expected result:
 - `review` prints the latest report paths and pass/warn/block policy status
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
-- `verify-bundle` prints `Bundle OK`
+- `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
 
 ## Evidence location
 
@@ -105,7 +105,7 @@ Each run includes:
 - `agentledger-report.json`
 - `agentledger-report.html`
 - `artifacts/`
-- a sibling `.zip` bundle
+- a sibling `.zip` bundle with `agentledger-bundle-manifest.json`
 
 Do not commit `.agentledger/`, zip bundles, logs, screenshots, or sensitive evidence.
 

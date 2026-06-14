@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger-bundle-manifest.json` inside zip bundles and made
+  `verify-bundle` validate member byte sizes and SHA-256 checksums.
 - Added `agentledger review` to summarize the latest or selected run with
   pass/warn/block policy status, report paths, and next-action hints.
 
