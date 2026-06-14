@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added smoke coverage for `agentledger check --format json` in both Windows
+  and Bash smoke scripts.
 - Added a CI guide for consuming `agentledger check --format json` from Bash,
   PowerShell, GitHub Actions, or agent handoffs.
 - Added CI-friendly `agentledger check --format json` summary fields, including
