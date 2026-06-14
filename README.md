@@ -289,6 +289,9 @@ default policy blocks failed commands or incomplete reports, and warns on
 missing test evidence, dirty final repo state, report warnings, optional
 artifact warnings, and redaction markers.
 
+JSON output includes stable CI fields: `ok`, `summary`, `rule_counts`,
+`warning_rules`, and `blocking_rules`, alongside the full `rules` list.
+
 You can tune the default check policy in `.agentledger.toml`:
 
 ```toml
