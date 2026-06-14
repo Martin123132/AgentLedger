@@ -107,6 +107,8 @@ try {
     Invoke-AgentLedger @("open-latest", "--out", $out)
     Invoke-AgentLedger @("open-latest", "--format", "json", "--out", $out)
     Invoke-AgentLedger @("history", "--out", $out)
+    Invoke-AgentLedger @("status", "--out", $out, "--allow-warnings")
+    Invoke-AgentLedger @("status", "--format", "json", "--out", $out, "--allow-warnings")
     Invoke-AgentLedger @("feedback", "--out", $out, "--note", "Smoke feedback note.", "--category", "friction", "--severity", "low")
     Invoke-AgentLedger @("feedback", "--out", $out, "--list")
     Invoke-AgentLedger @("feedback", "--format", "json", "--out", $out, "--list")

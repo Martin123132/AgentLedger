@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger status` to summarize the latest run policy status,
+  evidence paths, feedback counts, and next actions in one command.
 - Added `agentledger feedback-export` to write reviewed Markdown or JSON alpha
   feedback handoffs without local evidence paths.
 - Added `agentledger feedback-summary` to review local alpha feedback across

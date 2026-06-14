@@ -77,6 +77,7 @@ python -m agentledger open-latest --out .agentledger
 python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
 python -m agentledger review --out .agentledger --allow-warnings
+python -m agentledger status --out .agentledger --allow-warnings
 python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
@@ -93,13 +94,14 @@ Expected result:
 - The captured command exits with code `0`
 - `history` shows the pytest run
 - `review` prints the latest report paths and pass/warn/block policy status
+- `status` rolls latest run policy, evidence paths, feedback counts, and next action into one view
 - `feedback` records local notes in the latest run folder and lists them back
 - `feedback-summary` rolls local notes up across run folders
 - `feedback-export` writes a reviewed Markdown or JSON feedback handoff without local evidence paths
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
-- `open-latest --format json` and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
+- `status --format json`, `open-latest --format json`, and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
 - Optional: `sign-bundle` adds a shared-key HMAC signature that `verify-bundle --signature-key-file --require-signature` can verify
 
 ## Evidence location
@@ -129,7 +131,7 @@ Please report:
 - the first command that felt confusing
 - any command that failed and the exact error
 - whether the report was understandable
-- whether the latest/history/inspect/check/verify flow made sense
+- whether the status/latest/history/inspect/check/verify flow made sense
 - whether anything looked unsafe to share or too noisy
 
 Use `docs/alpha-feedback-template.md` for notes.

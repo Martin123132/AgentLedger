@@ -56,6 +56,7 @@ from .report_reader import (
 PRIVACY_OMISSION = "[omitted by privacy-mode summary]"
 DEFAULT_OUT = ".agentledger"
 DEFAULT_PRIVACY_MODE = "standard"
+STATUS_SCHEMA = "agentledger.status.v1"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -119,6 +120,14 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_argument("--out", default=None, help="Evidence output directory.")
     history.add_argument("--limit", type=int, default=10, help="Maximum number of runs to show.")
     history.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    status = sub.add_parser("status", help="Show latest run policy, evidence, and feedback status.")
+    status.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
+    status.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    status.add_argument("--out", default=None, help="Evidence output directory.")
+    status.add_argument("--feedback-limit", type=int, default=3, help="Recent feedback entries to inspect for counts.")
+    status.add_argument("--allow-warnings", action="store_true", help="Return success for pass or warn statuses.")
+    status.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     feedback = sub.add_parser("feedback", help="Record or list alpha feedback for a run.")
     feedback.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
@@ -543,6 +552,18 @@ def _read_signature_key(path: Path) -> bytes:
     return key
 
 
+def _check_policy_from_config(config: AgentLedgerConfig) -> CheckPolicy:
+    return CheckPolicy(
+        require_tests=config.check_require_tests is True,
+        dirty=config.check_dirty or "warn",
+        max_changed_files=config.check_max_changed_files,
+    )
+
+
+def _allow_warnings_from_config(args: argparse.Namespace, config: AgentLedgerConfig) -> bool:
+    return getattr(args, "allow_warnings", False) or config.check_allow_warnings is True
+
+
 def _handle_check(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir).resolve()
     try:
@@ -550,12 +571,8 @@ def _handle_check(args: argparse.Namespace) -> int:
     except ConfigError as exc:
         print(f"Config error: {exc}")
         return 2
-    policy = CheckPolicy(
-        require_tests=config.check_require_tests is True,
-        dirty=config.check_dirty or "warn",
-        max_changed_files=config.check_max_changed_files,
-    )
-    allow_warnings = getattr(args, "allow_warnings", False) or config.check_allow_warnings is True
+    policy = _check_policy_from_config(config)
+    allow_warnings = _allow_warnings_from_config(args, config)
     result = build_check(run_dir, policy)
     if getattr(args, "format", "text") == "json":
         print(json.dumps(result, indent=2))
@@ -845,6 +862,215 @@ def _handle_history(args: argparse.Namespace) -> int:
         )
         print(f"  report={item['markdown']}")
     return 0
+
+
+def _latest_paths(run_dir: Path) -> dict[str, str | None]:
+    zip_path = run_dir.with_suffix(".zip")
+    return {
+        "markdown": str(run_dir / "agentledger-report.md"),
+        "json": str(run_dir / "agentledger-report.json"),
+        "html": str(run_dir / "agentledger-report.html"),
+        "zip": str(zip_path) if zip_path.exists() else None,
+    }
+
+
+def _missing_report_paths(run_dir: Path) -> list[str]:
+    return [
+        str(run_dir / filename)
+        for filename in ("agentledger-report.md", "agentledger-report.json", "agentledger-report.html")
+        if not (run_dir / filename).exists()
+    ]
+
+
+def _empty_status_feedback(errors: list[str] | None = None) -> dict:
+    return {
+        "total_entries": 0,
+        "returned_entries": 0,
+        "runs_with_feedback": 0,
+        "latest_run_entries": 0,
+        "categories": {},
+        "severities": {},
+        "errors": errors or [],
+    }
+
+
+def _status_feedback(summary: dict, latest_dir: Path) -> dict:
+    latest_entry_count = 0
+    latest_text = str(latest_dir)
+    for item in summary.get("runs") or []:
+        if str(item.get("run_dir") or "") == latest_text:
+            latest_entry_count = int(item.get("entry_count") or 0)
+            break
+    return {
+        "total_entries": int(summary.get("total_entries") or 0),
+        "returned_entries": int(summary.get("returned_entries") or 0),
+        "runs_with_feedback": int(summary.get("runs_with_feedback") or 0),
+        "latest_run_entries": latest_entry_count,
+        "categories": summary.get("categories") or {},
+        "severities": summary.get("severities") or {},
+        "errors": list(summary.get("errors") or []),
+    }
+
+
+def _status_next_actions(status: str, feedback: dict, errors: list[str]) -> list[str]:
+    if errors:
+        return ["Fix the reported status errors, then run agentledger status again."]
+    if status == "block":
+        return ["Fix blockers, rerun the capture, then run agentledger status again."]
+    if status == "warn":
+        action = "Read the Markdown report and warning rules before accepting the work."
+    else:
+        action = "Read the Markdown report, then keep or share only evidence you have reviewed."
+    actions = [action]
+    if int(feedback.get("total_entries") or 0) > 0:
+        actions.append("Use feedback-summary or feedback-export before sharing alpha notes.")
+    actions.append("Do not commit .agentledger folders or zip bundles.")
+    return actions
+
+
+def _status_payload(
+    *,
+    ok: bool,
+    status: str,
+    repo: Path,
+    out_root: Path | None,
+    latest_dir: Path | None,
+    paths: dict[str, str | None],
+    missing_reports: list[str],
+    check: dict | None,
+    feedback: dict,
+    next_actions: list[str],
+    errors: list[str],
+    status_exit_code: int,
+) -> dict:
+    return {
+        "schema_version": STATUS_SCHEMA,
+        "ok": ok,
+        "status": status,
+        "repo": str(repo),
+        "out": str(out_root) if out_root is not None else None,
+        "latest_run": str(latest_dir) if latest_dir is not None else None,
+        "paths": paths,
+        "missing_reports": missing_reports,
+        "check": check,
+        "feedback": feedback,
+        "next_actions": next_actions,
+        "errors": errors,
+        "status_exit_code": status_exit_code,
+    }
+
+
+def _status_error(
+    args: argparse.Namespace,
+    repo: Path,
+    errors: list[str],
+    out_root: Path | None = None,
+) -> int:
+    payload = _status_payload(
+        ok=False,
+        status="unknown",
+        repo=repo,
+        out_root=out_root,
+        latest_dir=None,
+        paths={},
+        missing_reports=[],
+        check=None,
+        feedback=_empty_status_feedback(),
+        next_actions=_status_next_actions("unknown", _empty_status_feedback(), errors),
+        errors=errors,
+        status_exit_code=2,
+    )
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        for message in errors:
+            print(message)
+    return 2
+
+
+def _handle_status(args: argparse.Namespace) -> int:
+    repo = Path(args.repo or ".").resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return _status_error(args, repo, [f"Config error: {exc}"])
+    out_root = _resolve_out_root(args, repo, config)
+    if args.feedback_limit <= 0:
+        return _status_error(args, repo, ["--feedback-limit must be greater than zero."], out_root)
+
+    latest_dir, errors = _resolve_latest_run_dir(out_root)
+    if latest_dir is None:
+        return _status_error(args, repo, errors, out_root)
+
+    paths = _latest_paths(latest_dir)
+    missing_reports = _missing_report_paths(latest_dir)
+    check = build_check(latest_dir, _check_policy_from_config(config))
+    feedback_errors: list[str] = []
+    try:
+        feedback_summary = summarize_feedback(out_root=out_root, limit=args.feedback_limit)
+        feedback = _status_feedback(feedback_summary, latest_dir)
+        feedback_errors = feedback["errors"]
+    except FeedbackError as exc:
+        feedback_errors = [str(exc)]
+        feedback = _empty_status_feedback(feedback_errors)
+
+    status = str(check.get("status") or "unknown")
+    errors = missing_reports + feedback_errors
+    status_exit_code = 2 if errors else check_exit_code(status, _allow_warnings_from_config(args, config))
+    next_actions = _status_next_actions(status, feedback, errors)
+    payload = _status_payload(
+        ok=check.get("ok") is True and not errors,
+        status=status,
+        repo=repo,
+        out_root=out_root,
+        latest_dir=latest_dir,
+        paths=paths,
+        missing_reports=missing_reports,
+        check=check,
+        feedback=feedback,
+        next_actions=next_actions,
+        errors=errors,
+        status_exit_code=status_exit_code,
+    )
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+        return status_exit_code
+
+    print(f"AgentLedger status: {status}")
+    print(f"Summary: {check['summary']}")
+    print(f"Latest run: {latest_dir}")
+    if "command" in check:
+        print(f"Command: {check['command']}")
+        print(f"Exit code: {check['exit_code'] if check['exit_code'] is not None else 'n/a'}")
+        print(f"Changed files: {check['changed_files']}")
+        print(f"Test framework: {check['test_framework']}")
+        print(f"Privacy mode: {check['privacy_mode']}")
+    print(
+        f"Feedback: {feedback['total_entries']} total entries across "
+        f"{feedback['runs_with_feedback']} runs; latest run has {feedback['latest_run_entries']}"
+    )
+    print(f"Markdown report: {paths['markdown']}")
+    print(f"JSON report: {paths['json']}")
+    print(f"HTML report: {paths['html']}")
+    if paths["zip"]:
+        print(f"Zip bundle: {paths['zip']}")
+    if check["blocking_rules"]:
+        print("Blockers:")
+        for rule in check["blocking_rules"]:
+            print(f"- {rule['id']}: {rule['message']}")
+    if check["warning_rules"]:
+        print("Warnings:")
+        for rule in check["warning_rules"]:
+            print(f"- {rule['id']}: {rule['message']}")
+    if errors:
+        print("Errors:")
+        for error in errors:
+            print(f"- {error}")
+    print("Next:")
+    for action in next_actions:
+        print(f"- {action}")
+    return status_exit_code
 
 
 def _resolve_feedback_run_dir(args: argparse.Namespace) -> tuple[Path | None, list[str]]:
@@ -1264,12 +1490,8 @@ def _handle_review(args: argparse.Namespace) -> int:
     except ConfigError as exc:
         print(f"Config error: {exc}")
         return 2
-    policy = CheckPolicy(
-        require_tests=config.check_require_tests is True,
-        dirty=config.check_dirty or "warn",
-        max_changed_files=config.check_max_changed_files,
-    )
-    allow_warnings = getattr(args, "allow_warnings", False) or config.check_allow_warnings is True
+    policy = _check_policy_from_config(config)
+    allow_warnings = _allow_warnings_from_config(args, config)
     result = build_check(run_dir, policy)
     paths = _review_paths(run_dir)
     exit_code = check_exit_code(result["status"], allow_warnings)
@@ -1461,6 +1683,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_open_latest(args)
     if args.command_name == "history":
         return _handle_history(args)
+    if args.command_name == "status":
+        return _handle_status(args)
     if args.command_name == "feedback":
         return _handle_feedback(args)
     if args.command_name == "feedback-summary":

@@ -91,6 +91,30 @@ Each run summary includes `run_id`, `run_dir`, timestamps, `command`,
 `exit_code`, `changed_files`, `test_framework`, `privacy_mode`, artifact counts,
 and report paths.
 
+### `agentledger status --format json`
+
+Schema: `agentledger.status.v1`
+
+Use this to get the latest run policy status, evidence paths, local feedback
+counts, and next actions in one payload.
+
+Stable fields:
+
+- `ok`: boolean, true only when the embedded check passes and no status errors
+  were found
+- `status`: latest run policy status, `pass`, `warn`, `block`, or `unknown`
+- `repo`: resolved repository path used for config lookup
+- `out`: resolved AgentLedger output directory, or `null` on config failure
+- `latest_run`: resolved latest run directory, or `null`
+- `paths`: `markdown`, `json`, `html`, and optional `zip`
+- `missing_reports`: expected report files that are absent
+- `check`: embedded `agentledger.check.v1` payload, or `null` when no latest
+  run is available
+- `feedback`: local feedback counts and category/severity totals
+- `next_actions`: human-readable next action list
+- `errors`: human-readable error list
+- `status_exit_code`: exit code returned by the command for this payload
+
 ### `agentledger feedback --format json --note <text>`
 
 Schema: `agentledger.feedback.v1`

@@ -15,6 +15,7 @@ SCHEMAS = {
     "doctor": "agentledger.doctor.v1",
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
+    "status": "agentledger.status.v1",
     "feedback": "agentledger.feedback.v1",
     "feedback_summary": "agentledger.feedback_summary.v1",
     "feedback_export": "agentledger.feedback_export_result.v1",
@@ -115,6 +116,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--out", str(out)]),
+        "status": _run_json(capsys, ["status", "--format", "json", "--out", str(out), "--allow-warnings"]),
         "feedback": _run_json(
             capsys,
             [
@@ -200,6 +202,21 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "errors",
         },
         "history": {"schema_version", "out", "runs"},
+        "status": {
+            "schema_version",
+            "ok",
+            "status",
+            "repo",
+            "out",
+            "latest_run",
+            "paths",
+            "missing_reports",
+            "check",
+            "feedback",
+            "next_actions",
+            "errors",
+            "status_exit_code",
+        },
         "feedback": {
             "schema_version",
             "ok",
@@ -339,6 +356,24 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
             "zip",
         },
     )
+
+    status = json_payloads["status"]
+    assert status["status"] in {"pass", "warn", "block"}
+    _assert_keys(status["paths"], {"markdown", "json", "html", "zip"})
+    assert status["check"]["schema_version"] == SCHEMAS["check"]
+    _assert_keys(
+        status["feedback"],
+        {
+            "total_entries",
+            "returned_entries",
+            "runs_with_feedback",
+            "latest_run_entries",
+            "categories",
+            "severities",
+            "errors",
+        },
+    )
+    assert status["next_actions"]
 
     feedback = json_payloads["feedback"]
     assert feedback["ok"] is True
