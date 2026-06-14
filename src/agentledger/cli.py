@@ -10,6 +10,7 @@ from pathlib import Path
 from . import __version__
 from .bundle import write_zip_bundle
 from .classify import detect_test_command
+from .check import build_check, check_exit_code, format_check
 from .config import AgentLedgerConfig, ConfigError, load_config
 from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
@@ -98,6 +99,15 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("old_run_dir", help="Path to older run directory.")
     compare.add_argument("new_run_dir", help="Path to newer run directory.")
     compare.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    check = sub.add_parser("check", help="Evaluate a run report against default review policy.")
+    check.add_argument("run_dir", help="Path to run directory.")
+    check.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    check.add_argument(
+        "--allow-warnings",
+        action="store_true",
+        help="Return success for pass or warn statuses; block statuses still return 2.",
+    )
 
     verify = sub.add_parser("verify-bundle", help="Validate a zip evidence bundle.")
     verify.add_argument("bundle", help="Path to bundle zip file.")
@@ -313,6 +323,15 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
     print(f"Changed files: {changed}")
     print(f"Artifacts: {passed} ok, {warned} warn")
     return 0
+
+
+def _handle_check(args: argparse.Namespace) -> int:
+    result = build_check(Path(args.run_dir))
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(result, indent=2))
+    else:
+        print(format_check(result))
+    return check_exit_code(result["status"], getattr(args, "allow_warnings", False))
 
 
 def _load_cli_config(args: argparse.Namespace, repo: Path) -> AgentLedgerConfig:
@@ -626,6 +645,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_history(args)
     if args.command_name == "compare":
         return _handle_compare(args)
+    if args.command_name == "check":
+        return _handle_check(args)
     if args.command_name == "verify-bundle":
         return _handle_verify_bundle(args)
     parser.error("unknown command")

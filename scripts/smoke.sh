@@ -34,6 +34,7 @@ python -m agentledger history --out "$OUT"
 
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"
+python -m agentledger check --allow-warnings "$RUN"
 python -m agentledger verify-bundle "${RUN}.zip"
 
 python -m agentledger run \

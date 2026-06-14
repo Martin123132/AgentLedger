@@ -33,6 +33,13 @@ def _bundle_text(bundle: Path) -> str:
     return "\n".join(chunks)
 
 
+def _rule_by_id(payload: dict, rule_id: str) -> dict:
+    for rule in payload["rules"]:
+        if rule["id"] == rule_id:
+            return rule
+    raise AssertionError(f"Missing rule: {rule_id}")
+
+
 def make_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -658,6 +665,170 @@ def test_inspect_report_counts_status_files(tmp_path: Path, capsys) -> None:
     assert cli.main(["inspect-report", str(run_dir)]) == 0
     output = capsys.readouterr().out
     assert "Changed files: 1" in output
+
+
+def test_check_passes_test_run(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["check", str(run_dir)]) == 0
+    output = capsys.readouterr().out
+    assert "AgentLedger check: pass" in output
+    assert "[PASS] command_exit: Captured command exited 0." in output
+    assert "[PASS] test_evidence: Verification command detected: pytest." in output
+
+
+def test_check_warns_for_non_test_dirty_run(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 1
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["status"] == "warn"
+    assert _rule_by_id(payload, "command_exit")["status"] == "pass"
+    assert _rule_by_id(payload, "test_evidence")["status"] == "warn"
+    assert _rule_by_id(payload, "repo_state")["status"] == "warn"
+
+    assert cli.main(["check", str(run_dir), "--allow-warnings"]) == 0
+
+
+def test_check_blocks_failed_command(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "import sys; sys.exit(7)",
+            ]
+        )
+        == 7
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 2
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["status"] == "block"
+    assert payload["exit_code"] == 7
+    assert _rule_by_id(payload, "command_exit")["status"] == "block"
+
+
+def test_check_warns_for_failed_optional_artifact(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_path = run_dir / "agentledger-report.json"
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    payload["artifacts"].append(
+        {
+            "name": "repomori_snapshot_before",
+            "ok": False,
+            "command": [],
+            "output_path": str(run_dir / "repomori-before.json"),
+            "summary": "RepoMori snapshot failed or RepoMori is not installed.",
+            "exit_code": 1,
+        }
+    )
+    report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    capsys.readouterr()
+
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 1
+    output = capsys.readouterr().out
+    result = _parse_json_output(output)
+    assert result["status"] == "warn"
+    assert _rule_by_id(result, "command_exit")["status"] == "pass"
+    assert _rule_by_id(result, "artifact_status")["status"] == "warn"
+
+
+def test_check_blocks_missing_report(tmp_path: Path, capsys) -> None:
+    run_dir = tmp_path / "missing-report"
+    run_dir.mkdir()
+
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 2
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["status"] == "block"
+    assert _rule_by_id(payload, "report_loaded")["status"] == "block"
 
 
 def test_changed_file_count_uses_status_untracked() -> None:

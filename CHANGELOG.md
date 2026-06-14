@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added `agentledger check` to evaluate captured reports as pass/warn/block
+  decisions with text and JSON output.
+
 ## 0.1.3-alpha
 
 - Added `.agentledger.toml` policy config support for default privacy mode,
