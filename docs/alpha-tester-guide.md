@@ -80,6 +80,7 @@ python -m agentledger review --out .agentledger --allow-warnings
 python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
+python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --repo . $run
@@ -94,6 +95,7 @@ Expected result:
 - `review` prints the latest report paths and pass/warn/block policy status
 - `feedback` records local notes in the latest run folder and lists them back
 - `feedback-summary` rolls local notes up across run folders
+- `feedback-export` writes a reviewed Markdown or JSON feedback handoff without local evidence paths
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
@@ -118,6 +120,7 @@ Each run includes:
 - a sibling `.zip` bundle with `agentledger-bundle-manifest.json`
 
 Do not commit `.agentledger/`, zip bundles, signing keys, logs, screenshots, or sensitive evidence.
+Only share feedback exports after reviewing their notes.
 
 ## Feedback focus
 

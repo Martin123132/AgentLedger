@@ -24,6 +24,8 @@ from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
 from .feedback import (
     FEEDBACK_CATEGORIES,
+    FEEDBACK_EXPORT_RESULT_SCHEMA,
+    FEEDBACK_EXPORT_SCHEMA,
     FEEDBACK_SCHEMA,
     FEEDBACK_SUMMARY_SCHEMA,
     FEEDBACK_SEVERITIES,
@@ -31,6 +33,7 @@ from .feedback import (
     append_feedback,
     read_feedback,
     summarize_feedback,
+    write_feedback_export,
 )
 from .gittools import snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
@@ -137,6 +140,17 @@ def build_parser() -> argparse.ArgumentParser:
     feedback_summary.add_argument("--category", choices=FEEDBACK_CATEGORIES, default=None, help="Only include this feedback category.")
     feedback_summary.add_argument("--severity", choices=FEEDBACK_SEVERITIES, default=None, help="Only include this feedback severity.")
     feedback_summary.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    feedback_export = sub.add_parser("feedback-export", help="Write a reviewed shareable alpha feedback export.")
+    feedback_export.add_argument("--repo", default=".", help="Target git repository for config lookup.")
+    feedback_export.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    feedback_export.add_argument("--out", default=None, help="Evidence output directory.")
+    feedback_export.add_argument("--output", required=True, help="Path to write the reviewed feedback export.")
+    feedback_export.add_argument("--output-format", choices=["markdown", "json"], default="markdown", help="Export file format.")
+    feedback_export.add_argument("--limit", type=int, default=50, help="Maximum number of feedback entries to export.")
+    feedback_export.add_argument("--category", choices=FEEDBACK_CATEGORIES, default=None, help="Only include this feedback category.")
+    feedback_export.add_argument("--severity", choices=FEEDBACK_SEVERITIES, default=None, help="Only include this feedback severity.")
+    feedback_export.add_argument("--format", choices=["text", "json"], default="text", help="Command output format.")
 
     review = sub.add_parser("review", help="Summarize latest or selected run with policy status.")
     review.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
@@ -1043,6 +1057,123 @@ def _handle_feedback_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+def _feedback_export_payload(
+    *,
+    ok: bool,
+    out_root: Path | None,
+    output_path: Path | None,
+    output_format: str,
+    filters: dict,
+    total_entries: int,
+    returned_entries: int,
+    run_count: int,
+    runs_with_feedback: int,
+    errors: list[str],
+) -> dict:
+    return {
+        "schema_version": FEEDBACK_EXPORT_RESULT_SCHEMA,
+        "ok": ok,
+        "out": str(out_root) if out_root is not None else None,
+        "output": str(output_path) if output_path is not None else None,
+        "output_format": output_format,
+        "export_schema_version": FEEDBACK_EXPORT_SCHEMA,
+        "filters": filters,
+        "total_entries": total_entries,
+        "returned_entries": returned_entries,
+        "run_count": run_count,
+        "runs_with_feedback": runs_with_feedback,
+        "errors": errors,
+    }
+
+
+def _feedback_export_error(
+    args: argparse.Namespace,
+    errors: list[str],
+    out_root: Path | None = None,
+    output_path: Path | None = None,
+) -> int:
+    if getattr(args, "format", "text") == "json":
+        payload = _feedback_export_payload(
+            ok=False,
+            out_root=out_root,
+            output_path=output_path,
+            output_format=getattr(args, "output_format", "markdown"),
+            filters={
+                "category": getattr(args, "category", None),
+                "severity": getattr(args, "severity", None),
+                "limit": getattr(args, "limit", None),
+            },
+            total_entries=0,
+            returned_entries=0,
+            run_count=0,
+            runs_with_feedback=0,
+            errors=errors,
+        )
+        print(json.dumps(payload, indent=2))
+    else:
+        for message in errors:
+            print(message)
+    return 2
+
+
+def _handle_feedback_export(args: argparse.Namespace) -> int:
+    repo = Path(args.repo or ".").resolve()
+    output_path = Path(args.output).resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return _feedback_export_error(args, [f"Config error: {exc}"], output_path=output_path)
+    out_root = _resolve_out_root(args, repo, config)
+
+    try:
+        summary = summarize_feedback(
+            out_root=out_root,
+            limit=args.limit,
+            category=args.category,
+            severity=args.severity,
+        )
+    except FeedbackError as exc:
+        return _feedback_export_error(args, [str(exc)], out_root, output_path)
+
+    if not summary["ok"]:
+        return _feedback_export_error(args, summary["errors"], out_root, output_path)
+
+    try:
+        written_path, export = write_feedback_export(
+            summary=summary,
+            output_path=output_path,
+            output_format=args.output_format,
+        )
+    except FeedbackError as exc:
+        return _feedback_export_error(args, [str(exc)], out_root, output_path)
+
+    payload = _feedback_export_payload(
+        ok=True,
+        out_root=out_root,
+        output_path=written_path,
+        output_format=args.output_format,
+        filters=summary["filters"],
+        total_entries=summary["total_entries"],
+        returned_entries=summary["returned_entries"],
+        run_count=summary["run_count"],
+        runs_with_feedback=summary["runs_with_feedback"],
+        errors=[],
+    )
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print(f"Feedback export written: {written_path}")
+    print(f"Format: {args.output_format}")
+    print(
+        f"Entries: {export['returned_entries']} shown / {export['total_entries']} total "
+        f"across {export['runs_with_feedback']} runs"
+    )
+    print("Review before sharing. The export omits local run directories and feedback file paths.")
+    return 0
+
+
 def _review_paths(run_dir: Path) -> dict[str, str | None]:
     zip_path = run_dir.with_suffix(".zip")
     return {
@@ -1334,6 +1465,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_feedback(args)
     if args.command_name == "feedback-summary":
         return _handle_feedback_summary(args)
+    if args.command_name == "feedback-export":
+        return _handle_feedback_export(args)
     if args.command_name == "review":
         return _handle_review(args)
     if args.command_name == "compare":

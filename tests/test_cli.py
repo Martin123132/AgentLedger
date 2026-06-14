@@ -835,6 +835,85 @@ def test_feedback_summary_collects_filters_and_limits_entries(tmp_path: Path, ca
     assert "Recent feedback:" in text
 
 
+def test_feedback_export_writes_reviewed_files_without_local_paths(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"]) == 0
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "feedback",
+                "--out",
+                str(out),
+                "--category",
+                "docs",
+                "--severity",
+                "low",
+                "--source",
+                "tester-a",
+                "--note",
+                "Review flow was clear.",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    markdown_export = tmp_path / "agentledger-feedback.md"
+    assert cli.main(["feedback-export", "--out", str(out), "--output", str(markdown_export)]) == 0
+    output = capsys.readouterr().out
+    assert f"Feedback export written: {markdown_export.resolve()}" in output
+    assert "Entries: 1 shown / 1 total across 1 runs" in output
+
+    markdown = markdown_export.read_text(encoding="utf-8")
+    assert "# AgentLedger Feedback Export" in markdown
+    assert "Review flow was clear." in markdown
+    assert latest_dir.name in markdown
+    assert str(latest_dir) not in markdown
+    assert "alpha-feedback.jsonl" not in markdown
+
+    json_export = tmp_path / "agentledger-feedback.json"
+    assert (
+        cli.main(
+            [
+                "feedback-export",
+                "--out",
+                str(out),
+                "--output",
+                str(json_export),
+                "--output-format",
+                "json",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.feedback_export_result.v1"
+    assert payload["ok"] is True
+    assert payload["out"] == str(out.resolve())
+    assert payload["output"] == str(json_export.resolve())
+    assert payload["output_format"] == "json"
+    assert payload["export_schema_version"] == "agentledger.feedback_export.v1"
+    assert payload["total_entries"] == 1
+    assert payload["returned_entries"] == 1
+    assert payload["errors"] == []
+
+    exported = json.loads(json_export.read_text(encoding="utf-8"))
+    assert exported["schema_version"] == "agentledger.feedback_export.v1"
+    assert exported["review"]["omits_local_paths"] is True
+    assert exported["entries"][0]["note"] == "Review flow was clear."
+    assert "run_dir" not in exported["entries"][0]
+    assert "feedback_file" not in exported["entries"][0]
+    assert "run_dir" not in exported["runs"][0]
+    assert "feedback_file" not in exported["runs"][0]
+
+
 def test_feedback_summary_missing_output_json(tmp_path: Path, capsys) -> None:
     out = tmp_path / "missing-ledger"
 
