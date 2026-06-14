@@ -16,6 +16,7 @@ SCHEMAS = {
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
     "feedback": "agentledger.feedback.v1",
+    "feedback_summary": "agentledger.feedback_summary.v1",
     "inspect_report": "agentledger.inspect_report.v1",
     "check": "agentledger.check.v1",
     "review": "agentledger.review.v1",
@@ -129,6 +130,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
                 "low",
             ],
         ),
+        "feedback_summary": _run_json(capsys, ["feedback-summary", "--format", "json", "--out", str(out)]),
         "inspect_report": _run_json(capsys, ["inspect-report", "--format", "json", str(second)]),
         "check": _run_json(capsys, ["check", "--format", "json", "--allow-warnings", str(second)]),
         "review": _run_json(capsys, ["review", "--format", "json", "--out", str(out), "--allow-warnings"]),
@@ -190,6 +192,21 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "run_dir",
             "feedback_file",
             "entry",
+            "entries",
+            "errors",
+        },
+        "feedback_summary": {
+            "schema_version",
+            "ok",
+            "out",
+            "filters",
+            "total_entries",
+            "returned_entries",
+            "run_count",
+            "runs_with_feedback",
+            "categories",
+            "severities",
+            "runs",
             "entries",
             "errors",
         },
@@ -301,6 +318,30 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert feedback["entries"]
     _assert_keys(
         feedback["entry"],
+        {
+            "schema_version",
+            "id",
+            "created_at",
+            "run_id",
+            "run_dir",
+            "category",
+            "severity",
+            "source",
+            "note",
+            "redacted",
+        },
+    )
+
+    feedback_summary = json_payloads["feedback_summary"]
+    assert feedback_summary["ok"] is True
+    assert feedback_summary["total_entries"] >= 1
+    assert feedback_summary["returned_entries"] >= 1
+    _assert_keys(feedback_summary["filters"], {"category", "severity", "limit"})
+    assert feedback_summary["runs"]
+    _assert_keys(feedback_summary["runs"][0], {"run_id", "run_dir", "feedback_file", "entry_count"})
+    assert feedback_summary["entries"]
+    _assert_keys(
+        feedback_summary["entries"][0],
         {
             "schema_version",
             "id",

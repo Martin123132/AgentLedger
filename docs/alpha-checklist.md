@@ -58,6 +58,7 @@ Expected result:
 - Record local feedback for the latest run:
   - `python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."`
   - `python -m agentledger feedback --out .agentledger --list`
+  - `python -m agentledger feedback-summary --out .agentledger`
 - Inspect a specific run report:
   - `python -m agentledger inspect-report .agentledger\<run-id>`
 - Check a specific run report:

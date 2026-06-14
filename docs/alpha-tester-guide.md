@@ -79,6 +79,7 @@ python -m agentledger history --out .agentledger
 python -m agentledger review --out .agentledger --allow-warnings
 python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
+python -m agentledger feedback-summary --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --repo . $run
@@ -92,6 +93,7 @@ Expected result:
 - `history` shows the pytest run
 - `review` prints the latest report paths and pass/warn/block policy status
 - `feedback` records local notes in the latest run folder and lists them back
+- `feedback-summary` rolls local notes up across run folders
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums

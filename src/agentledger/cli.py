@@ -25,10 +25,12 @@ from .export import write_html, write_json, write_markdown
 from .feedback import (
     FEEDBACK_CATEGORIES,
     FEEDBACK_SCHEMA,
+    FEEDBACK_SUMMARY_SCHEMA,
     FEEDBACK_SEVERITIES,
     FeedbackError,
     append_feedback,
     read_feedback,
+    summarize_feedback,
 )
 from .gittools import snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
@@ -126,6 +128,15 @@ def build_parser() -> argparse.ArgumentParser:
     feedback.add_argument("--source", default="tester", help="Short local label for who supplied the feedback.")
     feedback.add_argument("--list", action="store_true", dest="list_entries", help="List feedback for the run.")
     feedback.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    feedback_summary = sub.add_parser("feedback-summary", help="Summarize alpha feedback across runs.")
+    feedback_summary.add_argument("--repo", default=".", help="Target git repository for config lookup.")
+    feedback_summary.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    feedback_summary.add_argument("--out", default=None, help="Evidence output directory.")
+    feedback_summary.add_argument("--limit", type=int, default=20, help="Maximum number of feedback entries to show.")
+    feedback_summary.add_argument("--category", choices=FEEDBACK_CATEGORIES, default=None, help="Only include this feedback category.")
+    feedback_summary.add_argument("--severity", choices=FEEDBACK_SEVERITIES, default=None, help="Only include this feedback severity.")
+    feedback_summary.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     review = sub.add_parser("review", help="Summarize latest or selected run with policy status.")
     review.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
@@ -867,6 +878,16 @@ def _format_feedback_entry(entry: dict) -> str:
     return f"- {created_at} | {severity} | {category} | {source}: {note}"
 
 
+def _format_feedback_summary_entry(entry: dict) -> str:
+    created_at = str(entry.get("created_at") or "unknown time")
+    category = str(entry.get("category") or "other")
+    severity = str(entry.get("severity") or "medium")
+    source = str(entry.get("source") or "tester")
+    run_id = str(entry.get("run_id") or "unknown run")
+    note = str(entry.get("note") or "").replace("\r", " ").replace("\n", " ")
+    return f"- {created_at} | {severity} | {category} | {run_id} | {source}: {note}"
+
+
 def _handle_feedback(args: argparse.Namespace) -> int:
     action = "list" if args.list_entries else "record"
     if args.list_entries and args.note is not None:
@@ -928,6 +949,97 @@ def _handle_feedback(args: argparse.Namespace) -> int:
     if entry["redacted"]:
         print("Note: feedback was redacted before saving.")
     print("Next: keep alpha-feedback.jsonl local unless reviewed; do not commit .agentledger folders.")
+    return 0
+
+
+def _feedback_summary_error(args: argparse.Namespace, errors: list[str], out_root: Path | None = None) -> int:
+    if getattr(args, "format", "text") == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": FEEDBACK_SUMMARY_SCHEMA,
+                    "ok": False,
+                    "out": str(out_root) if out_root is not None else None,
+                    "filters": {
+                        "category": getattr(args, "category", None),
+                        "severity": getattr(args, "severity", None),
+                        "limit": getattr(args, "limit", None),
+                    },
+                    "total_entries": 0,
+                    "returned_entries": 0,
+                    "run_count": 0,
+                    "runs_with_feedback": 0,
+                    "categories": {},
+                    "severities": {},
+                    "runs": [],
+                    "entries": [],
+                    "errors": errors,
+                },
+                indent=2,
+            )
+        )
+    else:
+        for message in errors:
+            print(message)
+    return 2
+
+
+def _handle_feedback_summary(args: argparse.Namespace) -> int:
+    repo = Path(args.repo or ".").resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return _feedback_summary_error(args, [f"Config error: {exc}"])
+    out_root = _resolve_out_root(args, repo, config)
+
+    try:
+        summary = summarize_feedback(
+            out_root=out_root,
+            limit=args.limit,
+            category=args.category,
+            severity=args.severity,
+        )
+    except FeedbackError as exc:
+        return _feedback_summary_error(args, [str(exc)], out_root)
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(summary, indent=2))
+        return 0 if summary["ok"] else 2
+
+    print(f"AgentLedger feedback summary in {out_root}:")
+    print(
+        f"Entries: {summary['returned_entries']} shown / {summary['total_entries']} total "
+        f"across {summary['runs_with_feedback']} runs"
+    )
+    filters = summary["filters"]
+    active_filters = [
+        f"{name}={value}"
+        for name, value in filters.items()
+        if name != "limit" and value is not None
+    ]
+    if active_filters:
+        print(f"Filters: {', '.join(active_filters)}")
+    if summary["categories"]:
+        print(
+            "Categories: "
+            + ", ".join(f"{name}={count}" for name, count in summary["categories"].items())
+        )
+    if summary["severities"]:
+        print(
+            "Severities: "
+            + ", ".join(f"{name}={count}" for name, count in summary["severities"].items())
+        )
+    if summary["entries"]:
+        print("Recent feedback:")
+        for entry in summary["entries"]:
+            print(_format_feedback_summary_entry(entry))
+    else:
+        print("No feedback entries found.")
+    if summary["errors"]:
+        print("Errors:")
+        for error in summary["errors"]:
+            print(f"- {error}")
+        return 2
     return 0
 
 
@@ -1220,6 +1332,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_history(args)
     if args.command_name == "feedback":
         return _handle_feedback(args)
+    if args.command_name == "feedback-summary":
+        return _handle_feedback_summary(args)
     if args.command_name == "review":
         return _handle_review(args)
     if args.command_name == "compare":

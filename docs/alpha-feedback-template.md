@@ -76,6 +76,7 @@ Optional command to attach notes to the latest local run:
 ```powershell
 python -m agentledger feedback --out .agentledger --category friction --severity medium --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
+python -m agentledger feedback-summary --out .agentledger
 ```
 
 Feedback is stored in `alpha-feedback.jsonl` beside the run reports. Do not

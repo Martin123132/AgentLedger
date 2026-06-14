@@ -112,6 +112,29 @@ Stable fields:
 Each feedback entry includes `schema_version`, `id`, `created_at`, `run_id`,
 `run_dir`, `category`, `severity`, `source`, `note`, and `redacted`.
 
+### `agentledger feedback-summary --format json`
+
+Schema: `agentledger.feedback_summary.v1`
+
+Use this to summarize local alpha feedback across run folders without opening
+each run directory. The command reads `alpha-feedback.jsonl` files under the
+configured AgentLedger output directory.
+
+Stable fields:
+
+- `ok`: boolean
+- `out`: resolved AgentLedger output directory, or `null` on config failure
+- `filters`: active `category`, `severity`, and `limit`
+- `total_entries`: total matching feedback entries before the limit is applied
+- `returned_entries`: number of entries included in this response
+- `run_count`: number of run folders scanned
+- `runs_with_feedback`: number of run folders with matching feedback
+- `categories`: matching entry counts by category
+- `severities`: matching entry counts by severity
+- `runs`: run-level feedback file and count summaries
+- `entries`: recent matching feedback entries
+- `errors`: human-readable error list
+
 ### `agentledger inspect-report --format json <run-dir>`
 
 Schema: `agentledger.inspect_report.v1`

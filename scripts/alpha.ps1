@@ -108,6 +108,7 @@ try {
     Write-Host "- First confusing command, if any: <fill in>"
     Write-Host "- Report clarity: <clear / unclear + notes>"
     Write-Host "- Optional local feedback: python -m agentledger feedback --out $Out --note ""First confusing thing: ..."""
+    Write-Host "- Optional feedback summary: python -m agentledger feedback-summary --out $Out"
     Write-Host ""
     Write-Host "Do not send or commit .agentledger folders, zip bundles, secrets, or sensitive evidence unless explicitly requested."
     Write-Host "Use docs/alpha-feedback-template.md for fuller notes."
