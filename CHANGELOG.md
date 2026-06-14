@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added optional JSON summaries to release readiness checks for CI and agent
+  handoffs.
 - Added release process documentation consistency tests to keep version examples
   and release gates aligned with the release tooling.
 - Added `docs/release-process.md` with the end-to-end alpha release checklist.

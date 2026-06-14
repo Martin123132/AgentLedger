@@ -54,12 +54,14 @@ signing keys.
 ```powershell
 python scripts/release_notes.py --version 0.1.8a0 --check
 python -m pytest
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 ```
 
 `scripts/release-check.ps1` validates version consistency, changelog release
 notes source, git hygiene, isolated wheel metadata, tests, install check, and
-the Windows smoke flow.
+the Windows smoke flow. `-JsonOutput` writes an
+`agentledger.release_check.v1` summary that can be referenced from PR or release
+notes without parsing console output.
 
 If `-RequireCleanGit` fails because release prep changes are uncommitted, commit
 the intended source changes and rerun the command from that clean branch.
@@ -73,6 +75,7 @@ PR body should include:
 - the path to the draft release notes file
 - local `python -m pytest` result
 - local `scripts/release-check.ps1 -RequireCleanGit` result
+- local release-check JSON summary path or status
 
 Before merging:
 
@@ -100,6 +103,7 @@ gh run watch <run-id> --repo Martin123132/AgentLedger --interval 10 --exit-statu
 Expected result:
 
 - The manual Release Readiness workflow passes on the merge commit.
+- The workflow logs include the release-check JSON summary.
 - The workflow URL is added to the GitHub release notes validation section.
 
 ## 6. Tag and verify

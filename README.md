@@ -150,6 +150,7 @@ powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
+powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 ```
 
 ```bash
@@ -210,6 +211,9 @@ python scripts/release_notes.py --version 0.1.8-alpha --output $env:TEMP\agentle
 That script checks version consistency, git hygiene, tracked evidence guardrails,
 wheel build metadata, pytest, install verification, and the Windows smoke flow.
 Use `-RequireCleanGit` before tagging or publishing a release candidate.
+Use `-JsonOutput <path>` to write a machine-readable
+`agentledger.release_check.v1` summary for CI or agent handoffs. Keep that file
+outside the repo, for example under `$env:TEMP`.
 Use `scripts/prepare_release.py` to move current Unreleased notes into a dated
 release section while updating `pyproject.toml` and `src/agentledger/__init__.py`
 together. Run it with `--dry-run` first. Add `--release-notes-output` to write
