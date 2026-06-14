@@ -61,6 +61,8 @@ Result:
 
 Was the report understandable?
 
+Did `agentledger review` make the latest run status clear?
+
 What was useful?
 
 What was noisy or unclear?

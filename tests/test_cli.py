@@ -612,6 +612,102 @@ def test_history_json_output(tmp_path: Path, capsys) -> None:
     assert payload["runs"][0]["changed_files"] == 0
 
 
+def test_review_latest_summarizes_check_status(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["review", "--out", str(out)]) == 1
+    output = capsys.readouterr().out
+    assert "AgentLedger review: warn" in output
+    assert "Summary: 2 warnings; review before accepting." in output
+    assert f"Run: {run_dir}" in output
+    assert f"Markdown report: {run_dir / 'agentledger-report.md'}" in output
+    assert f"JSON report: {run_dir / 'agentledger-report.json'}" in output
+    assert f"HTML report: {run_dir / 'agentledger-report.html'}" in output
+    assert f"Zip bundle: {run_dir}.zip" in output
+    assert "Warnings:" in output
+    assert "- test_evidence: Command was not recognized as a test or verification command." in output
+    assert "- repo_state: Repository had 1 changed file after the run." in output
+    assert "Next:" in output
+    assert "- Do not commit .agentledger folders or zip bundles." in output
+
+    assert cli.main(["review", "--out", str(out), "--allow-warnings"]) == 0
+
+
+def test_review_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["review", "--format", "json", "--out", str(out)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.review.v1"
+    assert payload["status"] == "pass"
+    assert payload["ok"] is True
+    assert payload["summary"] == "All 9 checks passed."
+    assert payload["run_dir"] == str(run_dir.resolve())
+    assert payload["paths"]["markdown"] == str(run_dir / "agentledger-report.md")
+    assert payload["paths"]["zip"] == f"{run_dir}.zip"
+    assert payload["check"]["schema_version"] == "agentledger.check.v1"
+    assert payload["check"]["command"].startswith(str(sys.executable))
+    assert payload["command_exit_code"] == 0
+    assert payload["review_exit_code"] == 0
+
+
+def test_review_missing_latest_prints_hint(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "ledger"
+    out.mkdir()
+
+    assert cli.main(["review", "--out", str(out)]) == 2
+    output = capsys.readouterr().out
+    assert "No latest run pointer found:" in output
+    assert "Run a capture first:" in output
+
+
 def test_inspect_report_summarizes_command(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

@@ -103,6 +103,8 @@ try {
     $run = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)
     Invoke-AgentLedger @("check", "--allow-warnings", $run)
+    Invoke-AgentLedger @("review", "--out", $out, "--allow-warnings")
+    Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings")
     Invoke-AgentLedgerJsonCheck -Run $run -OutputPath $checkJson
     Invoke-AgentLedger @("verify-bundle", "${run}.zip")
 

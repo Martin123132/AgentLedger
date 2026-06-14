@@ -95,6 +95,18 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_argument("--limit", type=int, default=10, help="Maximum number of runs to show.")
     history.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
+    review = sub.add_parser("review", help="Summarize latest or selected run with policy status.")
+    review.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
+    review.add_argument("--repo", default=None, help="Target git repository for config/output lookup.")
+    review.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    review.add_argument("--out", default=None, help="Evidence output directory.")
+    review.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    review.add_argument(
+        "--allow-warnings",
+        action="store_true",
+        help="Return success for pass or warn statuses; block statuses still return 2.",
+    )
+
     compare = sub.add_parser("compare", help="Compare two report folders side by side.")
     compare.add_argument("old_run_dir", help="Path to older run directory.")
     compare.add_argument("new_run_dir", help="Path to newer run directory.")
@@ -428,35 +440,54 @@ def _resolve_out_root(args: argparse.Namespace, repo: Path, config: AgentLedgerC
     return (repo / configured).resolve()
 
 
+def _capture_hint(out_root: Path) -> str:
+    return f"Run a capture first: python -m agentledger run --out {out_root} -- <command>"
+
+
+def _resolve_latest_run_dir(out_root: Path) -> tuple[Path | None, list[str]]:
+    latest_path = out_root / "latest.txt"
+    if not out_root.exists():
+        return None, [
+            f"No AgentLedger output directory found: {out_root}",
+            _capture_hint(out_root),
+        ]
+    if not latest_path.exists():
+        return None, [
+            f"No latest run pointer found: {latest_path}",
+            _capture_hint(out_root),
+        ]
+    latest_value = latest_path.read_text(encoding="utf-8").strip()
+    if not latest_value:
+        return None, [
+            f"Latest run pointer is empty: {latest_path}",
+            "Run another capture to refresh latest.txt.",
+        ]
+    latest_dir = Path(latest_value)
+    if not latest_dir.is_absolute():
+        candidate = out_root / latest_dir
+        latest_dir = candidate if candidate.exists() else latest_dir
+    latest_dir = latest_dir.resolve()
+    if not latest_dir.exists():
+        return None, [
+            f"Latest report directory not found: {latest_dir}",
+            f"latest.txt points to: {latest_value}",
+            "Run another capture to refresh latest.txt.",
+        ]
+    return latest_dir, []
+
+
 def _handle_open_latest(args: argparse.Namespace) -> int:
-    repo = Path(args.repo).resolve()
+    repo = Path(args.repo or ".").resolve()
     try:
         config = _load_output_config(args, repo)
     except ConfigError as exc:
         print(f"Config error: {exc}")
         return 2
     out_root = _resolve_out_root(args, repo, config)
-    latest_path = out_root / "latest.txt"
-    if not out_root.exists():
-        print(f"No AgentLedger output directory found: {out_root}")
-        print(f"Run a capture first: python -m agentledger run --out {out_root} -- <command>")
-        return 2
-    if not latest_path.exists():
-        print(f"No latest run pointer found: {latest_path}")
-        print(f"Run a capture first: python -m agentledger run --out {out_root} -- <command>")
-        return 2
-    latest_value = latest_path.read_text(encoding="utf-8").strip()
-    if not latest_value:
-        print(f"Latest run pointer is empty: {latest_path}")
-        print("Run another capture to refresh latest.txt.")
-        return 2
-    latest_dir = Path(latest_value)
-    if not latest_dir.is_absolute():
-        latest_dir = latest_dir if latest_dir.exists() else (out_root / latest_dir)
-    if not latest_dir.exists():
-        print(f"Latest report directory not found: {latest_dir}")
-        print(f"latest.txt points to: {latest_value}")
-        print("Run another capture to refresh latest.txt.")
+    latest_dir, errors = _resolve_latest_run_dir(out_root)
+    if latest_dir is None:
+        for message in errors:
+            print(message)
         return 2
 
     markdown_path = latest_dir / "agentledger-report.md"
@@ -549,6 +580,123 @@ def _handle_history(args: argparse.Namespace) -> int:
         )
         print(f"  report={item['markdown']}")
     return 0
+
+
+def _review_paths(run_dir: Path) -> dict[str, str | None]:
+    zip_path = run_dir.with_suffix(".zip")
+    return {
+        "markdown": str(run_dir / "agentledger-report.md"),
+        "json": str(run_dir / "agentledger-report.json"),
+        "html": str(run_dir / "agentledger-report.html"),
+        "zip": str(zip_path) if zip_path.exists() else None,
+    }
+
+
+def _load_review_run_dir(args: argparse.Namespace) -> Path | None:
+    if args.run_dir:
+        return Path(args.run_dir).resolve()
+
+    repo = Path(args.repo or ".").resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        print(f"Config error: {exc}")
+        return None
+    out_root = _resolve_out_root(args, repo, config)
+    latest_dir, errors = _resolve_latest_run_dir(out_root)
+    if latest_dir is None:
+        for message in errors:
+            print(message)
+        return None
+    return latest_dir
+
+
+def _format_review(result: dict, paths: dict[str, str | None]) -> str:
+    lines = [
+        f"AgentLedger review: {result['status']}",
+        f"Summary: {result['summary']}",
+        f"Run: {result['run_dir']}",
+    ]
+    if "command" in result:
+        lines.extend(
+            [
+                f"Command: {result['command']}",
+                f"Exit code: {result['exit_code'] if result['exit_code'] is not None else 'n/a'}",
+                f"Changed files: {result['changed_files']}",
+                f"Test framework: {result['test_framework']}",
+                f"Privacy mode: {result['privacy_mode']}",
+            ]
+        )
+
+    lines.extend(
+        [
+            f"Markdown report: {paths['markdown']}",
+            f"JSON report: {paths['json']}",
+            f"HTML report: {paths['html']}",
+        ]
+    )
+    if paths["zip"]:
+        lines.append(f"Zip bundle: {paths['zip']}")
+
+    if result["blocking_rules"]:
+        lines.append("Blockers:")
+        for rule in result["blocking_rules"]:
+            lines.append(f"- {rule['id']}: {rule['message']}")
+    if result["warning_rules"]:
+        lines.append("Warnings:")
+        for rule in result["warning_rules"]:
+            lines.append(f"- {rule['id']}: {rule['message']}")
+
+    if result["status"] == "block":
+        next_line = "Fix blockers, rerun the command, then review again."
+    elif result["status"] == "warn":
+        next_line = "Read the Markdown report and warning rules before accepting the work."
+    else:
+        next_line = "Read the Markdown report, then keep or share only evidence you have reviewed."
+    lines.extend(
+        [
+            "Next:",
+            f"- {next_line}",
+            "- Do not commit .agentledger folders or zip bundles.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _handle_review(args: argparse.Namespace) -> int:
+    run_dir = _load_review_run_dir(args)
+    if run_dir is None:
+        return 2
+    try:
+        config = _load_check_config(args, run_dir)
+    except ConfigError as exc:
+        print(f"Config error: {exc}")
+        return 2
+    policy = CheckPolicy(
+        require_tests=config.check_require_tests is True,
+        dirty=config.check_dirty or "warn",
+        max_changed_files=config.check_max_changed_files,
+    )
+    allow_warnings = getattr(args, "allow_warnings", False) or config.check_allow_warnings is True
+    result = build_check(run_dir, policy)
+    paths = _review_paths(run_dir)
+    exit_code = check_exit_code(result["status"], allow_warnings)
+    if getattr(args, "format", "text") == "json":
+        payload = {
+            "schema_version": "agentledger.review.v1",
+            "status": result["status"],
+            "ok": result["ok"],
+            "summary": result["summary"],
+            "run_dir": result["run_dir"],
+            "command_exit_code": result.get("exit_code"),
+            "paths": paths,
+            "check": result,
+            "review_exit_code": exit_code,
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        print(_format_review(result, paths))
+    return exit_code
 
 
 def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandResult:
@@ -715,6 +863,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_open_latest(args)
     if args.command_name == "history":
         return _handle_history(args)
+    if args.command_name == "review":
+        return _handle_review(args)
     if args.command_name == "compare":
         return _handle_compare(args)
     if args.command_name == "check":

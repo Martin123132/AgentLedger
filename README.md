@@ -90,6 +90,7 @@ Manual review loop:
 
 ```powershell
 python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
+python -m agentledger review --out .agentledger --allow-warnings
 python -m agentledger open-latest --out .agentledger
 python -m agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
@@ -295,6 +296,18 @@ artifact warnings, and redaction markers.
 JSON output includes stable CI fields: `ok`, `summary`, `rule_counts`,
 `warning_rules`, and `blocking_rules`, alongside the full `rules` list.
 
+Review the latest run with report paths and policy status in one command:
+
+```powershell
+agentledger review --out .agentledger --allow-warnings
+agentledger review .agentledger\2026-06-11T120000Z-abc12345
+agentledger review --format json --out .agentledger --allow-warnings
+```
+
+`review` uses the same pass/warn/block policy and exit codes as `check`, then
+adds the Markdown/JSON/HTML report paths, zip bundle path when present, warning
+or blocking rule summaries, and a short next-action hint.
+
 You can tune the default check policy in `.agentledger.toml`:
 
 ```toml
@@ -328,6 +341,7 @@ The normal local review loop is:
 
 ```powershell
 agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
+agentledger review --out .agentledger --allow-warnings
 agentledger open-latest --out .agentledger
 agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
@@ -341,6 +355,7 @@ folder and privacy mode:
 
 ```powershell
 agentledger run --repo . -- python -m pytest
+agentledger review --repo . --allow-warnings
 agentledger open-latest --repo .
 agentledger history --repo .
 $run = (Get-Content .agentledger\latest.txt).Trim()
