@@ -160,6 +160,9 @@ bash ./scripts/smoke.sh
 ```
 
 There are also GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
+For pre-tag release validation, run the manual `Release Readiness` workflow in
+GitHub Actions. It executes `.github/workflows/release-check.yml`, which calls
+`scripts/release-check.ps1` on Windows with `-RequireCleanGit` by default.
 The smoke scripts validate both text and JSON command surfaces.
 For CI or bot consumers, see `docs/check-json-ci.md` and
 `docs/json-contracts.md`. Agents can also run

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added a manual GitHub Actions release-readiness workflow for pre-tag
+  validation with `scripts/release-check.ps1`.
+
 ## 0.1.7-alpha - 2026-06-14
 
 - Added a PowerShell release-readiness check for version consistency, git
