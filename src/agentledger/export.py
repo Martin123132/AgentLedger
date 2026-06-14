@@ -37,6 +37,40 @@ def _diff_text(report: LedgerReport) -> str:
     return ""
 
 
+def _review_notes(report: LedgerReport, changed_files: int, artifact_warn: int) -> list[str]:
+    notes: list[str] = []
+    command = report.command
+    if command is None:
+        notes.append("Snapshot-only run; use this as repository state evidence, not command completion evidence.")
+    elif command.exit_code != 0:
+        notes.append("Command failed; inspect stderr/stdout before accepting the work.")
+    elif command.test_detected:
+        notes.append(f"Verification command detected: {command.test_framework or 'test command'}.")
+    else:
+        notes.append("No recognized test command detected; run a verification command before accepting the work.")
+
+    if changed_files:
+        suffix = "file" if changed_files == 1 else "files"
+        notes.append(f"Review {changed_files} changed {suffix} in the diff/status output.")
+    else:
+        notes.append("No changed files were detected after the run.")
+
+    if artifact_warn:
+        suffix = "warning" if artifact_warn == 1 else "warnings"
+        notes.append(f"Resolve or explicitly accept {artifact_warn} optional artifact {suffix}.")
+    else:
+        notes.append("No optional artifact warnings were recorded.")
+
+    if report.warnings:
+        suffix = "warning" if len(report.warnings) == 1 else "warnings"
+        notes.append(f"Read {len(report.warnings)} report-level {suffix} before sharing the bundle.")
+
+    if report.privacy_mode == "summary":
+        notes.append("Summary privacy mode omits command transcript content and full diffs from reports.")
+
+    return notes
+
+
 def write_json(report: LedgerReport, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
@@ -52,6 +86,9 @@ def write_markdown(report: LedgerReport, path):
     outcome = _run_outcome(report)
     command_text = _command_text(report)
     zip_path = path.parent.with_suffix(".zip")
+    json_path = path.parent / "agentledger-report.json"
+    html_path = path.parent / "agentledger-report.html"
+    review_notes = _review_notes(report, changed_files, artifact_warn)
     lines = [
         "# AgentLedger Evidence Report",
         "",
@@ -63,12 +100,23 @@ def write_markdown(report: LedgerReport, path):
         f"- Evidence bundle: `{zip_path}`",
         f"- Command: `{command_text}`",
         "",
+        "## Review Notes",
+        "",
+        *[f"- {note}" for note in review_notes],
+        "",
         "## Human Review Checklist",
         "",
         "- [ ] Confirm the command matches the intended task.",
         "- [ ] Review changed files and diff for unexpected edits.",
         "- [ ] Open stdout/stderr transcripts if command output matters.",
         "- [ ] Check artifact warnings before trusting optional integrations.",
+        "",
+        "## Evidence Files",
+        "",
+        f"- Markdown report: `{path}`",
+        f"- JSON report: `{json_path}`",
+        f"- HTML report: `{html_path}`",
+        f"- Evidence bundle: `{zip_path}`",
         "",
         "## Run Metadata",
         "",
@@ -159,6 +207,9 @@ def write_html(report: LedgerReport, path):
         )
     artifacts = "\n".join(artifact_items)
     warnings = "\n".join(f"<li>{escape(warning)}</li>" for warning in report.warnings)
+    review_notes = "\n".join(f"<li>{escape(note)}</li>" for note in _review_notes(report, changed_files, artifact_warn))
+    zip_path = path.parent.with_suffix(".zip")
+    json_path = path.parent / "agentledger-report.json"
     checklist = "\n".join(
         f"<li>{escape(item)}</li>"
         for item in (
@@ -215,6 +266,8 @@ def write_html(report: LedgerReport, path):
     <p><span class="badge {outcome_class}">{escape(outcome)}</span></p>
     <p><strong>Review focus:</strong> inspect the command, changed files, artifact warnings, and evidence bundle before accepting the work.</p>
   </section>
+  <h2>Review Notes</h2>
+  <ul>{review_notes}</ul>
   <section class="grid">
     <div class="box"><strong>Run ID</strong><br><code>{escape(report.run_id)}</code></div>
     <div class="box"><strong>Repo</strong><br><code>{escape(report.target_repo)}</code></div>
@@ -228,6 +281,13 @@ def write_html(report: LedgerReport, path):
   </section>
   <h2>Human Review Checklist</h2>
   <ul class="checklist">{checklist}</ul>
+  <h2>Evidence Files</h2>
+  <ul>
+    <li>Markdown report: <code>{escape(str(path))}</code></li>
+    <li>JSON report: <code>{escape(str(json_path))}</code></li>
+    <li>HTML report: <code>{escape(str(path.parent / 'agentledger-report.html'))}</code></li>
+    <li>Evidence bundle: <code>{escape(str(zip_path))}</code></li>
+  </ul>
   <h2>Command</h2>
   <pre>{escape(command_text)}</pre>
   <p class="muted">Stdout transcript: <code>{escape(command.stdout_path if command and command.stdout_path else 'n/a')}</code><br>

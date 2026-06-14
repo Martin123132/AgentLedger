@@ -169,9 +169,18 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     assert "## Review Summary" in markdown
     assert "- Outcome: `command passed`" in markdown
     assert "- Changed files: `1`" in markdown
+    assert "## Review Notes" in markdown
+    assert "No recognized test command detected; run a verification command before accepting the work." in markdown
+    assert "Review 1 changed file in the diff/status output." in markdown
+    assert "## Evidence Files" in markdown
+    assert f"- Markdown report: `{latest / 'agentledger-report.md'}`" in markdown
+    assert f"- JSON report: `{latest / 'agentledger-report.json'}`" in markdown
     assert "## Human Review Checklist" in markdown
     assert "Confirm the command matches the intended task." in markdown
     assert '<span class="badge ok">command passed</span>' in html
+    assert "<h2>Review Notes</h2>" in html
+    assert "No recognized test command detected; run a verification command before accepting the work." in html
+    assert "<h2>Evidence Files</h2>" in html
     assert "Human Review Checklist" in html
     assert "Review focus:" in html
 
@@ -328,6 +337,7 @@ def test_run_privacy_summary_omits_transcripts_and_full_diff(tmp_path: Path) -> 
     assert diff_detail not in combined
     assert "Command stdout [omitted by privacy-mode summary]." in combined
     assert "Full diff omitted by privacy-mode summary." in combined
+    assert "Summary privacy mode omits command transcript content and full diffs from reports." in combined
     assert "Privacy mode summary skipped RepoMori snapshots." in report["warnings"]
     assert "Privacy mode summary skipped Jester diff gate." in report["warnings"]
     assert "Privacy mode summary skipped Tokometer path evidence." in report["warnings"]
