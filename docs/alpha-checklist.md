@@ -21,7 +21,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 
 Expected result:
 
-- Install check, smoke check, doctor, captured pytest, inspect, and verify all pass.
+- Install check, smoke check, doctor, captured pytest, inspect, check, and verify all pass.
 - A short summary is printed for the tester to send back.
 - `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
 
@@ -50,6 +50,8 @@ Expected result:
   - `python -m agentledger history --out .agentledger --format json`
 - Inspect a specific run report:
   - `python -m agentledger inspect-report .agentledger\<run-id>`
+- Check a specific run report:
+  - `python -m agentledger check --repo . .agentledger\<run-id>`
 - Verify a bundle:
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip`
 - Compare two runs:

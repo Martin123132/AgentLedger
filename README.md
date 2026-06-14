@@ -104,7 +104,8 @@ command transcripts or full diffs in the report/bundle:
 python -m agentledger run --repo . --privacy-mode summary -- python -m pytest
 ```
 
-You can also set repo defaults in `.agentledger.toml`:
+You can also set repo defaults in `.agentledger.toml`. This repository includes
+a public-alpha example at `.agentledger.toml`:
 
 ```toml
 privacy_mode = "summary"
@@ -156,6 +157,7 @@ Alpha docs:
 - `docs/alpha-notes.md`
 - `SECURITY.md`
 - `CHANGELOG.md`
+- `.agentledger.toml`
 
 Alpha install check:
 
