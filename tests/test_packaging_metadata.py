@@ -25,7 +25,6 @@ def built_wheel(tmp_path_factory: pytest.TempPathFactory) -> Path:
             "pip",
             "wheel",
             "--no-deps",
-            "--no-build-isolation",
             "--wheel-dir",
             str(wheel_dir),
             str(ROOT),
