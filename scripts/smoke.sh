@@ -32,6 +32,7 @@ python -m agentledger run \
   -- python -c "from pathlib import Path; Path('note.txt').write_text('hello')"
 
 python -m agentledger open-latest --out "$OUT"
+python -m agentledger open-latest --format json --out "$OUT"
 python -m agentledger history --out "$OUT"
 
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
@@ -80,8 +81,10 @@ if counts["block"] != len(payload["blocking_rules"]):
 print(f"AgentLedger check JSON: {payload['status']} - {payload['summary']}")
 PY
 python -m agentledger verify-bundle "${RUN}.zip"
+python -m agentledger verify-bundle "${RUN}.zip" --format json
 python -m agentledger sign-bundle "${RUN}.zip" --key-file "$SIGNATURE_KEY"
 python -m agentledger verify-bundle "${RUN}.zip" --signature-key-file "$SIGNATURE_KEY"
+python -m agentledger verify-bundle "${RUN}.zip" --format json --signature-key-file "$SIGNATURE_KEY"
 
 python -m agentledger run \
   --repo "$REPO" \

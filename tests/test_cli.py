@@ -590,6 +590,28 @@ def test_open_latest_prints_report_paths(tmp_path: Path, capsys) -> None:
     assert f"HTML report: {latest_dir / 'agentledger-report.html'}" in output
 
 
+def test_open_latest_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"]) == 0
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["open-latest", "--format", "json", "--out", str(out)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.open_latest.v1"
+    assert payload["ok"] is True
+    assert payload["out"] == str(out.resolve())
+    assert payload["latest_run"] == str(latest_dir)
+    assert payload["paths"]["markdown"] == str(latest_dir / "agentledger-report.md")
+    assert payload["paths"]["json"] == str(latest_dir / "agentledger-report.json")
+    assert payload["paths"]["html"] == str(latest_dir / "agentledger-report.html")
+    assert payload["paths"]["zip"] == str(latest_dir.with_suffix(".zip"))
+    assert payload["missing_reports"] == []
+    assert payload["errors"] == []
+
+
 def test_open_latest_missing_pointer_prints_hint(tmp_path: Path, capsys) -> None:
     out = tmp_path / "ledger"
     out.mkdir()
@@ -598,6 +620,21 @@ def test_open_latest_missing_pointer_prints_hint(tmp_path: Path, capsys) -> None
     output = capsys.readouterr().out
     assert "No latest run pointer found:" in output
     assert "Run a capture first:" in output
+
+
+def test_open_latest_json_missing_pointer(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "ledger"
+    out.mkdir()
+
+    assert cli.main(["open-latest", "--format", "json", "--out", str(out)]) == 2
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.open_latest.v1"
+    assert payload["ok"] is False
+    assert payload["out"] == str(out.resolve())
+    assert payload["latest_run"] is None
+    assert payload["missing_reports"] == []
+    assert "No latest run pointer found:" in payload["errors"][0]
+    assert "Run a capture first:" in payload["errors"][1]
 
 
 def test_history_lists_recent_runs(tmp_path: Path, capsys) -> None:
@@ -1404,6 +1441,60 @@ def test_verify_bundle_command(tmp_path: Path, capsys) -> None:
     assert "Missing agentledger-report.json" in output
 
 
+def test_verify_bundle_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    key_file = tmp_path / "agentledger-signing-key.txt"
+    key_file.write_text("shared-test-key\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    manifest_member, manifest = _bundle_manifest(bundle)
+    capsys.readouterr()
+
+    assert cli.main(["verify-bundle", str(bundle), "--format", "json"]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.verify_bundle.v1"
+    assert payload["ok"] is True
+    assert payload["bundle"] == str(bundle)
+    assert payload["run_id"] == run_dir.name
+    assert payload["manifest"]["member"] == manifest_member
+    assert payload["manifest"]["file_count"] == manifest["file_count"]
+    assert payload["signature"]["status"] == "not_present"
+    assert payload["signature"]["verified"] is False
+    assert payload["reports"]["json"].endswith("agentledger-report.json")
+    assert payload["reports"]["markdown"].endswith("agentledger-report.md")
+    assert payload["reports"]["html"].endswith("agentledger-report.html")
+    assert payload["artifacts"]["warn"] == 0
+    assert payload["errors"] == []
+
+    assert cli.main(["sign-bundle", str(bundle), "--key-file", str(key_file)]) == 0
+    signature_member, _signature = _bundle_signature(bundle)
+    capsys.readouterr()
+
+    assert cli.main(["verify-bundle", str(bundle), "--format", "json", "--signature-key-file", str(key_file)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["signature"]["member"] == signature_member
+    assert payload["signature"]["status"] == "verified"
+    assert payload["signature"]["verified"] is True
+
+
 def test_verify_bundle_requires_manifest(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
@@ -1523,6 +1614,14 @@ def test_sign_bundle_replaces_existing_signature(tmp_path: Path, capsys) -> None
     assert "verified" in capsys.readouterr().out
     assert cli.main(["verify-bundle", str(bundle), "--signature-key-file", str(first_key)]) == 2
     assert "Signature mismatch" in capsys.readouterr().out
+
+    assert cli.main(["verify-bundle", str(bundle), "--format", "json", "--signature-key-file", str(first_key)]) == 2
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.verify_bundle.v1"
+    assert payload["ok"] is False
+    assert payload["signature"]["status"] == "invalid"
+    assert payload["signature"]["verified"] is False
+    assert any("Signature mismatch" in error for error in payload["errors"])
 
 
 def test_verify_bundle_requires_signature_with_key(tmp_path: Path, capsys) -> None:

@@ -94,11 +94,13 @@ Manual review loop:
 python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 python -m agentledger review --out .agentledger --allow-warnings
 python -m agentledger open-latest --out .agentledger
+python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --allow-warnings $run
 python -m agentledger verify-bundle "${run}.zip"
+python -m agentledger verify-bundle "${run}.zip" --format json
 ```
 
 Use summary privacy mode when you want counts, paths, and metadata without full
@@ -330,7 +332,11 @@ Open the latest run summary paths:
 
 ```powershell
 agentledger open-latest --out .agentledger
+agentledger open-latest --out .agentledger --format json
 ```
+
+JSON output includes `ok`, `latest_run`, report `paths`, `missing_reports`,
+and `errors` for CI or agent handoffs.
 
 List recent runs:
 
@@ -346,11 +352,13 @@ The normal local review loop is:
 agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 agentledger review --out .agentledger --allow-warnings
 agentledger open-latest --out .agentledger
+agentledger open-latest --out .agentledger --format json
 agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger check --allow-warnings $run
 agentledger verify-bundle "${run}.zip"
+agentledger verify-bundle "${run}.zip" --format json
 ```
 
 With a repo `.agentledger.toml`, the same loop can use the configured output
@@ -375,11 +383,13 @@ Verify a produced zip bundle:
 
 ```powershell
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip
+agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --format json
 ```
 
 `verify-bundle` requires `agentledger-bundle-manifest.json` inside the zip and
 checks each listed file's byte size and SHA-256 digest before reporting
-`Bundle OK`.
+`Bundle OK`. JSON output includes `ok`, `manifest`, `signature`, report
+members, artifact counts, and `errors`.
 
 Optionally sign a bundle manifest with a local shared-key HMAC:
 
@@ -387,6 +397,7 @@ Optionally sign a bundle manifest with a local shared-key HMAC:
 agentledger sign-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --key-file .agentledger-signing-key
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --signature-key-file .agentledger-signing-key
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --signature-key-file .agentledger-signing-key --require-signature
+agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --format json --signature-key-file .agentledger-signing-key --require-signature
 ```
 
 This is a shared-key HMAC-SHA256 integrity check over the bundle manifest, not

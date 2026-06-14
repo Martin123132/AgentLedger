@@ -48,6 +48,7 @@ Expected result:
   - `python -m agentledger review --format json --out .agentledger --allow-warnings`
 - List latest run paths:
   - `python -m agentledger open-latest --out .agentledger`
+  - `python -m agentledger open-latest --format json --out .agentledger`
 - Show recent runs:
   - `python -m agentledger history --out .agentledger`
   - `python -m agentledger history --out .agentledger --format json`
@@ -57,9 +58,11 @@ Expected result:
   - `python -m agentledger check --repo . .agentledger\<run-id>`
 - Verify a bundle:
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip`
+  - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --format json`
 - Optional shared-key signature check:
   - `python -m agentledger sign-bundle .agentledger\<run-id>.zip --key-file .agentledger-signing-key`
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --signature-key-file .agentledger-signing-key --require-signature`
+  - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --format json --signature-key-file .agentledger-signing-key --require-signature`
 - Compare two runs:
   - `python -m agentledger compare .agentledger\<run-id-a> .agentledger\<run-id-b>`
 
