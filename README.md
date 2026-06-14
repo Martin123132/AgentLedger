@@ -201,6 +201,7 @@ Alpha release readiness:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit
+python scripts/release_notes.py --version 0.1.7a0 --check
 python scripts/release_notes.py --version 0.1.7-alpha --output $env:TEMP\agentledger-0.1.7-alpha-release.md
 ```
 
@@ -208,8 +209,9 @@ That script checks version consistency, git hygiene, tracked evidence guardrails
 wheel build metadata, pytest, install verification, and the Windows smoke flow.
 Use `-RequireCleanGit` before tagging or publishing a release candidate.
 Use `scripts/release_notes.py` to draft GitHub release notes from the matching
-`CHANGELOG.md` section, then replace the validation TODOs with real run links
-before publishing.
+`CHANGELOG.md` section. It also accepts the PEP 440 package version, such as
+`0.1.7a0`, when checking that the release section exists. Replace the validation
+TODOs with real run links before publishing.
 
 Notes:
 

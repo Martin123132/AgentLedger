@@ -15,6 +15,7 @@ ALPHA_FOOTER = (
 )
 
 HEADING_RE = re.compile(r"^## (?P<title>.+?)\s*$")
+PEP440_ALPHA_RE = re.compile(r"^(?P<base>\d+(?:\.\d+)+)a(?P<number>\d+)$")
 
 
 class ReleaseNotesError(ValueError):
@@ -27,6 +28,12 @@ def normalize_version(version: str) -> str:
         normalized = normalized[1:]
     if not normalized:
         raise ReleaseNotesError("Version must not be empty.")
+    match = PEP440_ALPHA_RE.match(normalized)
+    if match:
+        alpha_number = int(match.group("number"))
+        if alpha_number == 0:
+            return f"{match.group('base')}-alpha"
+        return f"{match.group('base')}-alpha.{alpha_number}"
     return normalized
 
 
@@ -117,6 +124,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Write notes to this file instead of stdout.",
     )
     parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Only verify that CHANGELOG.md has a non-empty section for the version.",
+    )
+    parser.add_argument(
         "--validation-line",
         action="append",
         dest="validation_lines",
@@ -134,6 +146,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
         changelog_text = args.changelog.read_text(encoding="utf-8-sig")
+        if args.check:
+            normalized = normalize_version(args.version)
+            extract_changelog_section(changelog_text, normalized)
+            print(f"Release notes source OK: {normalized}.")
+            return 0
         notes = build_release_notes(
             version=args.version,
             changelog_text=changelog_text,
