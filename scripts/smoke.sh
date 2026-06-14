@@ -9,9 +9,11 @@ trap cleanup EXIT
 ROOT="$(mktemp -d)"
 REPO="$ROOT/repo"
 OUT="$ROOT/ledger"
+SIGNATURE_KEY="$ROOT/agentledger-signing-key.txt"
 
 mkdir -p "$REPO"
 mkdir -p "$OUT"
+printf '%s\n' 'agentledger-smoke-signing-key' > "$SIGNATURE_KEY"
 cd "$REPO"
 
 git init -q
@@ -78,6 +80,8 @@ if counts["block"] != len(payload["blocking_rules"]):
 print(f"AgentLedger check JSON: {payload['status']} - {payload['summary']}")
 PY
 python -m agentledger verify-bundle "${RUN}.zip"
+python -m agentledger sign-bundle "${RUN}.zip" --key-file "$SIGNATURE_KEY"
+python -m agentledger verify-bundle "${RUN}.zip" --signature-key-file "$SIGNATURE_KEY"
 
 python -m agentledger run \
   --repo "$REPO" \
