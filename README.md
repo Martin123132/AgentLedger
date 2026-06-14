@@ -218,6 +218,8 @@ Use `scripts/release_notes.py` to draft GitHub release notes from the matching
 `CHANGELOG.md` section. It also accepts the PEP 440 package version, such as
 `0.1.7a0`, when checking that the release section exists. Replace the validation
 TODOs with real run links before publishing.
+See the [release process](docs/release-process.md) for the full release-day
+checklist.
 
 Notes:
 

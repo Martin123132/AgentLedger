@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `docs/release-process.md` with the end-to-end alpha release checklist.
 - Added the build backend to the `dev` extra so packaging metadata tests can
   build wheels without network build isolation.
 - Made packaging metadata tests avoid network build-isolation setup while
