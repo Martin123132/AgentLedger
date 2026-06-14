@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Scoped release-note publish readiness checks to validation placeholders so
+  changelog highlights can mention TODO checks without blocking publication.
+
 ## 0.1.8-alpha - 2026-06-14
 
 - Added a release rehearsal script that dry-runs release prep, drafts notes

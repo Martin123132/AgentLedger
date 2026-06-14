@@ -144,9 +144,8 @@ def validate_publish_ready(
         problems.append("## Validation section is empty.")
     elif not any(line.lstrip().startswith("- ") for line in validation.splitlines()):
         problems.append("## Validation section must include at least one bullet.")
-
-    if TODO_RE.search(notes_text):
-        problems.append("Release notes still contain TODO placeholders.")
+    elif TODO_RE.search(validation):
+        problems.append("Release notes still contain TODO validation placeholders.")
 
     tag = f"v{normalized}"
     if tag not in notes_text:
@@ -194,7 +193,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--check-publish-ready",
         action="store_true",
-        help="Verify an existing notes file has no TODO placeholders and is ready to publish.",
+        help="Verify an existing notes file has no validation TODO placeholders and is ready to publish.",
     )
     parser.add_argument(
         "--validation-line",
