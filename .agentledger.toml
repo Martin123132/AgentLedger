@@ -1,0 +1,15 @@
+# Public-alpha defaults for dogfooding AgentLedger on this repository.
+# Evidence output stays local and is ignored by git via .gitignore.
+privacy_mode = "summary"
+out = ".agentledger"
+repomori = false
+jester = false
+tokometer = false
+zip = true
+
+# The alpha policy requires captured test evidence but allows warnings to keep
+# summary-privacy and local review notes from breaking exploratory runs.
+check_require_tests = true
+check_dirty = "warn"
+check_max_changed_files = 25
+check_allow_warnings = true

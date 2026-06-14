@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a committed `.agentledger.toml` public-alpha policy for dogfooding
+  AgentLedger on itself, and added `agentledger check` to the alpha pass.
 - Added `.agentledger.toml` policy settings for `agentledger check`, including
   required test evidence, dirty-state behavior, max changed files, and default
   warning handling.

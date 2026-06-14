@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from agentledger import __version__, cli
+from agentledger.config import load_config
 from agentledger.doctor import format_doctor, run_doctor
 from agentledger import report_reader
 
@@ -50,6 +51,24 @@ def make_repo(tmp_path: Path) -> Path:
     git(repo, "add", "README.md")
     git(repo, "commit", "-m", "initial")
     return repo
+
+
+def test_repository_policy_config_parses() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+
+    config = load_config(repo_root)
+
+    assert config.path == repo_root / ".agentledger.toml"
+    assert config.privacy_mode == "summary"
+    assert config.out == ".agentledger"
+    assert config.repomori is False
+    assert config.jester is False
+    assert config.tokometer is False
+    assert config.zip is True
+    assert config.check_require_tests is True
+    assert config.check_dirty == "warn"
+    assert config.check_max_changed_files == 25
+    assert config.check_allow_warnings is True
 
 
 def test_snapshot_writes_json_and_markdown(tmp_path: Path) -> None:

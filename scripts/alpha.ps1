@@ -87,6 +87,7 @@ try {
 
     $latestRun = (Get-Content -LiteralPath $latestFile -Raw).Trim()
     Invoke-CheckedCommand "Inspect latest report" "python" @("-m", "agentledger", "inspect-report", $latestRun)
+    Invoke-CheckedCommand "Check latest report" "python" @("-m", "agentledger", "check", "--repo", ".", $latestRun)
     Invoke-CheckedCommand "Verify latest bundle" "python" @("-m", "agentledger", "verify-bundle", "$latestRun.zip")
 
     $pythonVersion = (& python --version) -join " "

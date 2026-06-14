@@ -44,7 +44,7 @@ Expected result:
 - install check passes
 - smoke check passes
 - a real pytest run is captured under `.agentledger/`
-- latest/history/inspect/verify commands all succeed
+- latest/history/inspect/check/verify commands all succeed
 - the script prints a short summary to send back
 
 ## Smoke test
@@ -77,6 +77,7 @@ python -m agentledger open-latest --out .agentledger
 python -m agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
+python -m agentledger check --repo . $run
 python -m agentledger verify-bundle "$run.zip"
 ```
 
@@ -85,6 +86,7 @@ Expected result:
 - The captured command exits with code `0`
 - `history` shows the pytest run
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
+- `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK`
 
 ## Evidence location
@@ -112,7 +114,7 @@ Please report:
 - the first command that felt confusing
 - any command that failed and the exact error
 - whether the report was understandable
-- whether the latest/history/inspect/verify flow made sense
+- whether the latest/history/inspect/check/verify flow made sense
 - whether anything looked unsafe to share or too noisy
 
 Use `docs/alpha-feedback-template.md` for notes.
