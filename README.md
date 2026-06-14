@@ -104,8 +104,14 @@ command transcripts or full diffs in the report/bundle:
 python -m agentledger run --repo . --privacy-mode summary -- python -m pytest
 ```
 
-You can also set repo defaults in `.agentledger.toml`. This repository includes
-a public-alpha example at `.agentledger.toml`:
+You can also set repo defaults in `.agentledger.toml`. In a repo that does not
+already have one, start one with:
+
+```powershell
+python -m agentledger init-config --repo .
+```
+
+This repository includes a public-alpha example at `.agentledger.toml`:
 
 ```toml
 privacy_mode = "summary"
@@ -247,6 +253,13 @@ Check the installed CLI version:
 ```powershell
 agentledger --version
 python -m agentledger --version
+```
+
+Write a starter policy config:
+
+```powershell
+agentledger init-config --repo C:\path\to\repo
+agentledger init-config --repo C:\path\to\repo --force
 ```
 
 Skip optional integrations:

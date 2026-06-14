@@ -11,7 +11,7 @@ from . import __version__
 from .bundle import write_zip_bundle
 from .classify import detect_test_command
 from .check import CheckPolicy, build_check, check_exit_code, format_check
-from .config import AgentLedgerConfig, ConfigError, load_config
+from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_config
 from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
 from .gittools import snapshot
@@ -110,6 +110,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Return success for pass or warn statuses; block statuses still return 2.",
     )
+
+    init_config = sub.add_parser("init-config", help="Write a starter .agentledger.toml policy config.")
+    init_config.add_argument("--repo", default=".", help="Target repository or project directory.")
+    init_config.add_argument("--config", default=None, help="Path to write config file.")
+    init_config.add_argument("--force", action="store_true", help="Overwrite an existing config file.")
 
     verify = sub.add_parser("verify-bundle", help="Validate a zip evidence bundle.")
     verify.add_argument("bundle", help="Path to bundle zip file.")
@@ -346,6 +351,40 @@ def _handle_check(args: argparse.Namespace) -> int:
     else:
         print(format_check(result))
     return check_exit_code(result["status"], allow_warnings)
+
+
+def _resolve_config_path(repo: Path, config_path: str | None) -> Path:
+    if config_path is None:
+        return (repo / ".agentledger.toml").resolve()
+    path = Path(config_path).expanduser()
+    if not path.is_absolute():
+        path = repo / path
+    return path.resolve()
+
+
+def _handle_init_config(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    if not repo.exists():
+        print(f"Target directory not found: {repo}")
+        return 2
+    if not repo.is_dir():
+        print(f"Target path is not a directory: {repo}")
+        return 2
+
+    config_path = _resolve_config_path(repo, args.config)
+    if config_path.exists() and not args.force:
+        print(f"Config already exists: {config_path}")
+        print("Use --force to overwrite it.")
+        return 2
+    if not config_path.parent.exists():
+        print(f"Config parent directory not found: {config_path.parent}")
+        return 2
+
+    config_path.write_text(STARTER_CONFIG_TEXT, encoding="utf-8")
+    print(f"Wrote AgentLedger config: {config_path}")
+    print(f"Evidence output: {repo / DEFAULT_OUT}")
+    print(f"Next: python -m agentledger run --repo {repo} -- python -m pytest")
+    return 0
 
 
 def _load_cli_config(args: argparse.Namespace, repo: Path) -> AgentLedgerConfig:
@@ -680,6 +719,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_compare(args)
     if args.command_name == "check":
         return _handle_check(args)
+    if args.command_name == "init-config":
+        return _handle_init_config(args)
     if args.command_name == "verify-bundle":
         return _handle_verify_bundle(args)
     parser.error("unknown command")
