@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,22 @@ WARN = "warn"
 BLOCK = "block"
 
 
-def build_check(run_dir: Path) -> dict[str, Any]:
+@dataclass(frozen=True)
+class CheckPolicy:
+    require_tests: bool = False
+    dirty: str = WARN
+    max_changed_files: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "require_tests": self.require_tests,
+            "dirty": self.dirty,
+            "max_changed_files": self.max_changed_files,
+        }
+
+
+def build_check(run_dir: Path, policy: CheckPolicy | None = None) -> dict[str, Any]:
+    policy = policy or CheckPolicy()
     run_dir = run_dir.resolve()
     report_path = run_dir / "agentledger-report.json"
     try:
@@ -41,8 +57,8 @@ def build_check(run_dir: Path) -> dict[str, Any]:
     rules.extend(_schema_rules(report))
     rules.extend(_report_file_rules(run_dir))
     rules.extend(_command_rules(report))
-    rules.extend(_test_evidence_rules(report))
-    rules.extend(_repo_state_rules(report))
+    rules.extend(_test_evidence_rules(report, policy))
+    rules.extend(_repo_state_rules(report, policy))
     rules.extend(_warning_rules(report))
     rules.extend(_artifact_rules(report))
     rules.extend(_redaction_rules(report, run_dir))
@@ -56,6 +72,7 @@ def build_check(run_dir: Path) -> dict[str, Any]:
             "changed_files": changed_file_count(report),
             "test_framework": command_test_framework(report),
             "privacy_mode": str(report.get("privacy_mode") or "standard"),
+            "policy": policy.to_dict(),
         }
     )
     return payload
@@ -117,20 +134,34 @@ def _command_rules(report: dict[str, Any]) -> list[dict[str, str]]:
     return [_rule("command_exit", BLOCK, f"Captured command failed with exit code {exit_code}.")]
 
 
-def _test_evidence_rules(report: dict[str, Any]) -> list[dict[str, str]]:
+def _test_evidence_rules(report: dict[str, Any], policy: CheckPolicy) -> list[dict[str, str]]:
     command = report.get("command")
     if not isinstance(command, dict):
-        return [_rule("test_evidence", WARN, "No command was captured, so test evidence could not be detected.")]
+        status = BLOCK if policy.require_tests else WARN
+        return [_rule("test_evidence", status, "No command was captured, so test evidence could not be detected.")]
     if command.get("test_detected") is True:
         framework = command_test_framework(report)
         return [_rule("test_evidence", PASS, f"Verification command detected: {framework}.")]
-    return [_rule("test_evidence", WARN, "Command was not recognized as a test or verification command.")]
+    status = BLOCK if policy.require_tests else WARN
+    return [_rule("test_evidence", status, "Command was not recognized as a test or verification command.")]
 
 
-def _repo_state_rules(report: dict[str, Any]) -> list[dict[str, str]]:
+def _repo_state_rules(report: dict[str, Any], policy: CheckPolicy) -> list[dict[str, str]]:
     changed = changed_file_count(report)
+    if policy.max_changed_files is not None and changed > policy.max_changed_files:
+        return [
+            _rule(
+                "repo_state",
+                BLOCK,
+                f"Repository had {changed} changed files after the run; maximum is {policy.max_changed_files}.",
+            )
+        ]
     if changed:
         suffix = "file" if changed == 1 else "files"
+        if policy.dirty == PASS:
+            return [_rule("repo_state", PASS, f"Repository had {changed} changed {suffix} after the run; allowed by policy.")]
+        if policy.dirty == BLOCK:
+            return [_rule("repo_state", BLOCK, f"Repository had {changed} changed {suffix} after the run.")]
         return [_rule("repo_state", WARN, f"Repository had {changed} changed {suffix} after the run.")]
     return [_rule("repo_state", PASS, "Repository had no uncommitted changes after the run.")]
 

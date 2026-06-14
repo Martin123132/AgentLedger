@@ -10,7 +10,7 @@ from pathlib import Path
 from . import __version__
 from .bundle import write_zip_bundle
 from .classify import detect_test_command
-from .check import build_check, check_exit_code, format_check
+from .check import CheckPolicy, build_check, check_exit_code, format_check
 from .config import AgentLedgerConfig, ConfigError, load_config
 from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
@@ -102,6 +102,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = sub.add_parser("check", help="Evaluate a run report against default review policy.")
     check.add_argument("run_dir", help="Path to run directory.")
+    check.add_argument("--repo", default=None, help="Target git repository for config lookup.")
+    check.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
     check.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
     check.add_argument(
         "--allow-warnings",
@@ -326,16 +328,47 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
 
 
 def _handle_check(args: argparse.Namespace) -> int:
-    result = build_check(Path(args.run_dir))
+    run_dir = Path(args.run_dir).resolve()
+    try:
+        config = _load_check_config(args, run_dir)
+    except ConfigError as exc:
+        print(f"Config error: {exc}")
+        return 2
+    policy = CheckPolicy(
+        require_tests=config.check_require_tests is True,
+        dirty=config.check_dirty or "warn",
+        max_changed_files=config.check_max_changed_files,
+    )
+    allow_warnings = getattr(args, "allow_warnings", False) or config.check_allow_warnings is True
+    result = build_check(run_dir, policy)
     if getattr(args, "format", "text") == "json":
         print(json.dumps(result, indent=2))
     else:
         print(format_check(result))
-    return check_exit_code(result["status"], getattr(args, "allow_warnings", False))
+    return check_exit_code(result["status"], allow_warnings)
 
 
 def _load_cli_config(args: argparse.Namespace, repo: Path) -> AgentLedgerConfig:
     return load_config(repo, getattr(args, "config", None))
+
+
+def _load_check_config(args: argparse.Namespace, run_dir: Path) -> AgentLedgerConfig:
+    if args.repo is not None:
+        repo = Path(args.repo).resolve()
+    else:
+        repo = _check_config_repo(run_dir)
+    return load_config(repo, getattr(args, "config", None))
+
+
+def _check_config_repo(run_dir: Path) -> Path:
+    try:
+        report = load_report(run_dir)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError):
+        return run_dir
+    target_repo = report.get("target_repo")
+    if isinstance(target_repo, str) and target_repo.strip():
+        return Path(target_repo).resolve()
+    return run_dir
 
 
 def _load_output_config(args: argparse.Namespace, repo: Path) -> AgentLedgerConfig:

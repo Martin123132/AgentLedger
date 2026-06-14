@@ -772,6 +772,158 @@ def test_check_blocks_failed_command(tmp_path: Path, capsys) -> None:
     assert _rule_by_id(payload, "command_exit")["status"] == "block"
 
 
+def test_check_config_requires_tests(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "print('not a test')",
+            ]
+        )
+        == 0
+    )
+    (repo / ".agentledger.toml").write_text("check_require_tests = true\n", encoding="utf-8")
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 2
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["status"] == "block"
+    assert payload["policy"]["require_tests"] is True
+    assert _rule_by_id(payload, "test_evidence")["status"] == "block"
+
+
+def test_check_config_can_allow_dirty_and_warnings(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    (repo / ".agentledger.toml").write_text(
+        "\n".join(
+            [
+                'check_dirty = "pass"',
+                "check_allow_warnings = true",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 0
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["status"] == "warn"
+    assert payload["policy"]["dirty"] == "pass"
+    assert _rule_by_id(payload, "repo_state")["status"] == "pass"
+    assert _rule_by_id(payload, "test_evidence")["status"] == "warn"
+
+
+def test_check_config_max_changed_files_blocks(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    (repo / ".agentledger.toml").write_text(
+        'check_dirty = "pass"\ncheck_max_changed_files = 0\n',
+        encoding="utf-8",
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 2
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["status"] == "block"
+    assert payload["policy"]["max_changed_files"] == 0
+    assert _rule_by_id(payload, "repo_state")["status"] == "block"
+
+
+def test_check_config_errors_are_clear(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    (repo / ".agentledger.toml").write_text('check_dirty = "loud"\n', encoding="utf-8")
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["check", str(run_dir)]) == 2
+    output = capsys.readouterr().out
+    assert "Config error:" in output
+    assert "check_dirty must be 'pass', 'warn', or 'block'" in output
+
+
 def test_check_warns_for_failed_optional_artifact(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
