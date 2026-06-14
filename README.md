@@ -206,6 +206,7 @@ powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit
 python scripts/release_notes.py --version 0.1.8a0 --check
 python scripts/release_notes.py --version 0.1.8-alpha --output $env:TEMP\agentledger-0.1.8-alpha-release.md
+python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --check-publish-ready
 ```
 
 That script checks version consistency, git hygiene, tracked evidence guardrails,
@@ -221,7 +222,8 @@ a draft GitHub release body from the prepared changelog.
 Use `scripts/release_notes.py` to draft GitHub release notes from the matching
 `CHANGELOG.md` section. It also accepts the PEP 440 package version, such as
 `0.1.7a0`, when checking that the release section exists. Replace the validation
-TODOs with real run links before publishing.
+TODOs with real run links before publishing, then run `--check-publish-ready`
+against the final notes file.
 See the [release process](docs/release-process.md) for the full release-day
 checklist.
 

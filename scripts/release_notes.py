@@ -16,6 +16,7 @@ ALPHA_FOOTER = (
 
 HEADING_RE = re.compile(r"^## (?P<title>.+?)\s*$")
 PEP440_ALPHA_RE = re.compile(r"^(?P<base>\d+(?:\.\d+)+)a(?P<number>\d+)$")
+TODO_RE = re.compile(r"\bTODO\b", re.IGNORECASE)
 
 
 class ReleaseNotesError(ValueError):
@@ -103,6 +104,63 @@ def build_release_notes(
     return "\n\n".join(parts).rstrip() + "\n"
 
 
+def heading_section(markdown_text: str, heading: str) -> str | None:
+    lines = markdown_text.splitlines()
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index + 1
+            break
+    if start is None:
+        return None
+
+    end = len(lines)
+    for index in range(start, len(lines)):
+        if lines[index].startswith("## "):
+            end = index
+            break
+    return "\n".join(lines[start:end]).strip()
+
+
+def validate_publish_ready(
+    *,
+    version: str,
+    notes_text: str,
+    require_alpha_footer: bool = True,
+) -> None:
+    normalized = normalize_version(version)
+    problems: list[str] = []
+
+    highlights = heading_section(notes_text, "## Highlights")
+    if highlights is None:
+        problems.append("Missing ## Highlights section.")
+    elif not highlights:
+        problems.append("## Highlights section is empty.")
+
+    validation = heading_section(notes_text, "## Validation")
+    if validation is None:
+        problems.append("Missing ## Validation section.")
+    elif not validation:
+        problems.append("## Validation section is empty.")
+    elif not any(line.lstrip().startswith("- ") for line in validation.splitlines()):
+        problems.append("## Validation section must include at least one bullet.")
+
+    if TODO_RE.search(notes_text):
+        problems.append("Release notes still contain TODO placeholders.")
+
+    tag = f"v{normalized}"
+    if tag not in notes_text:
+        problems.append(f"Release notes must mention tag {tag}.")
+
+    if require_alpha_footer and ALPHA_FOOTER not in notes_text:
+        problems.append("Missing alpha prerelease evidence-handling footer.")
+
+    if problems:
+        raise ReleaseNotesError(
+            "Release notes are not publish-ready:\n- " + "\n- ".join(problems)
+        )
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate draft GitHub release notes from CHANGELOG.md."
@@ -124,9 +182,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Write notes to this file instead of stdout.",
     )
     parser.add_argument(
+        "--notes-file",
+        type=Path,
+        help="Existing release notes file to validate with --check-publish-ready.",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="Only verify that CHANGELOG.md has a non-empty section for the version.",
+    )
+    parser.add_argument(
+        "--check-publish-ready",
+        action="store_true",
+        help="Verify an existing notes file has no TODO placeholders and is ready to publish.",
     )
     parser.add_argument(
         "--validation-line",
@@ -137,7 +205,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--no-alpha-footer",
         action="store_true",
-        help="Omit the alpha prerelease evidence-handling footer.",
+        help="Omit or allow missing the alpha prerelease evidence-handling footer.",
     )
     return parser.parse_args(argv)
 
@@ -145,6 +213,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
+        if args.check and args.check_publish_ready:
+            raise ReleaseNotesError("Use either --check or --check-publish-ready, not both.")
+        if args.check_publish_ready:
+            if args.notes_file is None:
+                raise ReleaseNotesError("--notes-file is required with --check-publish-ready.")
+            notes_text = args.notes_file.read_text(encoding="utf-8-sig")
+            normalized = normalize_version(args.version)
+            validate_publish_ready(
+                version=normalized,
+                notes_text=notes_text,
+                require_alpha_footer=not args.no_alpha_footer,
+            )
+            print(f"Release notes publish check OK: {normalized}.")
+            return 0
+
         changelog_text = args.changelog.read_text(encoding="utf-8-sig")
         if args.check:
             normalized = normalize_version(args.version)

@@ -61,6 +61,8 @@ def test_release_process_documents_required_release_gates() -> None:
         "--release-notes-output",
         "--dry-run",
         "python scripts/release_notes.py --version",
+        "--notes-file",
+        "--check-publish-ready",
         "python -m pytest",
         (
             "powershell -NoProfile -ExecutionPolicy Bypass -File "

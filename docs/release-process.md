@@ -133,6 +133,12 @@ with real links or commit identifiers:
 - Release Readiness workflow URL
 - tag CI URL
 
+Then validate the final notes file:
+
+```powershell
+python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --check-publish-ready
+```
+
 Keep the alpha footer in the release notes unless there is a deliberate reason
 to remove it.
 
