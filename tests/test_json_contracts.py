@@ -6,10 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from agentledger import cli
+from agentledger import __version__, cli
+from agentledger.contracts import CONTRACTS_DOC, CONTRACTS_SCHEMA, JSON_CONTRACTS
 
 
 SCHEMAS = {
+    "contracts": "agentledger.contracts.v1",
     "doctor": "agentledger.doctor.v1",
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
@@ -106,6 +108,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
     capsys.readouterr()
 
     return {
+        "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--out", str(out)]),
@@ -124,6 +127,25 @@ def test_json_contract_doc_lists_all_schema_versions() -> None:
         assert schema in doc
 
 
+def test_contracts_command_prints_human_summary(capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["contracts"]) == 0
+    output = capsys.readouterr().out
+    assert f"AgentLedger JSON contracts ({__version__})" in output
+    assert f"Schema: {CONTRACTS_SCHEMA}" in output
+    assert f"Docs: {CONTRACTS_DOC}" in output
+    for contract in JSON_CONTRACTS:
+        assert f"- {contract['command']}: {contract['schema_version']}" in output
+
+
+def test_contracts_json_lists_known_contract_metadata(json_payloads: dict[str, dict]) -> None:
+    payload = json_payloads["contracts"]
+    assert payload["schema_version"] == CONTRACTS_SCHEMA
+    assert payload["agentledger_version"] == __version__
+    assert payload["docs"] == CONTRACTS_DOC
+    _assert_keys(payload["compatibility"], {"stability", "unknown_fields", "breaking_changes"})
+    assert payload["contracts"] == JSON_CONTRACTS
+
+
 def test_json_contract_payloads_use_documented_schemas(json_payloads: dict[str, dict]) -> None:
     for name, schema in SCHEMAS.items():
         assert json_payloads[name]["schema_version"] == schema
@@ -131,6 +153,7 @@ def test_json_contract_payloads_use_documented_schemas(json_payloads: dict[str, 
 
 def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: dict[str, dict]) -> None:
     expected_fields = {
+        "contracts": {"schema_version", "agentledger_version", "docs", "compatibility", "contracts"},
         "doctor": {"schema_version", "status", "required_ok", "optional", "checks"},
         "open_latest": {
             "schema_version",
@@ -208,6 +231,10 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
 
 
 def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dict[str, dict]) -> None:
+    contracts = json_payloads["contracts"]
+    assert contracts["contracts"]
+    _assert_keys(contracts["contracts"][0], {"command", "schema_version", "purpose", "stable_fields", "exit_codes"})
+
     doctor = json_payloads["doctor"]
     _assert_keys(doctor["optional"], {"configured", "total", "missing"})
     assert doctor["checks"]

@@ -43,6 +43,9 @@ Expected result:
 
 ## Verify a captured run
 
+- Discover machine-readable command contracts:
+  - `python -m agentledger contracts`
+  - `python -m agentledger contracts --format json`
 - Review the latest run with policy status and report paths:
   - `python -m agentledger review --out .agentledger --allow-warnings`
   - `python -m agentledger review --format json --out .agentledger --allow-warnings`
