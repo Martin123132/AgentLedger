@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Improved Markdown and HTML reports with review notes and evidence-file
+  pointers for faster human triage.
+
 ## 0.1.4-alpha - 2026-06-14
 
 - Added `agentledger init-config` to write a starter `.agentledger.toml` policy
