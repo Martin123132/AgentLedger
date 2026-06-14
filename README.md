@@ -93,6 +93,7 @@ python -m agentledger open-latest --out .agentledger
 python -m agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
+python -m agentledger check --allow-warnings $run
 python -m agentledger verify-bundle "${run}.zip"
 ```
 
@@ -253,6 +254,20 @@ Inspect a specific run:
 agentledger inspect-report .agentledger\2026-06-11T120000Z-abc12345
 ```
 
+Check a run against the default review policy:
+
+```powershell
+agentledger check .agentledger\2026-06-11T120000Z-abc12345
+agentledger check --format json .agentledger\2026-06-11T120000Z-abc12345
+agentledger check --allow-warnings .agentledger\2026-06-11T120000Z-abc12345
+```
+
+`check` returns `0` for pass, `1` for warn, and `2` for block. Use
+`--allow-warnings` when a script should only fail on block-level issues. The
+default policy blocks failed commands or incomplete reports, and warns on
+missing test evidence, dirty final repo state, report warnings, optional
+artifact warnings, and redaction markers.
+
 Open the latest run summary paths:
 
 ```powershell
@@ -275,6 +290,7 @@ agentledger open-latest --out .agentledger
 agentledger history --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
+agentledger check --allow-warnings $run
 agentledger verify-bundle "${run}.zip"
 ```
 
@@ -285,6 +301,8 @@ folder and privacy mode:
 agentledger run --repo . -- python -m pytest
 agentledger open-latest --repo .
 agentledger history --repo .
+$run = (Get-Content .agentledger\latest.txt).Trim()
+agentledger check $run
 ```
 
 Compare two runs:
