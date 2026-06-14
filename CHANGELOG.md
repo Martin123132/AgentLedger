@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.7-alpha - 2026-06-14
+
 - Added a PowerShell release-readiness check for version consistency, git
   hygiene, wheel metadata, tests, install verification, and smoke coverage.
 - Added packaging metadata tests for wheel metadata, console entry point, pure
