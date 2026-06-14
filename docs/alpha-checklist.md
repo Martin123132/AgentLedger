@@ -43,6 +43,9 @@ Expected result:
 
 ## Verify a captured run
 
+- Review the latest run with policy status and report paths:
+  - `python -m agentledger review --out .agentledger --allow-warnings`
+  - `python -m agentledger review --format json --out .agentledger --allow-warnings`
 - List latest run paths:
   - `python -m agentledger open-latest --out .agentledger`
 - Show recent runs:

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added `agentledger review` to summarize the latest or selected run with
+  pass/warn/block policy status, report paths, and next-action hints.
+
 ## 0.1.5-alpha - 2026-06-14
 
 - Added smoke coverage for `agentledger check --format json` in both Windows

@@ -75,6 +75,7 @@ Inspect the run:
 ```powershell
 python -m agentledger open-latest --out .agentledger
 python -m agentledger history --out .agentledger
+python -m agentledger review --out .agentledger --allow-warnings
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --repo . $run
@@ -85,6 +86,7 @@ Expected result:
 
 - The captured command exits with code `0`
 - `history` shows the pytest run
+- `review` prints the latest report paths and pass/warn/block policy status
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK`
