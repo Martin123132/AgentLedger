@@ -35,6 +35,46 @@ python -m agentledger history --out "$OUT"
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"
 python -m agentledger check --allow-warnings "$RUN"
+CHECK_JSON="$ROOT/agentledger-check.json"
+set +e
+python -m agentledger check --format json --allow-warnings "$RUN" > "$CHECK_JSON"
+CHECK_STATUS=$?
+set -e
+if [ "$CHECK_STATUS" -ne 0 ]; then
+  echo "agentledger check --format json exited with code $CHECK_STATUS" >&2
+  exit "$CHECK_STATUS"
+fi
+python - "$CHECK_JSON" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8-sig"))
+required = {
+    "schema_version",
+    "status",
+    "ok",
+    "summary",
+    "rule_counts",
+    "warning_rules",
+    "blocking_rules",
+    "rules",
+}
+missing = sorted(required - payload.keys())
+if missing:
+    raise SystemExit(f"Missing check JSON fields: {', '.join(missing)}")
+if payload["schema_version"] != "agentledger.check.v1":
+    raise SystemExit(f"Unexpected check schema: {payload['schema_version']}")
+if payload["status"] not in {"pass", "warn"}:
+    raise SystemExit(f"Unexpected smoke check status: {payload['status']}")
+counts = payload["rule_counts"]
+if counts["total"] != len(payload["rules"]):
+    raise SystemExit("rule_counts.total does not match rules length")
+if counts["warn"] != len(payload["warning_rules"]):
+    raise SystemExit("rule_counts.warn does not match warning_rules length")
+if counts["block"] != len(payload["blocking_rules"]):
+    raise SystemExit("rule_counts.block does not match blocking_rules length")
+print(f"AgentLedger check JSON: {payload['status']} - {payload['summary']}")
+PY
 python -m agentledger verify-bundle "${RUN}.zip"
 
 python -m agentledger run \
