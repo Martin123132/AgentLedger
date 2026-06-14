@@ -99,6 +99,7 @@ python -m agentledger history --out .agentledger
 python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
+python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --allow-warnings $run
@@ -406,6 +407,8 @@ agentledger feedback --out .agentledger --list
 agentledger feedback --out .agentledger --format json --note "Review command was clear."
 agentledger feedback-summary --out .agentledger
 agentledger feedback-summary --out .agentledger --category docs --format json
+agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
+agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.json --output-format json --format json
 ```
 
 `feedback` writes `alpha-feedback.jsonl` inside the selected run folder. It
@@ -413,6 +416,9 @@ redacts obvious secrets in notes before saving them, but feedback files are
 still local evidence and should not be committed or shared without review.
 `feedback-summary` reads those local feedback files across recent run folders
 so tester friction can be reviewed without opening each run directory.
+`feedback-export` writes a reviewed Markdown or JSON export that omits local
+run directories and feedback file paths. Review the exported notes before
+sharing because redaction is best-effort.
 
 The normal local review loop is:
 
@@ -424,6 +430,7 @@ agentledger open-latest --out .agentledger --format json
 agentledger history --out .agentledger
 agentledger feedback --out .agentledger --note "First confusing thing: ..."
 agentledger feedback-summary --out .agentledger
+agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger check --allow-warnings $run
@@ -441,6 +448,7 @@ agentledger open-latest --repo .
 agentledger history --repo .
 agentledger feedback --repo . --note "First confusing thing: ..."
 agentledger feedback-summary --repo .
+agentledger feedback-export --repo . --output $env:TEMP\agentledger-feedback.md
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger check $run
 ```

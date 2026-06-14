@@ -12,6 +12,8 @@ from .report_reader import load_report
 
 FEEDBACK_SCHEMA = "agentledger.feedback.v1"
 FEEDBACK_SUMMARY_SCHEMA = "agentledger.feedback_summary.v1"
+FEEDBACK_EXPORT_SCHEMA = "agentledger.feedback_export.v1"
+FEEDBACK_EXPORT_RESULT_SCHEMA = "agentledger.feedback_export_result.v1"
 FEEDBACK_FILE_NAME = "alpha-feedback.jsonl"
 FEEDBACK_CATEGORIES = ("friction", "bug", "docs", "privacy", "performance", "idea", "other")
 FEEDBACK_SEVERITIES = ("low", "medium", "high")
@@ -145,6 +147,33 @@ def _count_values(entries: list[dict[str, Any]], field: str) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def _safe_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _public_feedback_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(entry.get("id") or ""),
+        "created_at": str(entry.get("created_at") or ""),
+        "run_id": str(entry.get("run_id") or ""),
+        "category": str(entry.get("category") or "other"),
+        "severity": str(entry.get("severity") or "medium"),
+        "source": str(entry.get("source") or "tester"),
+        "note": str(entry.get("note") or ""),
+        "redacted": bool(entry.get("redacted")),
+    }
+
+
+def _public_feedback_run(run: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "run_id": str(run.get("run_id") or ""),
+        "entry_count": _safe_int(run.get("entry_count")),
+    }
+
+
 def summarize_feedback(
     *,
     out_root: Path,
@@ -216,3 +245,96 @@ def summarize_feedback(
         "entries": returned_entries,
         "errors": errors,
     }
+
+
+def build_feedback_export(summary: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": FEEDBACK_EXPORT_SCHEMA,
+        "generated_at": utc_now_iso(),
+        "ok": bool(summary.get("ok")),
+        "filters": summary.get("filters") or {},
+        "total_entries": _safe_int(summary.get("total_entries")),
+        "returned_entries": _safe_int(summary.get("returned_entries")),
+        "run_count": _safe_int(summary.get("run_count")),
+        "runs_with_feedback": _safe_int(summary.get("runs_with_feedback")),
+        "categories": summary.get("categories") or {},
+        "severities": summary.get("severities") or {},
+        "runs": [_public_feedback_run(run) for run in summary.get("runs") or []],
+        "entries": [_public_feedback_entry(entry) for entry in summary.get("entries") or []],
+        "errors": list(summary.get("errors") or []),
+        "review": {
+            "shareable": True,
+            "omits_local_paths": True,
+            "note": "Review notes before sharing; redaction is best-effort.",
+        },
+    }
+
+
+def format_feedback_export_markdown(export: dict[str, Any]) -> str:
+    filters = export.get("filters") or {}
+    active_filters = [
+        f"{name}={value}"
+        for name, value in filters.items()
+        if name != "limit" and value is not None
+    ]
+    filter_text = ", ".join(active_filters) if active_filters else "none"
+    lines = [
+        "# AgentLedger Feedback Export",
+        "",
+        f"Generated: {export.get('generated_at') or ''}",
+        "",
+        "This reviewed export omits local run directories and feedback file paths.",
+        "Review notes before sharing; redaction is best-effort.",
+        "",
+        "## Summary",
+        "",
+        f"- Entries: {export.get('returned_entries')} shown / {export.get('total_entries')} total",
+        f"- Runs with feedback: {export.get('runs_with_feedback')} of {export.get('run_count')}",
+        f"- Filters: {filter_text}",
+    ]
+    categories = export.get("categories") or {}
+    severities = export.get("severities") or {}
+    if categories:
+        lines.append("- Categories: " + ", ".join(f"{name}={count}" for name, count in categories.items()))
+    if severities:
+        lines.append("- Severities: " + ", ".join(f"{name}={count}" for name, count in severities.items()))
+
+    lines.extend(["", "## Entries", ""])
+    entries = export.get("entries") or []
+    if not entries:
+        lines.append("No feedback entries found.")
+    for entry in entries:
+        note = str(entry.get("note") or "").replace("\r", " ").replace("\n", " ")
+        lines.append(
+            "- "
+            f"{entry.get('created_at') or 'unknown time'} | "
+            f"{entry.get('severity') or 'medium'} | "
+            f"{entry.get('category') or 'other'} | "
+            f"{entry.get('run_id') or 'unknown run'} | "
+            f"{entry.get('source') or 'tester'}: "
+            f"{note}"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def write_feedback_export(
+    *,
+    summary: dict[str, Any],
+    output_path: Path,
+    output_format: str,
+) -> tuple[Path, dict[str, Any]]:
+    if output_format not in {"json", "markdown"}:
+        raise FeedbackError("--output-format must be one of: json, markdown.")
+
+    export = build_feedback_export(summary)
+    if output_format == "json":
+        content = json.dumps(export, indent=2) + "\n"
+    else:
+        content = format_feedback_export_markdown(export)
+
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        raise FeedbackError(f"Unable to write feedback export: {output_path}: {exc}") from exc
+    return output_path, export

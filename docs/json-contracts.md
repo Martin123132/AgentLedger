@@ -135,6 +135,32 @@ Stable fields:
 - `entries`: recent matching feedback entries
 - `errors`: human-readable error list
 
+### `agentledger feedback-export --format json --output <path>`
+
+Schema: `agentledger.feedback_export_result.v1`
+
+Use this to write a reviewed Markdown or JSON export for sharing feedback
+without copying raw `.agentledger` evidence. The export file omits local run
+directories and feedback file paths, while the command result reports where it
+was written.
+
+Stable fields:
+
+- `ok`: boolean
+- `out`: resolved AgentLedger output directory, or `null` on config failure
+- `output`: resolved export file path, or `null` on failure
+- `output_format`: export file format, `markdown` or `json`
+- `export_schema_version`: schema used inside JSON export files
+- `filters`: active `category`, `severity`, and `limit`
+- `total_entries`: total matching feedback entries before the limit is applied
+- `returned_entries`: number of entries included in the export
+- `run_count`: number of run folders scanned
+- `runs_with_feedback`: number of run folders with matching feedback
+- `errors`: human-readable error list
+
+JSON export files use `agentledger.feedback_export.v1` and include reviewed
+feedback entries without raw local evidence paths.
+
 ### `agentledger inspect-report --format json <run-dir>`
 
 Schema: `agentledger.inspect_report.v1`

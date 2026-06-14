@@ -17,6 +17,7 @@ SCHEMAS = {
     "history": "agentledger.history.v1",
     "feedback": "agentledger.feedback.v1",
     "feedback_summary": "agentledger.feedback_summary.v1",
+    "feedback_export": "agentledger.feedback_export_result.v1",
     "inspect_report": "agentledger.inspect_report.v1",
     "check": "agentledger.check.v1",
     "review": "agentledger.review.v1",
@@ -131,6 +132,20 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
             ],
         ),
         "feedback_summary": _run_json(capsys, ["feedback-summary", "--format", "json", "--out", str(out)]),
+        "feedback_export": _run_json(
+            capsys,
+            [
+                "feedback-export",
+                "--format",
+                "json",
+                "--output-format",
+                "json",
+                "--out",
+                str(out),
+                "--output",
+                str(tmp_path / "feedback-export.json"),
+            ],
+        ),
         "inspect_report": _run_json(capsys, ["inspect-report", "--format", "json", str(second)]),
         "check": _run_json(capsys, ["check", "--format", "json", "--allow-warnings", str(second)]),
         "review": _run_json(capsys, ["review", "--format", "json", "--out", str(out), "--allow-warnings"]),
@@ -208,6 +223,20 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "severities",
             "runs",
             "entries",
+            "errors",
+        },
+        "feedback_export": {
+            "schema_version",
+            "ok",
+            "out",
+            "output",
+            "output_format",
+            "export_schema_version",
+            "filters",
+            "total_entries",
+            "returned_entries",
+            "run_count",
+            "runs_with_feedback",
             "errors",
         },
         "inspect_report": {
@@ -355,6 +384,13 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
             "redacted",
         },
     )
+
+    feedback_export = json_payloads["feedback_export"]
+    assert feedback_export["ok"] is True
+    assert feedback_export["output_format"] == "json"
+    assert feedback_export["export_schema_version"] == "agentledger.feedback_export.v1"
+    _assert_keys(feedback_export["filters"], {"category", "severity", "limit"})
+    assert feedback_export["errors"] == []
 
     for name in ("inspect_report", "verify_bundle"):
         _assert_keys(json_payloads[name]["artifacts"], {"ok", "warn"})

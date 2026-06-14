@@ -70,6 +70,8 @@ $originalLocation = Get-Location
 $repo = Join-Path $root "repo"
 $out = Join-Path $root "ledger"
 $checkJson = Join-Path $root "agentledger-check.json"
+$feedbackExportMarkdown = Join-Path $root "agentledger-feedback.md"
+$feedbackExportJson = Join-Path $root "agentledger-feedback.json"
 $signatureKey = Join-Path $root "agentledger-signing-key.txt"
 
 try {
@@ -110,6 +112,8 @@ try {
     Invoke-AgentLedger @("feedback", "--format", "json", "--out", $out, "--list")
     Invoke-AgentLedger @("feedback-summary", "--out", $out)
     Invoke-AgentLedger @("feedback-summary", "--format", "json", "--out", $out)
+    Invoke-AgentLedger @("feedback-export", "--out", $out, "--output", $feedbackExportMarkdown)
+    Invoke-AgentLedger @("feedback-export", "--format", "json", "--out", $out, "--output", $feedbackExportJson, "--output-format", "json")
 
     $run = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)

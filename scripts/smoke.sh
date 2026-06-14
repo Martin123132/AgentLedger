@@ -10,6 +10,8 @@ ROOT="$(mktemp -d)"
 REPO="$ROOT/repo"
 OUT="$ROOT/ledger"
 SIGNATURE_KEY="$ROOT/agentledger-signing-key.txt"
+FEEDBACK_EXPORT_MD="$ROOT/agentledger-feedback.md"
+FEEDBACK_EXPORT_JSON="$ROOT/agentledger-feedback.json"
 
 mkdir -p "$REPO"
 mkdir -p "$OUT"
@@ -42,6 +44,8 @@ python -m agentledger feedback --out "$OUT" --list
 python -m agentledger feedback --format json --out "$OUT" --list
 python -m agentledger feedback-summary --out "$OUT"
 python -m agentledger feedback-summary --format json --out "$OUT"
+python -m agentledger feedback-export --out "$OUT" --output "$FEEDBACK_EXPORT_MD"
+python -m agentledger feedback-export --format json --out "$OUT" --output "$FEEDBACK_EXPORT_JSON" --output-format json
 
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"

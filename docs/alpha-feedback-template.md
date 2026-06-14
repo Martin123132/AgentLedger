@@ -77,10 +77,13 @@ Optional command to attach notes to the latest local run:
 python -m agentledger feedback --out .agentledger --category friction --severity medium --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
+python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 ```
 
 Feedback is stored in `alpha-feedback.jsonl` beside the run reports. Do not
-commit or upload it unless the contents have been reviewed.
+commit or upload it unless the contents have been reviewed. Use
+`feedback-export` when you need a Markdown or JSON handoff that omits local run
+directories and feedback file paths.
 
 ## Overall readiness
 

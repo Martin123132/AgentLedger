@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger feedback-export` to write reviewed Markdown or JSON alpha
+  feedback handoffs without local evidence paths.
 - Added `agentledger feedback-summary` to review local alpha feedback across
   run folders with text and JSON output.
 - Added `agentledger feedback` to record and list local alpha feedback notes
