@@ -84,6 +84,9 @@ try {
     git commit -m "initial" | Out-Null
     Set-Content -LiteralPath $signatureKey -Value "agentledger-smoke-signing-key" -Encoding UTF8
 
+    Invoke-AgentLedger @("contracts")
+    Invoke-AgentLedger @("contracts", "--format", "json")
+
     Invoke-AgentLedger @(
         "run",
         "--repo",

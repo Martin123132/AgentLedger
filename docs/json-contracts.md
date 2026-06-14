@@ -20,6 +20,10 @@ AgentLedger is still alpha. Within a `*.v1` schema, consumers can expect:
 Consumers should ignore unknown fields and check `schema_version` before relying
 on a payload shape.
 
+Use `agentledger contracts` for a human summary of known JSON command surfaces,
+or `agentledger contracts --format json` when another agent needs to discover
+available contracts programmatically.
+
 ## Exit Codes
 
 - `0`: command succeeded
@@ -27,6 +31,21 @@ on a payload shape.
 - `2`: invalid input, missing evidence, blocked policy, or verification failure
 
 ## Commands
+
+### `agentledger contracts --format json`
+
+Schema: `agentledger.contracts.v1`
+
+Use this to discover AgentLedger's known JSON command contracts.
+
+Stable fields:
+
+- `schema_version`
+- `agentledger_version`
+- `docs`
+- `compatibility`: alpha compatibility expectations
+- `contracts`: known command contracts, each with command text, schema version,
+  purpose, stable fields, and exit code meanings
 
 ### `agentledger doctor --json`
 

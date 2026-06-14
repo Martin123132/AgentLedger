@@ -23,6 +23,9 @@ printf '%s\n' '# Smoke Demo' > README.md
 git add README.md
 git commit -q -m "initial" > /dev/null
 
+python -m agentledger contracts
+python -m agentledger contracts --format json
+
 python -m agentledger run \
   --repo "$REPO" \
   --out "$OUT" \

@@ -19,6 +19,7 @@ from .bundle import (
 from .classify import detect_test_command
 from .check import CheckPolicy, build_check, check_exit_code, format_check
 from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_config
+from .contracts import build_contracts_payload, format_contracts_text
 from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
 from .gittools import snapshot
@@ -51,6 +52,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command_name", required=True)
+
+    contracts = sub.add_parser("contracts", help="List AgentLedger JSON command contracts.")
+    contracts.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")
     run.add_argument("--repo", default=".", help="Target git repository.")
@@ -1065,6 +1069,12 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command_name == "contracts":
+        if args.format == "json":
+            print(json.dumps(build_contracts_payload(__version__), indent=2))
+        else:
+            print(format_contracts_text(__version__))
+        return 0
     if args.command_name == "run":
         return _capture(args, args.task)
     if args.command_name == "snapshot":

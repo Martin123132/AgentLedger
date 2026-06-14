@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger contracts` to list known JSON command contracts in text or
+  JSON form.
 - Added tests that exercise every documented JSON command contract and verify
   stable top-level and nested fields.
 

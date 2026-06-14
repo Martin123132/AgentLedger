@@ -161,7 +161,8 @@ bash ./scripts/smoke.sh
 There are also GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
 The smoke scripts validate both text and JSON command surfaces.
 For CI or bot consumers, see `docs/check-json-ci.md` and
-`docs/json-contracts.md`.
+`docs/json-contracts.md`. Agents can also run
+`agentledger contracts --format json` to discover supported JSON contracts.
 
 Alpha docs:
 
@@ -328,6 +329,13 @@ check_allow_warnings = false
 state. `check_max_changed_files` blocks runs above the configured changed-file
 count, even when dirty state is otherwise allowed. `check_allow_warnings = true`
 makes warnings exit `0`, the same as passing `--allow-warnings`.
+
+Discover machine-readable command contracts:
+
+```powershell
+agentledger contracts
+agentledger contracts --format json
+```
 
 Open the latest run summary paths:
 
