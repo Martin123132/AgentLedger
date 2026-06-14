@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added `.agentledger.toml` policy settings for `agentledger check`, including
+  required test evidence, dirty-state behavior, max changed files, and default
+  warning handling.
 - Added `agentledger check` to evaluate captured reports as pass/warn/block
   decisions with text and JSON output.
 

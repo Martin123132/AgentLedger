@@ -113,12 +113,17 @@ repomori = false
 jester = false
 tokometer = false
 zip = true
+check_require_tests = true
+check_dirty = "warn"
+check_max_changed_files = 20
+check_allow_warnings = false
 ```
 
 `run`, `snapshot`, `open-latest`, and `history` read that file from the target
 repo when it exists. `--out` and `--privacy-mode` override the config for a
 single command; boolean entries disable optional integrations or zip export by
-default.
+default. `check_*` entries tune the local review policy used by
+`agentledger check`.
 
 ## CI and smoke checks
 
@@ -267,6 +272,21 @@ agentledger check --allow-warnings .agentledger\2026-06-11T120000Z-abc12345
 default policy blocks failed commands or incomplete reports, and warns on
 missing test evidence, dirty final repo state, report warnings, optional
 artifact warnings, and redaction markers.
+
+You can tune the default check policy in `.agentledger.toml`:
+
+```toml
+check_require_tests = true
+check_dirty = "block"
+check_max_changed_files = 10
+check_allow_warnings = false
+```
+
+`check_require_tests = true` turns missing test evidence into a block.
+`check_dirty` accepts `"pass"`, `"warn"`, or `"block"` for final dirty repo
+state. `check_max_changed_files` blocks runs above the configured changed-file
+count, even when dirty state is otherwise allowed. `check_allow_warnings = true`
+makes warnings exit `0`, the same as passing `--allow-warnings`.
 
 Open the latest run summary paths:
 
