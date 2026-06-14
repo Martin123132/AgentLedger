@@ -159,9 +159,9 @@ bash ./scripts/smoke.sh
 ```
 
 There are also GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
-The smoke scripts validate both text and JSON `agentledger check` output.
-For CI or bot consumers of `agentledger check --format json`, see
-`docs/check-json-ci.md`.
+The smoke scripts validate both text and JSON command surfaces.
+For CI or bot consumers, see `docs/check-json-ci.md` and
+`docs/json-contracts.md`.
 
 Alpha docs:
 
@@ -170,6 +170,7 @@ Alpha docs:
 - `docs/alpha-tester-guide.md`
 - `docs/alpha-feedback-template.md`
 - `docs/alpha-notes.md`
+- `docs/json-contracts.md`
 - `SECURITY.md`
 - `CHANGELOG.md`
 - `.agentledger.toml`

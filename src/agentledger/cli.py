@@ -186,6 +186,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
 
     if getattr(args, "format", "text") == "json":
         payload = {
+            "schema_version": "agentledger.inspect_report.v1",
             "run_dir": str(run_dir),
             "command": report_command_text(report),
             "exit_code": exit_code if exit_code is not None else None,
@@ -251,6 +252,7 @@ def _handle_compare(args: argparse.Namespace) -> int:
         print(
             json.dumps(
                 {
+                    "schema_version": "agentledger.compare.v1",
                     "changed_files": {
                         "old": old_changed,
                         "new": new_changed,
@@ -769,7 +771,16 @@ def _handle_history(args: argparse.Namespace) -> int:
     summaries = [_report_summary(run_dir) for run_dir in run_dirs]
 
     if getattr(args, "format", "text") == "json":
-        print(json.dumps({"out": str(out_root), "runs": summaries}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "schema_version": "agentledger.history.v1",
+                    "out": str(out_root),
+                    "runs": summaries,
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if not summaries:

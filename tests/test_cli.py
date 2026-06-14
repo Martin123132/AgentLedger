@@ -664,6 +664,7 @@ def test_history_json_output(tmp_path: Path, capsys) -> None:
     assert cli.main(["history", "--format", "json", "--out", str(out)]) == 0
     output = capsys.readouterr().out
     payload = _parse_json_output(output)
+    assert payload["schema_version"] == "agentledger.history.v1"
     assert payload["out"] == str(out.resolve())
     assert len(payload["runs"]) == 1
     assert payload["runs"][0]["command"] == "No command executed"
@@ -1895,6 +1896,7 @@ def test_inspect_report_json_output(tmp_path: Path, capsys) -> None:
     assert cli.main(["inspect-report", "--format", "json", str(run_dir)]) == 0
     output = capsys.readouterr().out
     payload = _parse_json_output(output)
+    assert payload["schema_version"] == "agentledger.inspect_report.v1"
     assert payload["command"] == "python -c from pathlib import Path; Path('note.txt').write_text('hello')"
     assert payload["exit_code"] == 0
     assert payload["changed_files"] == 1
@@ -1951,6 +1953,7 @@ def test_compare_json_output(tmp_path: Path, capsys) -> None:
     assert cli.main(["compare", "--format", "json", str(first), str(second)]) == 0
     output = capsys.readouterr().out
     payload = _parse_json_output(output)
+    assert payload["schema_version"] == "agentledger.compare.v1"
     assert payload["changed_files"]["old"] == 1
     assert payload["changed_files"]["new"] == 2
     assert payload["exit_code"]["old"] == 0

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.6-alpha - 2026-06-14
+
+- Added `schema_version` fields to `history`, `inspect-report`, and `compare`
+  JSON output.
+- Added `docs/json-contracts.md` to document alpha JSON contracts, exit codes,
+  and evidence-handling expectations.
 - Added JSON output for `agentledger open-latest` and `agentledger
   verify-bundle` so CI and agent handoffs can consume report paths and bundle
   validation results without scraping text output.
