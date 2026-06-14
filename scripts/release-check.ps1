@@ -164,6 +164,10 @@ try {
         Write-Host "Version: $projectVersion"
     }
 
+    Invoke-Step "Check release notes source" {
+        Invoke-CheckedCommand "python" @("scripts/release_notes.py", "--version", $projectVersion, "--check")
+    }
+
     Invoke-Step "Check git hygiene" {
         Invoke-CheckedCommand "git" @("diff", "--check")
 

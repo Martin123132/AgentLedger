@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a release-readiness guard that verifies the package version has a
+  matching non-empty `CHANGELOG.md` release section before tagging.
 - Added release notes tooling to draft GitHub prerelease notes from a
   `CHANGELOG.md` version section.
 - Fixed the install-check build backend probe so release-readiness CI can

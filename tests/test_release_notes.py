@@ -37,6 +37,25 @@ def test_extract_changelog_section_by_version() -> None:
     assert "Older work" not in section
 
 
+def test_normalize_version_accepts_pep440_alpha_version() -> None:
+    assert release_notes.normalize_version("v0.1.7-alpha") == "0.1.7-alpha"
+    assert release_notes.normalize_version("0.1.7a0") == "0.1.7-alpha"
+    assert release_notes.normalize_version("0.1.7a2") == "0.1.7-alpha.2"
+
+
+def test_extract_changelog_section_accepts_project_alpha_version() -> None:
+    changelog = """# Changelog
+
+## 0.1.7-alpha - 2026-06-14
+
+- Added release checks.
+"""
+
+    section = release_notes.extract_changelog_section(changelog, "0.1.7a0")
+
+    assert section == "- Added release checks."
+
+
 def test_build_release_notes_uses_changelog_validation_and_footer() -> None:
     changelog = """# Changelog
 
@@ -106,3 +125,29 @@ def test_main_writes_output_file(tmp_path: Path) -> None:
 
     assert exit_code == 0
     assert "- Release readiness passed." in output.read_text(encoding="utf-8")
+
+
+def test_main_check_mode_accepts_project_alpha_version(tmp_path: Path, capsys) -> None:
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(
+        """# Changelog
+
+## 0.1.7-alpha
+
+- Added release checks.
+""",
+        encoding="utf-8",
+    )
+
+    exit_code = release_notes.main(
+        [
+            "--version",
+            "0.1.7a0",
+            "--changelog",
+            str(changelog),
+            "--check",
+        ]
+    )
+
+    assert exit_code == 0
+    assert capsys.readouterr().out == "Release notes source OK: 0.1.7-alpha.\n"
