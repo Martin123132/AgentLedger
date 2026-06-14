@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added release prep tooling to update package versions and move Unreleased
+  changelog entries into a dated release section in one guarded step.
 - Added a release-readiness guard that verifies the package version has a
   matching non-empty `CHANGELOG.md` release section before tagging.
 - Added release notes tooling to draft GitHub prerelease notes from a
