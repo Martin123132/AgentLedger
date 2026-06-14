@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.8-alpha - 2026-06-14
+
 - Added a release rehearsal script that dry-runs release prep, drafts notes
   outside the repo, and writes a local checklist summary.
 - Added a publish-ready release notes check to catch TODO validation placeholders
