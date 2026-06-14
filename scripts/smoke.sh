@@ -37,6 +37,9 @@ python -m agentledger run \
 python -m agentledger open-latest --out "$OUT"
 python -m agentledger open-latest --format json --out "$OUT"
 python -m agentledger history --out "$OUT"
+python -m agentledger feedback --out "$OUT" --note "Smoke feedback note." --category friction --severity low
+python -m agentledger feedback --out "$OUT" --list
+python -m agentledger feedback --format json --out "$OUT" --list
 
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"

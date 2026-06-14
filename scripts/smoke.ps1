@@ -105,6 +105,9 @@ try {
     Invoke-AgentLedger @("open-latest", "--out", $out)
     Invoke-AgentLedger @("open-latest", "--format", "json", "--out", $out)
     Invoke-AgentLedger @("history", "--out", $out)
+    Invoke-AgentLedger @("feedback", "--out", $out, "--note", "Smoke feedback note.", "--category", "friction", "--severity", "low")
+    Invoke-AgentLedger @("feedback", "--out", $out, "--list")
+    Invoke-AgentLedger @("feedback", "--format", "json", "--out", $out, "--list")
 
     $run = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger feedback` to record and list local alpha feedback notes
+  attached to the latest or selected run folder.
 - Scoped release-note publish readiness checks to validation placeholders so
   changelog highlights can mention TODO checks without blocking publication.
 

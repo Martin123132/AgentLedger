@@ -22,6 +22,14 @@ from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_co
 from .contracts import build_contracts_payload, format_contracts_text
 from .doctor import doctor_json, format_doctor, run_doctor
 from .export import write_html, write_json, write_markdown
+from .feedback import (
+    FEEDBACK_CATEGORIES,
+    FEEDBACK_SCHEMA,
+    FEEDBACK_SEVERITIES,
+    FeedbackError,
+    append_feedback,
+    read_feedback,
+)
 from .gittools import snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
 from .model import CommandResult, LedgerReport, utc_now_iso
@@ -106,6 +114,18 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_argument("--out", default=None, help="Evidence output directory.")
     history.add_argument("--limit", type=int, default=10, help="Maximum number of runs to show.")
     history.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    feedback = sub.add_parser("feedback", help="Record or list alpha feedback for a run.")
+    feedback.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
+    feedback.add_argument("--repo", default=".", help="Target git repository for config lookup.")
+    feedback.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    feedback.add_argument("--out", default=None, help="Evidence output directory.")
+    feedback.add_argument("--note", default=None, help="Feedback note to attach to the run.")
+    feedback.add_argument("--category", choices=FEEDBACK_CATEGORIES, default="friction", help="Feedback category.")
+    feedback.add_argument("--severity", choices=FEEDBACK_SEVERITIES, default="medium", help="Feedback severity.")
+    feedback.add_argument("--source", default="tester", help="Short local label for who supplied the feedback.")
+    feedback.add_argument("--list", action="store_true", dest="list_entries", help="List feedback for the run.")
+    feedback.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     review = sub.add_parser("review", help="Summarize latest or selected run with policy status.")
     review.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
@@ -802,6 +822,115 @@ def _handle_history(args: argparse.Namespace) -> int:
     return 0
 
 
+def _resolve_feedback_run_dir(args: argparse.Namespace) -> tuple[Path | None, list[str]]:
+    if args.run_dir:
+        return Path(args.run_dir).resolve(), []
+
+    repo = Path(args.repo or ".").resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return None, [f"Config error: {exc}"]
+    out_root = _resolve_out_root(args, repo, config)
+    return _resolve_latest_run_dir(out_root)
+
+
+def _feedback_error(args: argparse.Namespace, action: str, errors: list[str]) -> int:
+    if getattr(args, "format", "text") == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": FEEDBACK_SCHEMA,
+                    "ok": False,
+                    "action": action,
+                    "run_dir": None,
+                    "feedback_file": None,
+                    "entry": None,
+                    "entries": [],
+                    "errors": errors,
+                },
+                indent=2,
+            )
+        )
+    else:
+        for message in errors:
+            print(message)
+    return 2
+
+
+def _format_feedback_entry(entry: dict) -> str:
+    created_at = str(entry.get("created_at") or "unknown time")
+    category = str(entry.get("category") or "other")
+    severity = str(entry.get("severity") or "medium")
+    source = str(entry.get("source") or "tester")
+    note = str(entry.get("note") or "").replace("\r", " ").replace("\n", " ")
+    return f"- {created_at} | {severity} | {category} | {source}: {note}"
+
+
+def _handle_feedback(args: argparse.Namespace) -> int:
+    action = "list" if args.list_entries else "record"
+    if args.list_entries and args.note is not None:
+        return _feedback_error(args, action, ["Use either --list or --note, not both."])
+    if not args.list_entries and args.note is None:
+        return _feedback_error(args, action, ["Feedback note is required unless --list is used."])
+
+    run_dir, errors = _resolve_feedback_run_dir(args)
+    if run_dir is None:
+        return _feedback_error(args, action, errors)
+
+    try:
+        if args.list_entries:
+            path, entries = read_feedback(run_dir)
+            entry = None
+        else:
+            path, entry = append_feedback(
+                run_dir=run_dir,
+                note=args.note,
+                category=args.category,
+                severity=args.severity,
+                source=args.source,
+            )
+            entries = [entry]
+    except FeedbackError as exc:
+        return _feedback_error(args, action, [str(exc)])
+
+    if getattr(args, "format", "text") == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": FEEDBACK_SCHEMA,
+                    "ok": True,
+                    "action": action,
+                    "run_dir": str(run_dir),
+                    "feedback_file": str(path),
+                    "entry": entry,
+                    "entries": entries,
+                    "errors": [],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.list_entries:
+        if not entries:
+            print(f"No feedback entries found: {path}")
+            return 0
+        print(f"AgentLedger feedback for {run_dir}:")
+        for item in entries:
+            print(_format_feedback_entry(item))
+        return 0
+
+    print(f"Feedback recorded: {path}")
+    print(f"Run: {run_dir}")
+    print(f"Category: {entry['category']}")
+    print(f"Severity: {entry['severity']}")
+    if entry["redacted"]:
+        print("Note: feedback was redacted before saving.")
+    print("Next: keep alpha-feedback.jsonl local unless reviewed; do not commit .agentledger folders.")
+    return 0
+
+
 def _review_paths(run_dir: Path) -> dict[str, str | None]:
     zip_path = run_dir.with_suffix(".zip")
     return {
@@ -1089,6 +1218,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_open_latest(args)
     if args.command_name == "history":
         return _handle_history(args)
+    if args.command_name == "feedback":
+        return _handle_feedback(args)
     if args.command_name == "review":
         return _handle_review(args)
     if args.command_name == "compare":

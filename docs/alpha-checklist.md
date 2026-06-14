@@ -55,6 +55,9 @@ Expected result:
 - Show recent runs:
   - `python -m agentledger history --out .agentledger`
   - `python -m agentledger history --out .agentledger --format json`
+- Record local feedback for the latest run:
+  - `python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."`
+  - `python -m agentledger feedback --out .agentledger --list`
 - Inspect a specific run report:
   - `python -m agentledger inspect-report .agentledger\<run-id>`
 - Check a specific run report:
@@ -77,6 +80,7 @@ Expected result:
   - `agentledger-report.md`
   - `agentledger-report.json`
   - `agentledger-report.html`
+  - `alpha-feedback.jsonl` when local feedback has been recorded
   - `artifacts/`
 - A sibling zipped bundle (`.zip`) with the same base run id includes
   `agentledger-bundle-manifest.json` with SHA-256 checksums.
@@ -85,6 +89,8 @@ Expected result:
 
 - Do not commit `.agentledger/`.
 - Do not commit `*.zip`.
+- Do not commit `alpha-feedback.jsonl` files unless a reviewer explicitly asks
+  for reviewed feedback evidence.
 - Do not commit `.agentledger-signing-key` or any shared signing key.
 - Do not commit temporary `Temp/agentledger-smoke-*` folders.
 - Keep only source/config/docs files in git history.
