@@ -44,11 +44,20 @@ jobs:
         shell: pwsh
         run: |
           $arguments = @()
+          $summaryPath = Join-Path $env:RUNNER_TEMP "agentledger-release-check.json"
           if ($env:SKIP_EDITABLE_INSTALL -eq "true") {
               $arguments += "-SkipEditableInstall"
           }
           if ($env:REQUIRE_CLEAN_GIT -eq "true") {
               $arguments += "-RequireCleanGit"
           }
+          $arguments += @("-JsonOutput", $summaryPath)
 
           pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 @arguments
+          $exitCode = $LASTEXITCODE
+          if (Test-Path -LiteralPath $summaryPath) {
+              Write-Host ""
+              Write-Host "== Release readiness JSON summary =="
+              Get-Content -Raw -LiteralPath $summaryPath
+          }
+          exit $exitCode

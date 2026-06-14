@@ -1,6 +1,7 @@
 param(
     [switch] $SkipEditableInstall,
-    [switch] $RequireCleanGit
+    [switch] $RequireCleanGit,
+    [string] $JsonOutput
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,7 +13,13 @@ $root = Join-Path $env:TEMP "agentledger-release-check-$([guid]::NewGuid())"
 $wheelhouse = Join-Path $root "wheelhouse"
 $originalLocation = Get-Location
 $results = New-Object System.Collections.Generic.List[object]
-$workingTreeDirty = $false
+$script:workingTreeDirty = $false
+$script:releaseCheckError = $null
+$script:projectVersion = $null
+$script:packageVersion = $null
+$script:branch = $null
+$script:head = $null
+$script:wheelPath = $null
 
 function Invoke-Step {
     param(
@@ -25,13 +32,34 @@ function Invoke-Step {
     Write-Host ""
     Write-Host "== $Label =="
     $timer = [System.Diagnostics.Stopwatch]::StartNew()
-    & $Script
-    $timer.Stop()
-    $results.Add([pscustomobject]@{
-        Step = $Label
-        Seconds = [math]::Round($timer.Elapsed.TotalSeconds, 1)
-    }) | Out-Null
-    Write-Host "OK: $Label ($([math]::Round($timer.Elapsed.TotalSeconds, 1))s)"
+    try {
+        & $Script
+        $timer.Stop()
+        $seconds = [math]::Round($timer.Elapsed.TotalSeconds, 1)
+        $results.Add([pscustomobject]@{
+            Step = $Label
+            Status = "passed"
+            Seconds = $seconds
+            Error = $null
+        }) | Out-Null
+        Write-Host "OK: $Label ($($seconds)s)"
+    }
+    catch {
+        $timer.Stop()
+        $seconds = [math]::Round($timer.Elapsed.TotalSeconds, 1)
+        $message = $_.Exception.Message
+        if (-not $message) {
+            $message = $_.ToString()
+        }
+        $results.Add([pscustomobject]@{
+            Step = $Label
+            Status = "failed"
+            Seconds = $seconds
+            Error = $message
+        }) | Out-Null
+        Write-Host "FAILED: $Label ($($seconds)s)"
+        throw
+    }
 }
 
 function Invoke-CheckedCommand {
@@ -133,14 +161,96 @@ print(f"Wheel metadata OK: agentledger {expected_version}")
     }
 }
 
+function Resolve-JsonOutputPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return Join-Path $repoRoot $Path
+}
+
+function Get-ReleaseCheckStatus {
+    if ($script:releaseCheckError) {
+        return "failed"
+    }
+    if ($script:workingTreeDirty -and -not $RequireCleanGit) {
+        return "passed_with_dirty_tree"
+    }
+    return "ready"
+}
+
+function Get-ReleaseCheckErrorMessage {
+    if (-not $script:releaseCheckError) {
+        return $null
+    }
+    $message = $script:releaseCheckError.Exception.Message
+    if ($message) {
+        return $message
+    }
+    return $script:releaseCheckError.ToString()
+}
+
+function Write-JsonSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    $resolvedPath = Resolve-JsonOutputPath -Path $Path
+    $parent = Split-Path -Parent $resolvedPath
+    if ($parent) {
+        New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    }
+
+    $stepPayload = @(
+        $results | ForEach-Object {
+            [ordered]@{
+                name = $_.Step
+                status = $_.Status
+                seconds = $_.Seconds
+                error = $_.Error
+            }
+        }
+    )
+
+    $wheelName = $null
+    if ($script:wheelPath) {
+        $wheelName = [System.IO.Path]::GetFileName($script:wheelPath)
+    }
+
+    $payload = [ordered]@{
+        schema_version = "agentledger.release_check.v1"
+        ok = -not [bool] $script:releaseCheckError
+        status = Get-ReleaseCheckStatus
+        repo = [string] $repoRoot
+        branch = $script:branch
+        head = $script:head
+        agentledger_version = $script:projectVersion
+        package_version = $script:packageVersion
+        require_clean_git = [bool] $RequireCleanGit
+        skip_editable_install = [bool] $SkipEditableInstall
+        working_tree_dirty = [bool] $script:workingTreeDirty
+        wheel = $wheelName
+        steps = $stepPayload
+        error = Get-ReleaseCheckErrorMessage
+    }
+
+    $payload | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $resolvedPath -Encoding UTF8
+    Write-Host "JSON summary: $resolvedPath"
+}
+
 try {
     Set-Location -LiteralPath $repoRoot
     New-Item -ItemType Directory -Path $wheelhouse | Out-Null
 
-    $projectVersion = Get-ProjectVersion
-    $packageVersion = Get-PackageVersion
-    $branch = (& git branch --show-current) -join ""
-    $head = (& git rev-parse --short HEAD) -join ""
+    $script:projectVersion = Get-ProjectVersion
+    $script:packageVersion = Get-PackageVersion
+    $script:branch = (& git branch --show-current) -join ""
+    $script:head = (& git rev-parse --short HEAD) -join ""
 
     if (-not $SkipEditableInstall) {
         Invoke-Step "Install editable package" {
@@ -149,23 +259,23 @@ try {
     }
 
     Invoke-Step "Check release versions" {
-        if ($projectVersion -ne $packageVersion) {
-            throw "pyproject.toml version $projectVersion does not match agentledger.__version__ $packageVersion"
+        if ($script:projectVersion -ne $script:packageVersion) {
+            throw "pyproject.toml version $($script:projectVersion) does not match agentledger.__version__ $($script:packageVersion)"
         }
 
         $versionOutput = (& python -m agentledger --version) -join "`n"
         if ($LASTEXITCODE -ne 0) {
             throw "python -m agentledger --version failed with code $LASTEXITCODE"
         }
-        if ($versionOutput -notmatch [regex]::Escape($projectVersion)) {
-            throw "CLI version output does not include $projectVersion"
+        if ($versionOutput -notmatch [regex]::Escape($script:projectVersion)) {
+            throw "CLI version output does not include $($script:projectVersion)"
         }
 
-        Write-Host "Version: $projectVersion"
+        Write-Host "Version: $($script:projectVersion)"
     }
 
     Invoke-Step "Check release notes source" {
-        Invoke-CheckedCommand "python" @("scripts/release_notes.py", "--version", $projectVersion, "--check")
+        Invoke-CheckedCommand "python" @("scripts/release_notes.py", "--version", $script:projectVersion, "--check")
     }
 
     Invoke-Step "Check git hygiene" {
@@ -184,11 +294,11 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw "git status failed with code $LASTEXITCODE"
         }
+        $script:workingTreeDirty = [bool] $status
         if ($RequireCleanGit -and $status) {
             $status | ForEach-Object { Write-Host $_ }
             throw "Working tree is not clean"
         }
-        $script:workingTreeDirty = [bool] $status
         if ($status) {
             Write-Host "Working tree has changes; rerun with -RequireCleanGit before tagging."
         }
@@ -208,7 +318,7 @@ try {
     }
 
     Invoke-Step "Validate wheel metadata" {
-        Test-WheelMetadata -Wheel $script:wheelPath -ExpectedVersion $projectVersion
+        Test-WheelMetadata -Wheel $script:wheelPath -ExpectedVersion $script:projectVersion
     }
 
     Invoke-Step "Run pytest" {
@@ -225,9 +335,9 @@ try {
 
     Write-Host ""
     Write-Host "== Release readiness summary =="
-    Write-Host "Branch: $branch"
-    Write-Host "HEAD: $head"
-    Write-Host "Version: $projectVersion"
+    Write-Host "Branch: $($script:branch)"
+    Write-Host "HEAD: $($script:head)"
+    Write-Host "Version: $($script:projectVersion)"
     Write-Host "Wheel: $([System.IO.Path]::GetFileName($script:wheelPath))"
     foreach ($result in $results) {
         Write-Host "- $($result.Step): passed in $($result.Seconds)s"
@@ -240,7 +350,24 @@ try {
         Write-Host "Result: ready for alpha release review."
     }
 }
+catch {
+    $script:releaseCheckError = $_
+    throw
+}
 finally {
+    if ($JsonOutput) {
+        try {
+            Write-JsonSummary -Path $JsonOutput
+        }
+        catch {
+            if ($script:releaseCheckError) {
+                Write-Warning "Could not write release-check JSON summary: $($_.Exception.Message)"
+            }
+            else {
+                throw
+            }
+        }
+    }
     Set-Location -LiteralPath $originalLocation
     if (Test-Path -LiteralPath $root) {
         Remove-Item -Recurse -Force -LiteralPath $root

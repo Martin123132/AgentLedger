@@ -66,6 +66,9 @@ def test_release_process_documents_required_release_gates() -> None:
             "powershell -NoProfile -ExecutionPolicy Bypass -File "
             "scripts/release-check.ps1 -RequireCleanGit"
         ),
+        "-JsonOutput",
+        "agentledger-release-check.json",
+        "agentledger.release_check.v1",
         'gh workflow run "Release Readiness"',
         "gh run watch <run-id>",
         "git tag v",
