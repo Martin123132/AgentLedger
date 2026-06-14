@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a PowerShell release-readiness check for version consistency, git
+  hygiene, wheel metadata, tests, install verification, and smoke coverage.
 - Added packaging metadata tests for wheel metadata, console entry point, pure
   Python wheel tags, and packaged module coverage.
 - Added docs consistency tests for local Markdown links and code-spanned repo

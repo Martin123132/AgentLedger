@@ -149,6 +149,7 @@ python -m pytest
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
+powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 ```
 
 ```bash
@@ -191,6 +192,17 @@ powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 That script runs install verification, smoke verification, doctor, a captured pytest pass, report inspection, bundle verification, and prints the short summary an alpha tester should send back.
+
+Alpha release readiness:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
+powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit
+```
+
+That script checks version consistency, git hygiene, tracked evidence guardrails,
+wheel build metadata, pytest, install verification, and the Windows smoke flow.
+Use `-RequireCleanGit` before tagging or publishing a release candidate.
 
 Notes:
 
