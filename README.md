@@ -154,6 +154,8 @@ bash ./scripts/smoke.sh
 ```
 
 There are also GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
+For CI or bot consumers of `agentledger check --format json`, see
+`docs/check-json-ci.md`.
 
 Alpha docs:
 
