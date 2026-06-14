@@ -228,11 +228,18 @@ def _read_text_prefix(path: Path, limit: int = 200_000) -> str:
 
 
 def _result(run_dir: Path, report_path: Path, rules: list[dict[str, str]]) -> dict[str, Any]:
+    status = _aggregate_status(rules)
+    rule_counts = _rule_counts(rules)
     return {
         "schema_version": "agentledger.check.v1",
-        "status": _aggregate_status(rules),
+        "status": status,
+        "ok": status == PASS,
         "run_dir": str(run_dir),
         "report": str(report_path),
+        "summary": _summary(status, rule_counts),
+        "rule_counts": rule_counts,
+        "blocking_rules": _rules_with_status(rules, BLOCK),
+        "warning_rules": _rules_with_status(rules, WARN),
         "rules": rules,
     }
 
@@ -244,6 +251,36 @@ def _aggregate_status(rules: list[dict[str, str]]) -> str:
     if WARN in statuses:
         return WARN
     return PASS
+
+
+def _rule_counts(rules: list[dict[str, str]]) -> dict[str, int]:
+    return {
+        PASS: sum(1 for rule in rules if rule["status"] == PASS),
+        WARN: sum(1 for rule in rules if rule["status"] == WARN),
+        BLOCK: sum(1 for rule in rules if rule["status"] == BLOCK),
+        "total": len(rules),
+    }
+
+
+def _rules_with_status(rules: list[dict[str, str]], status: str) -> list[dict[str, str]]:
+    return [
+        {
+            "id": rule["id"],
+            "message": rule["message"],
+        }
+        for rule in rules
+        if rule["status"] == status
+    ]
+
+
+def _summary(status: str, rule_counts: dict[str, int]) -> str:
+    if status == PASS:
+        return f"All {rule_counts['total']} checks passed."
+    if status == WARN:
+        suffix = "warning" if rule_counts[WARN] == 1 else "warnings"
+        return f"{rule_counts[WARN]} {suffix}; review before accepting."
+    suffix = "blocker" if rule_counts[BLOCK] == 1 else "blockers"
+    return f"{rule_counts[BLOCK]} {suffix}; do not accept until resolved."
 
 
 def _rule(rule_id: str, status: str, message: str) -> dict[str, str]:

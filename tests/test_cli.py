@@ -777,6 +777,15 @@ def test_check_passes_test_run(tmp_path: Path, capsys) -> None:
     assert "[PASS] command_exit: Captured command exited 0." in output
     assert "[PASS] test_evidence: Verification command detected: pytest." in output
 
+    assert cli.main(["check", "--format", "json", str(run_dir)]) == 0
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert payload["ok"] is True
+    assert payload["summary"] == "All 9 checks passed."
+    assert payload["rule_counts"] == {"pass": 9, "warn": 0, "block": 0, "total": 9}
+    assert payload["warning_rules"] == []
+    assert payload["blocking_rules"] == []
+
 
 def test_check_warns_for_non_test_dirty_run(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
@@ -808,6 +817,11 @@ def test_check_warns_for_non_test_dirty_run(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     payload = _parse_json_output(output)
     assert payload["status"] == "warn"
+    assert payload["ok"] is False
+    assert payload["summary"] == "2 warnings; review before accepting."
+    assert payload["rule_counts"] == {"pass": 7, "warn": 2, "block": 0, "total": 9}
+    assert [rule["id"] for rule in payload["warning_rules"]] == ["test_evidence", "repo_state"]
+    assert payload["blocking_rules"] == []
     assert _rule_by_id(payload, "command_exit")["status"] == "pass"
     assert _rule_by_id(payload, "test_evidence")["status"] == "warn"
     assert _rule_by_id(payload, "repo_state")["status"] == "warn"
@@ -845,6 +859,10 @@ def test_check_blocks_failed_command(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     payload = _parse_json_output(output)
     assert payload["status"] == "block"
+    assert payload["ok"] is False
+    assert payload["summary"] == "1 blocker; do not accept until resolved."
+    assert payload["rule_counts"]["block"] == 1
+    assert [rule["id"] for rule in payload["blocking_rules"]] == ["command_exit"]
     assert payload["exit_code"] == 7
     assert _rule_by_id(payload, "command_exit")["status"] == "block"
 
@@ -1057,6 +1075,9 @@ def test_check_blocks_missing_report(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     payload = _parse_json_output(output)
     assert payload["status"] == "block"
+    assert payload["ok"] is False
+    assert payload["rule_counts"] == {"pass": 0, "warn": 0, "block": 1, "total": 1}
+    assert [rule["id"] for rule in payload["blocking_rules"]] == ["report_loaded"]
     assert _rule_by_id(payload, "report_loaded")["status"] == "block"
 
 

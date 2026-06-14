@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added CI-friendly `agentledger check --format json` summary fields, including
+  rule counts and compact warning/blocking rule lists.
 - Improved Markdown and HTML reports with review notes and evidence-file
   pointers for faster human triage.
 
