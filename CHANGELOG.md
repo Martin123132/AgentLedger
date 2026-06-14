@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.4-alpha - 2026-06-14
+
 - Added `agentledger init-config` to write a starter `.agentledger.toml` policy
   with overwrite protection.
 - Added a committed `.agentledger.toml` public-alpha policy for dogfooding
