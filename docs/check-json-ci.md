@@ -4,6 +4,9 @@
 human report. Use it when CI, a bot, or another agent needs a stable summary of
 whether a captured run is safe to accept.
 
+For the full set of JSON command payloads and compatibility expectations, see
+`docs/json-contracts.md`.
+
 Prefer the command exit code for gating:
 
 - `0`: pass
