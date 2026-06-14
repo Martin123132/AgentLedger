@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added tests that exercise every documented JSON command contract and verify
+  stable top-level and nested fields.
+
 ## 0.1.6-alpha - 2026-06-14
 
 - Added `schema_version` fields to `history`, `inspect-report`, and `compare`
