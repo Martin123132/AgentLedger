@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a release rehearsal script that dry-runs release prep, drafts notes
+  outside the repo, and writes a local checklist summary.
 - Added a publish-ready release notes check to catch TODO validation placeholders
   before creating a GitHub prerelease.
 - Added optional JSON summaries to release readiness checks for CI and agent

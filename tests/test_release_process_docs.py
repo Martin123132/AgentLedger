@@ -57,6 +57,8 @@ def test_release_process_documents_required_release_gates() -> None:
         "git pull --ff-only origin master",
         "git status --short --branch",
         'python -m pip install -e ".[dev]"',
+        "python scripts/rehearse_release.py --version",
+        "agentledger-release-rehearsal",
         "python scripts/prepare_release.py --version",
         "--release-notes-output",
         "--dry-run",

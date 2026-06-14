@@ -26,7 +26,14 @@ Expected result:
 
 ## 2. Prepare source files
 
-Run a dry run first:
+Run a local rehearsal first. It writes draft release notes and summaries outside
+the repo:
+
+```powershell
+python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
+```
+
+Then run the release prep dry run:
 
 ```powershell
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --release-notes-output $env:TEMP\agentledger-0.1.8-alpha-release.md --dry-run
@@ -44,6 +51,8 @@ Expected result:
   version.
 - `CHANGELOG.md` has an empty `Unreleased` section followed by a dated release
   section.
+- The rehearsal summary lists git hygiene, dry-run release prep, draft release
+  notes, publish-readiness status, and release-check status.
 - The draft release notes file is outside the repo, usually under `$env:TEMP`.
 
 Do not commit generated release note files, evidence folders, zip bundles, or

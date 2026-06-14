@@ -200,6 +200,7 @@ That script runs install verification, smoke verification, doctor, a captured py
 Alpha release readiness:
 
 ```powershell
+python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --dry-run
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --release-notes-output $env:TEMP\agentledger-0.1.8-alpha-release.md
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
@@ -215,6 +216,9 @@ Use `-RequireCleanGit` before tagging or publishing a release candidate.
 Use `-JsonOutput <path>` to write a machine-readable
 `agentledger.release_check.v1` summary for CI or agent handoffs. Keep that file
 outside the repo, for example under `$env:TEMP`.
+Use `scripts/rehearse_release.py` before release prep to dry-run the target
+version, draft release notes outside the repo, run release readiness, and write
+one local checklist summary.
 Use `scripts/prepare_release.py` to move current Unreleased notes into a dated
 release section while updating `pyproject.toml` and `src/agentledger/__init__.py`
 together. Run it with `--dry-run` first. Add `--release-notes-output` to write
