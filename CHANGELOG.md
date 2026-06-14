@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.5-alpha - 2026-06-14
+
 - Added smoke coverage for `agentledger check --format json` in both Windows
   and Bash smoke scripts.
 - Added a CI guide for consuming `agentledger check --format json` from Bash,
