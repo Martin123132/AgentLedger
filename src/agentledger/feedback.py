@@ -11,6 +11,7 @@ from .report_reader import load_report
 
 
 FEEDBACK_SCHEMA = "agentledger.feedback.v1"
+FEEDBACK_SUMMARY_SCHEMA = "agentledger.feedback_summary.v1"
 FEEDBACK_FILE_NAME = "alpha-feedback.jsonl"
 FEEDBACK_CATEGORIES = ("friction", "bug", "docs", "privacy", "performance", "idea", "other")
 FEEDBACK_SEVERITIES = ("low", "medium", "high")
@@ -118,3 +119,100 @@ def read_feedback(run_dir: Path) -> tuple[Path, list[dict[str, Any]]]:
             raise FeedbackError(f"Invalid feedback entry at {path}:{line_number}: expected object.")
         entries.append(item)
     return path, entries
+
+
+def _feedback_run_dirs(out_root: Path) -> list[Path]:
+    if not out_root.exists():
+        raise FeedbackError(f"No AgentLedger output directory found: {out_root}")
+    if not out_root.is_dir():
+        raise FeedbackError(f"AgentLedger output path is not a directory: {out_root}")
+    return sorted(
+        [
+            child
+            for child in out_root.iterdir()
+            if child.is_dir() and (child / "agentledger-report.json").exists()
+        ],
+        key=lambda path: path.name,
+        reverse=True,
+    )
+
+
+def _count_values(entries: list[dict[str, Any]], field: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for entry in entries:
+        value = str(entry.get(field) or "unknown")
+        counts[value] = counts.get(value, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def summarize_feedback(
+    *,
+    out_root: Path,
+    limit: int,
+    category: str | None = None,
+    severity: str | None = None,
+) -> dict[str, Any]:
+    if limit <= 0:
+        raise FeedbackError("--limit must be greater than zero.")
+    if category is not None:
+        _validate_choice("category", category, FEEDBACK_CATEGORIES)
+    if severity is not None:
+        _validate_choice("severity", severity, FEEDBACK_SEVERITIES)
+
+    run_dirs = _feedback_run_dirs(out_root)
+    errors: list[str] = []
+    all_entries: list[dict[str, Any]] = []
+    run_summaries: list[dict[str, Any]] = []
+
+    for run_dir in run_dirs:
+        try:
+            path, entries = read_feedback(run_dir)
+        except FeedbackError as exc:
+            errors.append(str(exc))
+            continue
+
+        filtered = [
+            entry
+            for entry in entries
+            if (category is None or entry.get("category") == category)
+            and (severity is None or entry.get("severity") == severity)
+        ]
+        if path.exists() or filtered:
+            run_summaries.append(
+                {
+                    "run_id": filtered[0].get("run_id") if filtered else run_dir.name,
+                    "run_dir": str(run_dir),
+                    "feedback_file": str(path),
+                    "entry_count": len(filtered),
+                }
+            )
+        all_entries.extend(filtered)
+
+    all_entries.sort(
+        key=lambda entry: (
+            str(entry.get("created_at") or ""),
+            str(entry.get("id") or ""),
+        ),
+        reverse=True,
+    )
+    returned_entries = all_entries[:limit]
+
+    return {
+        "schema_version": FEEDBACK_SUMMARY_SCHEMA,
+        "ok": not errors,
+        "out": str(out_root),
+        "filters": {
+            "category": category,
+            "severity": severity,
+            "limit": limit,
+        },
+        "total_entries": len(all_entries),
+        "returned_entries": len(returned_entries),
+        "run_count": len(run_dirs),
+        "runs_with_feedback": sum(1 for item in run_summaries if item["entry_count"] > 0),
+        "categories": _count_values(all_entries, "category"),
+        "severities": _count_values(all_entries, "severity"),
+        "runs": run_summaries,
+        "entries": returned_entries,
+        "errors": errors,
+    }

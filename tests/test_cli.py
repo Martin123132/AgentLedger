@@ -749,6 +749,105 @@ def test_feedback_missing_latest_prints_hint(tmp_path: Path, capsys) -> None:
     assert "Run a capture first:" in payload["errors"][1]
 
 
+def test_feedback_summary_collects_filters_and_limits_entries(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"]) == 0
+    first = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+    assert (
+        cli.main(
+            [
+                "feedback",
+                str(first),
+                "--category",
+                "bug",
+                "--severity",
+                "high",
+                "--source",
+                "tester-a",
+                "--note",
+                "Bundle path was hard to spot.",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"]) == 0
+    second = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+    assert (
+        cli.main(
+            [
+                "feedback",
+                str(second),
+                "--category",
+                "docs",
+                "--severity",
+                "low",
+                "--source",
+                "tester-b",
+                "--note",
+                "The review command was clear.",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert cli.main(["feedback-summary", "--out", str(out), "--format", "json"]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.feedback_summary.v1"
+    assert payload["ok"] is True
+    assert payload["out"] == str(out.resolve())
+    assert payload["total_entries"] == 2
+    assert payload["returned_entries"] == 2
+    assert payload["run_count"] == 2
+    assert payload["runs_with_feedback"] == 2
+    assert payload["categories"] == {"bug": 1, "docs": 1}
+    assert payload["severities"] == {"high": 1, "low": 1}
+    assert {entry["note"] for entry in payload["entries"]} == {
+        "Bundle path was hard to spot.",
+        "The review command was clear.",
+    }
+    assert {item["entry_count"] for item in payload["runs"]} == {1}
+
+    assert cli.main(["feedback-summary", "--out", str(out), "--category", "bug", "--format", "json"]) == 0
+    filtered = _parse_json_output(capsys.readouterr().out)
+    assert filtered["filters"]["category"] == "bug"
+    assert filtered["total_entries"] == 1
+    assert filtered["categories"] == {"bug": 1}
+    assert filtered["entries"][0]["source"] == "tester-a"
+
+    assert cli.main(["feedback-summary", "--out", str(out), "--limit", "1", "--format", "json"]) == 0
+    limited = _parse_json_output(capsys.readouterr().out)
+    assert limited["total_entries"] == 2
+    assert limited["returned_entries"] == 1
+    assert len(limited["entries"]) == 1
+
+    assert cli.main(["feedback-summary", "--out", str(out)]) == 0
+    text = capsys.readouterr().out
+    assert "AgentLedger feedback summary in" in text
+    assert "Entries: 2 shown / 2 total across 2 runs" in text
+    assert "Categories: bug=1, docs=1" in text
+    assert "Recent feedback:" in text
+
+
+def test_feedback_summary_missing_output_json(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "missing-ledger"
+
+    assert cli.main(["feedback-summary", "--out", str(out), "--format", "json"]) == 2
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.feedback_summary.v1"
+    assert payload["ok"] is False
+    assert payload["out"] == str(out.resolve())
+    assert payload["entries"] == []
+    assert "No AgentLedger output directory found:" in payload["errors"][0]
+
+
 def test_review_latest_summarizes_check_status(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
