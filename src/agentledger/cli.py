@@ -8,7 +8,7 @@ from zipfile import BadZipFile, ZipFile
 from pathlib import Path
 
 from . import __version__
-from .bundle import write_zip_bundle
+from .bundle import validate_bundle_manifest, write_zip_bundle
 from .classify import detect_test_command
 from .check import CheckPolicy, build_check, check_exit_code, format_check
 from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_config
@@ -301,6 +301,7 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
     try:
         with ZipFile(zip_path, "r") as archive:
             members = archive.namelist()
+            manifest_member, manifest, manifest_errors = validate_bundle_manifest(archive)
             report_member = _find_bundle_member(members, "agentledger-report.json")
             if report_member is None:
                 print(f"Missing agentledger-report.json in {zip_path}")
@@ -326,8 +327,9 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
         print(f"Unable to open zip file: {zip_path}")
         return 2
 
-    if missing_members:
-        for message in missing_members:
+    problems = missing_members + manifest_errors
+    if problems:
+        for message in problems:
             print(message)
         return 2
 
@@ -335,6 +337,8 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
     passed, warned = artifact_status_counts([artifact for artifact in payload.get("artifacts", []) if isinstance(artifact, dict)])
     print(f"Bundle OK: {zip_path}")
     print(f"Run ID: {payload.get('run_id', '(missing run_id)')}")
+    print(f"Manifest: {manifest_member}")
+    print(f"Files checked: {manifest.get('file_count', 'n/a')}")
     print(f"Report: {report_member}")
     print(f"Markdown: {markdown_member}")
     print(f"HTML: {html_member}")

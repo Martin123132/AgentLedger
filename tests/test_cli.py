@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from agentledger import __version__, cli
+from agentledger.bundle import BUNDLE_MANIFEST_NAME, BUNDLE_MANIFEST_SCHEMA
 from agentledger.config import load_config
 from agentledger.doctor import format_doctor, run_doctor
 from agentledger import report_reader
@@ -32,6 +33,14 @@ def _bundle_text(bundle: Path) -> str:
             if name.endswith((".json", ".md", ".html", ".txt")):
                 chunks.append(archive.read(name).decode("utf-8", errors="replace"))
     return "\n".join(chunks)
+
+
+def _bundle_manifest(bundle: Path) -> tuple[str, dict]:
+    with ZipFile(bundle) as archive:
+        for name in archive.namelist():
+            if name.endswith(f"/{BUNDLE_MANIFEST_NAME}"):
+                return name, json.loads(archive.read(name).decode("utf-8"))
+    raise AssertionError("Missing bundle manifest")
 
 
 def _rule_by_id(payload: dict, rule_id: str) -> dict:
@@ -1351,10 +1360,23 @@ def test_verify_bundle_command(tmp_path: Path, capsys) -> None:
     )
     run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
     bundle = run_dir.with_suffix(".zip")
+    manifest_member, manifest = _bundle_manifest(bundle)
+    manifest_paths = {item["path"] for item in manifest["files"]}
+
+    assert manifest_member == f"{run_dir.name}/{BUNDLE_MANIFEST_NAME}"
+    assert manifest["schema_version"] == BUNDLE_MANIFEST_SCHEMA
+    assert manifest["digest_algorithm"] == "sha256"
+    assert manifest["bundle_root"] == run_dir.name
+    assert manifest["run_id"] == run_dir.name
+    assert manifest["file_count"] == len(manifest["files"])
+    assert f"{run_dir.name}/agentledger-report.json" in manifest_paths
+    assert all(item["sha256"] for item in manifest["files"])
 
     assert cli.main(["verify-bundle", str(bundle)]) == 0
     output = capsys.readouterr().out
     assert f"Bundle OK: {bundle}" in output
+    assert f"Manifest: {manifest_member}" in output
+    assert f"Files checked: {manifest['file_count']}" in output
     assert "Report:" in output
 
     broken = out / "broken.zip"
@@ -1367,6 +1389,76 @@ def test_verify_bundle_command(tmp_path: Path, capsys) -> None:
     assert cli.main(["verify-bundle", str(broken)]) == 2
     output = capsys.readouterr().out
     assert "Missing agentledger-report.json" in output
+
+
+def test_verify_bundle_requires_manifest(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+
+    missing_manifest = out / "missing-manifest.zip"
+    with ZipFile(bundle) as src, ZipFile(missing_manifest, "w") as dst:
+        for name in src.namelist():
+            if name.endswith(BUNDLE_MANIFEST_NAME):
+                continue
+            dst.writestr(name, src.read(name))
+
+    assert cli.main(["verify-bundle", str(missing_manifest)]) == 2
+    output = capsys.readouterr().out
+    assert f"Missing {BUNDLE_MANIFEST_NAME} in bundle." in output
+
+
+def test_verify_bundle_rejects_checksum_mismatch(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+
+    tampered = out / "tampered.zip"
+    with ZipFile(bundle) as src, ZipFile(tampered, "w") as dst:
+        for name in src.namelist():
+            if name.endswith("agentledger-report.md"):
+                dst.writestr(name, "# tampered\n")
+            else:
+                dst.writestr(name, src.read(name))
+
+    assert cli.main(["verify-bundle", str(tampered)]) == 2
+    output = capsys.readouterr().out
+    assert "Checksum mismatch for bundle member:" in output
+    assert "agentledger-report.md" in output
 
 
 def test_verify_bundle_requires_markdown_and_html(tmp_path: Path, capsys) -> None:

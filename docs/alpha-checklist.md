@@ -69,7 +69,8 @@ Expected result:
   - `agentledger-report.json`
   - `agentledger-report.html`
   - `artifacts/`
-  - zipped bundle (`.zip`) with the same base run id
+- A sibling zipped bundle (`.zip`) with the same base run id includes
+  `agentledger-bundle-manifest.json` with SHA-256 checksums.
 
 ## What not to commit
 

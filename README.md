@@ -19,7 +19,7 @@ run commands, touch repositories, and claim work is done:
 - Jester diff safety gate when available
 - Tokometer local usage summary when available
 - Markdown, JSON, and HTML audit reports
-- zip evidence bundle
+- zip evidence bundle with a manifest and SHA-256 checksums
 
 The first product wedge is intentionally simple:
 
@@ -36,7 +36,9 @@ agentledger-report.html
 artifacts/
 ```
 
-It also writes a sibling `.zip` bundle for easy handoff.
+It also writes a sibling `.zip` bundle for easy handoff. Each bundle includes
+`agentledger-bundle-manifest.json`, which records the expected file list,
+byte sizes, and SHA-256 checksums for verification.
 The Markdown and HTML reports start with a review summary and a short human
 checklist, review notes, and evidence-file pointers so the latest run can be
 triaged quickly before accepting the work.
@@ -373,6 +375,10 @@ Verify a produced zip bundle:
 ```powershell
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip
 ```
+
+`verify-bundle` requires `agentledger-bundle-manifest.json` inside the zip and
+checks each listed file's byte size and SHA-256 digest before reporting
+`Bundle OK`.
 
 ## Current Integrations
 
