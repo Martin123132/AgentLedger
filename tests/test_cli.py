@@ -71,6 +71,54 @@ def test_repository_policy_config_parses() -> None:
     assert config.check_allow_warnings is True
 
 
+def test_init_config_writes_starter_policy(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+
+    assert cli.main(["init-config", "--repo", str(repo)]) == 0
+
+    output = capsys.readouterr().out
+    config_path = repo / ".agentledger.toml"
+    assert f"Wrote AgentLedger config: {config_path.resolve()}" in output
+    assert "Next: python -m agentledger run" in output
+    config = load_config(repo)
+    assert config.privacy_mode == "summary"
+    assert config.out == ".agentledger"
+    assert config.repomori is False
+    assert config.jester is False
+    assert config.tokometer is False
+    assert config.zip is True
+    assert config.check_require_tests is True
+    assert config.check_dirty == "warn"
+    assert config.check_max_changed_files == 25
+    assert config.check_allow_warnings is True
+
+
+def test_init_config_refuses_existing_file_without_force(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    config_path = repo / ".agentledger.toml"
+    config_path.write_text('privacy_mode = "standard"\n', encoding="utf-8")
+
+    assert cli.main(["init-config", "--repo", str(repo)]) == 2
+
+    output = capsys.readouterr().out
+    assert f"Config already exists: {config_path.resolve()}" in output
+    assert "Use --force to overwrite it." in output
+    assert config_path.read_text(encoding="utf-8") == 'privacy_mode = "standard"\n'
+
+
+def test_init_config_force_overwrites_existing_file(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    config_path = repo / ".agentledger.toml"
+    config_path.write_text('privacy_mode = "standard"\n', encoding="utf-8")
+
+    assert cli.main(["init-config", "--repo", str(repo), "--force"]) == 0
+
+    capsys.readouterr()
+    config = load_config(repo)
+    assert config.privacy_mode == "summary"
+    assert config.check_require_tests is True
+
+
 def test_snapshot_writes_json_and_markdown(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

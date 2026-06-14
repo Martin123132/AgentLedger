@@ -38,6 +38,23 @@ SUPPORTED_KEYS = {
 }
 
 
+STARTER_CONFIG_TEXT = """# AgentLedger local policy.
+# Evidence output stays local and is ignored by git when .agentledger/ is in .gitignore.
+privacy_mode = "summary"
+out = ".agentledger"
+repomori = false
+jester = false
+tokometer = false
+zip = true
+
+# Review policy for agentledger check.
+check_require_tests = true
+check_dirty = "warn"
+check_max_changed_files = 25
+check_allow_warnings = true
+"""
+
+
 def load_config(repo: Path, config_path: str | None = None) -> AgentLedgerConfig:
     path = Path(config_path).expanduser() if config_path else repo / ".agentledger.toml"
     if not path.is_absolute():
