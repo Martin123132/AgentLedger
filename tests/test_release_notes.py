@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,6 +98,58 @@ def test_build_release_notes_defaults_to_todo_validation_template() -> None:
     assert "- TODO: Tag CI passed for `v0.1.7-alpha`." in notes
 
 
+def test_validate_publish_ready_accepts_completed_release_notes() -> None:
+    changelog = """# Changelog
+
+## 0.1.7-alpha
+
+- Added release checks.
+"""
+    notes = release_notes.build_release_notes(
+        version="0.1.7a0",
+        changelog_text=changelog,
+        validation_lines=[
+            "- Local release-check passed from a clean branch.",
+            "- PR CI passed: https://github.com/Martin123132/AgentLedger/actions/runs/123.",
+            "- Release Readiness passed: https://github.com/Martin123132/AgentLedger/actions/runs/456.",
+            "- Tag CI passed for `v0.1.7-alpha`: https://github.com/Martin123132/AgentLedger/actions/runs/789.",
+        ],
+    )
+
+    release_notes.validate_publish_ready(version="0.1.7a0", notes_text=notes)
+
+
+def test_validate_publish_ready_rejects_todo_release_notes() -> None:
+    changelog = """# Changelog
+
+## 0.1.7-alpha
+
+- Added release checks.
+"""
+    notes = release_notes.build_release_notes(
+        version="0.1.7-alpha",
+        changelog_text=changelog,
+    )
+
+    with pytest.raises(release_notes.ReleaseNotesError) as error:
+        release_notes.validate_publish_ready(version="0.1.7-alpha", notes_text=notes)
+
+    assert "TODO placeholders" in str(error.value)
+
+
+def test_validate_publish_ready_reports_missing_release_sections() -> None:
+    with pytest.raises(release_notes.ReleaseNotesError) as error:
+        release_notes.validate_publish_ready(
+            version="0.1.7a0",
+            notes_text="- Tag CI passed for v0.1.7-alpha.\n",
+        )
+
+    message = str(error.value)
+    assert "Missing ## Highlights section." in message
+    assert "Missing ## Validation section." in message
+    assert "Missing alpha prerelease evidence-handling footer." in message
+
+
 def test_main_writes_output_file(tmp_path: Path) -> None:
     changelog = tmp_path / "CHANGELOG.md"
     output = tmp_path / "notes.md"
@@ -125,6 +178,67 @@ def test_main_writes_output_file(tmp_path: Path) -> None:
 
     assert exit_code == 0
     assert "- Release readiness passed." in output.read_text(encoding="utf-8")
+
+
+def test_main_check_publish_ready_accepts_completed_notes(tmp_path: Path, capsys) -> None:
+    notes_file = tmp_path / "notes.md"
+    notes_file.write_text(
+        """## Highlights
+
+- Added release checks.
+
+## Validation
+
+- Local release-check passed.
+- Tag CI passed for `v0.1.7-alpha`.
+
+This is an alpha prerelease. Do not commit or upload `.agentledger/` evidence folders, zip bundles, or signing keys unless the contents have been reviewed.
+""",
+        encoding="utf-8",
+    )
+
+    exit_code = release_notes.main(
+        [
+            "--version",
+            "0.1.7a0",
+            "--notes-file",
+            str(notes_file),
+            "--check-publish-ready",
+        ]
+    )
+
+    assert exit_code == 0
+    assert capsys.readouterr().out == "Release notes publish check OK: 0.1.7-alpha.\n"
+
+
+def test_main_check_publish_ready_rejects_todo_notes(tmp_path: Path, capsys) -> None:
+    notes_file = tmp_path / "notes.md"
+    notes_file.write_text(
+        """## Highlights
+
+- Added release checks.
+
+## Validation
+
+- TODO: Tag CI passed for `v0.1.7-alpha`.
+
+This is an alpha prerelease. Do not commit or upload `.agentledger/` evidence folders, zip bundles, or signing keys unless the contents have been reviewed.
+""",
+        encoding="utf-8",
+    )
+
+    exit_code = release_notes.main(
+        [
+            "--version",
+            "0.1.7a0",
+            "--notes-file",
+            str(notes_file),
+            "--check-publish-ready",
+        ]
+    )
+
+    assert exit_code == 2
+    assert "TODO placeholders" in capsys.readouterr().err
 
 
 def test_main_check_mode_accepts_project_alpha_version(tmp_path: Path, capsys) -> None:

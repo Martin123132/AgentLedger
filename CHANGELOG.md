@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a publish-ready release notes check to catch TODO validation placeholders
+  before creating a GitHub prerelease.
 - Added optional JSON summaries to release readiness checks for CI and agent
   handoffs.
 - Added release process documentation consistency tests to keep version examples
