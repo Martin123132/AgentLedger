@@ -79,6 +79,8 @@ try {
 
     Invoke-CheckedCommand "Show latest run paths" "python" @("-m", "agentledger", "open-latest", "--out", $Out)
     Invoke-CheckedCommand "Show run history" "python" @("-m", "agentledger", "history", "--out", $Out)
+    $statusOutput = Invoke-CapturedCommand "Show latest status" "python" @("-m", "agentledger", "status", "--repo", ".", "--out", $Out, "--allow-warnings")
+    Invoke-CheckedCommand "Check latest status JSON" "python" @("-m", "agentledger", "status", "--repo", ".", "--out", $Out, "--format", "json", "--allow-warnings")
 
     $latestFile = Join-Path $Out "latest.txt"
     if (-not (Test-Path -LiteralPath $latestFile)) {
@@ -94,6 +96,7 @@ try {
     $gitVersion = (& git --version) -join " "
     $doctorSummary = ($doctorOutput | Select-Object -First 1)
     $versionSummary = ($versionOutput | Select-Object -First 1)
+    $statusSummary = ($statusOutput | Select-Object -First 1)
 
     Write-Host ""
     Write-Host "== Alpha complete =="
@@ -103,6 +106,7 @@ try {
     Write-Host "- Git: $gitVersion"
     Write-Host "- AgentLedger: $versionSummary"
     Write-Host "- Doctor: $doctorSummary"
+    Write-Host "- Status: $statusSummary"
     Write-Host "- Latest run: $latestRun"
     Write-Host "- Bundle verified: $latestRun.zip"
     Write-Host "- First confusing command, if any: <fill in>"
