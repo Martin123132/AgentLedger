@@ -192,6 +192,7 @@ Notes:
 
 - Smoke runs use temporary repos and temporary output folders.
 - Do not commit evidence folders or bundles. `.agentledger/`, `*.zip`, and related generated paths are already ignored by `.gitignore`.
+- Do not commit shared signing keys such as `.agentledger-signing-key`; local key filenames are ignored as a guardrail.
 - Treat evidence reports as local proof first. AgentLedger redacts common token, password, API key, and private-key patterns, but you should still review reports before sharing because they can contain command output, file paths, and repository metadata.
 
 For Windows shells that cannot find `git`, AgentLedger includes a helper that locates common Git installs, including GitHub Desktop's bundled git:
@@ -379,6 +380,18 @@ agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip
 `verify-bundle` requires `agentledger-bundle-manifest.json` inside the zip and
 checks each listed file's byte size and SHA-256 digest before reporting
 `Bundle OK`.
+
+Optionally sign a bundle manifest with a local shared-key HMAC:
+
+```powershell
+agentledger sign-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --key-file .agentledger-signing-key
+agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --signature-key-file .agentledger-signing-key
+agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --signature-key-file .agentledger-signing-key --require-signature
+```
+
+This is a shared-key HMAC-SHA256 integrity check over the bundle manifest, not
+a public-key signature. Keep signing keys private, rotate them if shared too
+widely, and do not commit them.
 
 ## Current Integrations
 

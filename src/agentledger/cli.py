@@ -8,7 +8,14 @@ from zipfile import BadZipFile, ZipFile
 from pathlib import Path
 
 from . import __version__
-from .bundle import validate_bundle_manifest, write_zip_bundle
+from .bundle import (
+    BundleError,
+    find_bundle_signature_member,
+    sign_zip_bundle,
+    validate_bundle_manifest,
+    validate_bundle_signature,
+    write_zip_bundle,
+)
 from .classify import detect_test_command
 from .check import CheckPolicy, build_check, check_exit_code, format_check
 from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_config
@@ -130,6 +137,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify = sub.add_parser("verify-bundle", help="Validate a zip evidence bundle.")
     verify.add_argument("bundle", help="Path to bundle zip file.")
+    verify.add_argument("--signature-key-file", default=None, help="Key file for HMAC-SHA256 bundle signature verification.")
+    verify.add_argument(
+        "--require-signature",
+        action="store_true",
+        help="Require and verify a bundle signature. Must be used with --signature-key-file.",
+    )
+
+    sign = sub.add_parser("sign-bundle", help="Add or replace an HMAC-SHA256 bundle signature.")
+    sign.add_argument("bundle", help="Path to bundle zip file.")
+    sign.add_argument("--key-file", required=True, help="Text file containing the shared signing key.")
+    sign.add_argument("--output", default=None, help="Optional output zip path. Defaults to updating the bundle in place.")
 
     return parser
 
@@ -295,13 +313,32 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
     if not zip_path.exists():
         print(f"Bundle not found: {zip_path}")
         return 2
+    if args.require_signature and args.signature_key_file is None:
+        print("--require-signature requires --signature-key-file.")
+        return 2
+    signature_key = None
+    if args.signature_key_file is not None:
+        try:
+            signature_key = _read_signature_key(Path(args.signature_key_file))
+        except BundleError as exc:
+            print(f"Signature key error: {exc}")
+            return 2
 
     missing_members = []
+    signature_status = "Signature: not present"
+    signature_errors: list[str] = []
 
     try:
         with ZipFile(zip_path, "r") as archive:
             members = archive.namelist()
             manifest_member, manifest, manifest_errors = validate_bundle_manifest(archive)
+            signature_member = find_bundle_signature_member(members)
+            if signature_key is not None:
+                signature_member, _signature, signature_errors = validate_bundle_signature(archive, signature_key)
+                if not signature_errors and signature_member is not None:
+                    signature_status = f"Signature: {signature_member} verified"
+            elif signature_member is not None:
+                signature_status = f"Signature: {signature_member} present (not verified; pass --signature-key-file to verify)"
             report_member = _find_bundle_member(members, "agentledger-report.json")
             if report_member is None:
                 print(f"Missing agentledger-report.json in {zip_path}")
@@ -327,7 +364,7 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
         print(f"Unable to open zip file: {zip_path}")
         return 2
 
-    problems = missing_members + manifest_errors
+    problems = missing_members + manifest_errors + signature_errors
     if problems:
         for message in problems:
             print(message)
@@ -339,6 +376,7 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
     print(f"Run ID: {payload.get('run_id', '(missing run_id)')}")
     print(f"Manifest: {manifest_member}")
     print(f"Files checked: {manifest.get('file_count', 'n/a')}")
+    print(signature_status)
     print(f"Report: {report_member}")
     print(f"Markdown: {markdown_member}")
     print(f"HTML: {html_member}")
@@ -346,6 +384,35 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
     print(f"Changed files: {changed}")
     print(f"Artifacts: {passed} ok, {warned} warn")
     return 0
+
+
+def _handle_sign_bundle(args: argparse.Namespace) -> int:
+    try:
+        key = _read_signature_key(Path(args.key_file))
+        output = Path(args.output).resolve() if args.output else None
+        signed_path, signature_member, signature = sign_zip_bundle(Path(args.bundle), key, output)
+    except BundleError as exc:
+        print(f"Unable to sign bundle: {exc}")
+        return 2
+    except OSError as exc:
+        print(f"Unable to sign bundle: {exc}")
+        return 2
+    print(f"Signed bundle: {signed_path}")
+    print(f"Signature: {signature_member}")
+    print(f"Signed manifest: {signature['signed_member']}")
+    print(f"Algorithm: {signature['algorithm']}")
+    return 0
+
+
+def _read_signature_key(path: Path) -> bytes:
+    if not path.exists():
+        raise BundleError(f"Key file not found: {path}")
+    if not path.is_file():
+        raise BundleError(f"Key path is not a file: {path}")
+    key = path.read_bytes().strip()
+    if not key:
+        raise BundleError(f"Key file is empty: {path}")
+    return key
 
 
 def _handle_check(args: argparse.Namespace) -> int:
@@ -877,5 +944,7 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_init_config(args)
     if args.command_name == "verify-bundle":
         return _handle_verify_bundle(args)
+    if args.command_name == "sign-bundle":
+        return _handle_sign_bundle(args)
     parser.error("unknown command")
     return 2

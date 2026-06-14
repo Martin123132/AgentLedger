@@ -9,5 +9,7 @@ dist/
 .agentledger/
 agentledger-evidence/
 *.zip
+.agentledger-signing-key*
+agentledger-signing-key*
 .repomori-packs/
 *.repomori

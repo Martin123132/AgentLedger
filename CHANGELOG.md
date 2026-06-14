@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added optional `agentledger sign-bundle` HMAC-SHA256 signatures over bundle
+  manifests, plus signature verification flags for `verify-bundle`.
 - Added `agentledger-bundle-manifest.json` inside zip bundles and made
   `verify-bundle` validate member byte sizes and SHA-256 checksums.
 - Added `agentledger review` to summarize the latest or selected run with

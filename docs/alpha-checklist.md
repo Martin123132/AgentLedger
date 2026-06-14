@@ -57,6 +57,9 @@ Expected result:
   - `python -m agentledger check --repo . .agentledger\<run-id>`
 - Verify a bundle:
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip`
+- Optional shared-key signature check:
+  - `python -m agentledger sign-bundle .agentledger\<run-id>.zip --key-file .agentledger-signing-key`
+  - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --signature-key-file .agentledger-signing-key --require-signature`
 - Compare two runs:
   - `python -m agentledger compare .agentledger\<run-id-a> .agentledger\<run-id-b>`
 
@@ -76,6 +79,7 @@ Expected result:
 
 - Do not commit `.agentledger/`.
 - Do not commit `*.zip`.
+- Do not commit `.agentledger-signing-key` or any shared signing key.
 - Do not commit temporary `Temp/agentledger-smoke-*` folders.
 - Keep only source/config/docs files in git history.
 

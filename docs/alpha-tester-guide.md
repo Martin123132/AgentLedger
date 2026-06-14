@@ -90,6 +90,7 @@ Expected result:
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
+- Optional: `sign-bundle` adds a shared-key HMAC signature that `verify-bundle --signature-key-file --require-signature` can verify
 
 ## Evidence location
 
@@ -107,7 +108,7 @@ Each run includes:
 - `artifacts/`
 - a sibling `.zip` bundle with `agentledger-bundle-manifest.json`
 
-Do not commit `.agentledger/`, zip bundles, logs, screenshots, or sensitive evidence.
+Do not commit `.agentledger/`, zip bundles, signing keys, logs, screenshots, or sensitive evidence.
 
 ## Feedback focus
 

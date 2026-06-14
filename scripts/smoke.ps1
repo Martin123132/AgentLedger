@@ -70,6 +70,7 @@ $originalLocation = Get-Location
 $repo = Join-Path $root "repo"
 $out = Join-Path $root "ledger"
 $checkJson = Join-Path $root "agentledger-check.json"
+$signatureKey = Join-Path $root "agentledger-signing-key.txt"
 
 try {
     New-Item -ItemType Directory -Path $repo | Out-Null
@@ -81,6 +82,7 @@ try {
     Set-Content -Path "README.md" -Value "# Smoke Demo`r`n"
     git add README.md | Out-Null
     git commit -m "initial" | Out-Null
+    Set-Content -LiteralPath $signatureKey -Value "agentledger-smoke-signing-key" -Encoding UTF8
 
     Invoke-AgentLedger @(
         "run",
@@ -107,6 +109,8 @@ try {
     Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings")
     Invoke-AgentLedgerJsonCheck -Run $run -OutputPath $checkJson
     Invoke-AgentLedger @("verify-bundle", "${run}.zip")
+    Invoke-AgentLedger @("sign-bundle", "${run}.zip", "--key-file", $signatureKey)
+    Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--signature-key-file", $signatureKey)
 
     Invoke-AgentLedger @(
         "run",

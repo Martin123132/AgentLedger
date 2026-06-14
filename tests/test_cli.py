@@ -9,7 +9,12 @@ from pathlib import Path
 import pytest
 
 from agentledger import __version__, cli
-from agentledger.bundle import BUNDLE_MANIFEST_NAME, BUNDLE_MANIFEST_SCHEMA
+from agentledger.bundle import (
+    BUNDLE_MANIFEST_NAME,
+    BUNDLE_MANIFEST_SCHEMA,
+    BUNDLE_SIGNATURE_NAME,
+    BUNDLE_SIGNATURE_SCHEMA,
+)
 from agentledger.config import load_config
 from agentledger.doctor import format_doctor, run_doctor
 from agentledger import report_reader
@@ -41,6 +46,14 @@ def _bundle_manifest(bundle: Path) -> tuple[str, dict]:
             if name.endswith(f"/{BUNDLE_MANIFEST_NAME}"):
                 return name, json.loads(archive.read(name).decode("utf-8"))
     raise AssertionError("Missing bundle manifest")
+
+
+def _bundle_signature(bundle: Path) -> tuple[str, dict]:
+    with ZipFile(bundle) as archive:
+        for name in archive.namelist():
+            if name.endswith(f"/{BUNDLE_SIGNATURE_NAME}"):
+                return name, json.loads(archive.read(name).decode("utf-8"))
+    raise AssertionError("Missing bundle signature")
 
 
 def _rule_by_id(payload: dict, rule_id: str) -> dict:
@@ -1423,6 +1436,158 @@ def test_verify_bundle_requires_manifest(tmp_path: Path, capsys) -> None:
     assert cli.main(["verify-bundle", str(missing_manifest)]) == 2
     output = capsys.readouterr().out
     assert f"Missing {BUNDLE_MANIFEST_NAME} in bundle." in output
+
+
+def test_sign_bundle_adds_and_verifies_hmac_signature(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    key_file = tmp_path / "agentledger-signing-key.txt"
+    key_file.write_text("shared-test-key\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    manifest_member, manifest = _bundle_manifest(bundle)
+    capsys.readouterr()
+
+    assert cli.main(["sign-bundle", str(bundle), "--key-file", str(key_file)]) == 0
+    output = capsys.readouterr().out
+    signature_member, signature = _bundle_signature(bundle)
+    assert f"Signed bundle: {bundle}" in output
+    assert f"Signature: {signature_member}" in output
+    assert f"Signed manifest: {manifest_member}" in output
+    assert signature_member == f"{run_dir.name}/{BUNDLE_SIGNATURE_NAME}"
+    assert signature["schema_version"] == BUNDLE_SIGNATURE_SCHEMA
+    assert signature["algorithm"] == "hmac-sha256"
+    assert signature["signed_member"] == manifest_member
+    assert signature["signed_sha256"]
+    assert signature["signature"]
+
+    assert cli.main(["verify-bundle", str(bundle), "--signature-key-file", str(key_file)]) == 0
+    output = capsys.readouterr().out
+    assert f"Manifest: {manifest_member}" in output
+    assert f"Files checked: {manifest['file_count']}" in output
+    assert f"Signature: {signature_member} verified" in output
+
+
+def test_sign_bundle_replaces_existing_signature(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    first_key = tmp_path / "first-key.txt"
+    second_key = tmp_path / "second-key.txt"
+    first_key.write_text("first-key\n", encoding="utf-8")
+    second_key.write_text("second-key\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    capsys.readouterr()
+
+    assert cli.main(["sign-bundle", str(bundle), "--key-file", str(first_key)]) == 0
+    assert cli.main(["sign-bundle", str(bundle), "--key-file", str(second_key)]) == 0
+    capsys.readouterr()
+
+    with ZipFile(bundle) as archive:
+        signature_members = [name for name in archive.namelist() if name.endswith(f"/{BUNDLE_SIGNATURE_NAME}")]
+    assert signature_members == [f"{run_dir.name}/{BUNDLE_SIGNATURE_NAME}"]
+
+    assert cli.main(["verify-bundle", str(bundle), "--signature-key-file", str(second_key)]) == 0
+    assert "verified" in capsys.readouterr().out
+    assert cli.main(["verify-bundle", str(bundle), "--signature-key-file", str(first_key)]) == 2
+    assert "Signature mismatch" in capsys.readouterr().out
+
+
+def test_verify_bundle_requires_signature_with_key(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    key_file = tmp_path / "agentledger-signing-key.txt"
+    key_file.write_text("shared-test-key\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    capsys.readouterr()
+
+    assert cli.main(["verify-bundle", str(bundle), "--require-signature"]) == 2
+    output = capsys.readouterr().out
+    assert "--require-signature requires --signature-key-file." in output
+
+    assert cli.main(["verify-bundle", str(bundle), "--signature-key-file", str(key_file), "--require-signature"]) == 2
+    output = capsys.readouterr().out
+    assert f"Missing {BUNDLE_SIGNATURE_NAME} in bundle." in output
+
+
+def test_verify_bundle_reports_unverified_signature_without_key(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    key_file = tmp_path / "agentledger-signing-key.txt"
+    key_file.write_text("shared-test-key\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    assert cli.main(["sign-bundle", str(bundle), "--key-file", str(key_file)]) == 0
+    capsys.readouterr()
+
+    assert cli.main(["verify-bundle", str(bundle)]) == 0
+    output = capsys.readouterr().out
+    assert "present (not verified; pass --signature-key-file to verify)" in output
 
 
 def test_verify_bundle_rejects_checksum_mismatch(tmp_path: Path, capsys) -> None:
