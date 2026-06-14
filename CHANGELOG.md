@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added docs consistency tests for local Markdown links and code-spanned repo
+  file references.
 - Added `agentledger contracts` to list known JSON command contracts in text or
   JSON form.
 - Added tests that exercise every documented JSON command contract and verify
