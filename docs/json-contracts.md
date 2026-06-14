@@ -91,6 +91,27 @@ Each run summary includes `run_id`, `run_dir`, timestamps, `command`,
 `exit_code`, `changed_files`, `test_framework`, `privacy_mode`, artifact counts,
 and report paths.
 
+### `agentledger feedback --format json --note <text>`
+
+Schema: `agentledger.feedback.v1`
+
+Use this to attach local alpha feedback to the latest run, or to a selected run
+directory. Feedback is written to `alpha-feedback.jsonl` in the run folder and
+is not added to an already-created evidence zip bundle.
+
+Stable fields:
+
+- `ok`: boolean
+- `action`: `record` or `list`
+- `run_dir`: resolved run directory, or `null` on failure
+- `feedback_file`: resolved feedback JSONL path, or `null` on failure
+- `entry`: recorded feedback entry for record actions, otherwise `null`
+- `entries`: feedback entries returned by the command
+- `errors`: human-readable error list
+
+Each feedback entry includes `schema_version`, `id`, `created_at`, `run_id`,
+`run_dir`, `category`, `severity`, `source`, `note`, and `redacted`.
+
 ### `agentledger inspect-report --format json <run-dir>`
 
 Schema: `agentledger.inspect_report.v1`

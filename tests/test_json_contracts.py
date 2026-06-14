@@ -15,6 +15,7 @@ SCHEMAS = {
     "doctor": "agentledger.doctor.v1",
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
+    "feedback": "agentledger.feedback.v1",
     "inspect_report": "agentledger.inspect_report.v1",
     "check": "agentledger.check.v1",
     "review": "agentledger.review.v1",
@@ -112,6 +113,22 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--out", str(out)]),
+        "feedback": _run_json(
+            capsys,
+            [
+                "feedback",
+                "--format",
+                "json",
+                "--out",
+                str(out),
+                "--note",
+                "The latest report path was easy to find.",
+                "--category",
+                "docs",
+                "--severity",
+                "low",
+            ],
+        ),
         "inspect_report": _run_json(capsys, ["inspect-report", "--format", "json", str(second)]),
         "check": _run_json(capsys, ["check", "--format", "json", "--allow-warnings", str(second)]),
         "review": _run_json(capsys, ["review", "--format", "json", "--out", str(out), "--allow-warnings"]),
@@ -166,6 +183,16 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "errors",
         },
         "history": {"schema_version", "out", "runs"},
+        "feedback": {
+            "schema_version",
+            "ok",
+            "action",
+            "run_dir",
+            "feedback_file",
+            "entry",
+            "entries",
+            "errors",
+        },
         "inspect_report": {
             "schema_version",
             "run_dir",
@@ -264,6 +291,27 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
             "json",
             "html",
             "zip",
+        },
+    )
+
+    feedback = json_payloads["feedback"]
+    assert feedback["ok"] is True
+    assert feedback["action"] == "record"
+    assert feedback["errors"] == []
+    assert feedback["entries"]
+    _assert_keys(
+        feedback["entry"],
+        {
+            "schema_version",
+            "id",
+            "created_at",
+            "run_id",
+            "run_dir",
+            "category",
+            "severity",
+            "source",
+            "note",
+            "redacted",
         },
     )
 

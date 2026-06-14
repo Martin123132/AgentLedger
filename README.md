@@ -96,6 +96,8 @@ python -m agentledger review --out .agentledger --allow-warnings
 python -m agentledger open-latest --out .agentledger
 python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
+python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
+python -m agentledger feedback --out .agentledger --list
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --allow-warnings $run
@@ -394,6 +396,19 @@ agentledger history --out .agentledger --format json
 agentledger history --out .agentledger --limit 5
 ```
 
+Record local alpha feedback against the latest run:
+
+```powershell
+agentledger feedback --out .agentledger --note "First confusing thing: ..."
+agentledger feedback --out .agentledger --category docs --severity high --note "Could not find the HTML report."
+agentledger feedback --out .agentledger --list
+agentledger feedback --out .agentledger --format json --note "Review command was clear."
+```
+
+`feedback` writes `alpha-feedback.jsonl` inside the selected run folder. It
+redacts obvious secrets in notes before saving them, but feedback files are
+still local evidence and should not be committed or shared without review.
+
 The normal local review loop is:
 
 ```powershell
@@ -402,6 +417,7 @@ agentledger review --out .agentledger --allow-warnings
 agentledger open-latest --out .agentledger
 agentledger open-latest --out .agentledger --format json
 agentledger history --out .agentledger
+agentledger feedback --out .agentledger --note "First confusing thing: ..."
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger check --allow-warnings $run
@@ -417,6 +433,7 @@ agentledger run --repo . -- python -m pytest
 agentledger review --repo . --allow-warnings
 agentledger open-latest --repo .
 agentledger history --repo .
+agentledger feedback --repo . --note "First confusing thing: ..."
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger check $run
 ```

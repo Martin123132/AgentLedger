@@ -69,6 +69,18 @@ What was noisy or unclear?
 
 Was anything unsafe to share?
 
+## Local feedback capture
+
+Optional command to attach notes to the latest local run:
+
+```powershell
+python -m agentledger feedback --out .agentledger --category friction --severity medium --note "First confusing thing: ..."
+python -m agentledger feedback --out .agentledger --list
+```
+
+Feedback is stored in `alpha-feedback.jsonl` beside the run reports. Do not
+commit or upload it unless the contents have been reviewed.
+
 ## Overall readiness
 
 Would you trust this enough to use after an AI coding-agent session?

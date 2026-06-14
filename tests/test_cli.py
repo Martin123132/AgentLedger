@@ -672,6 +672,83 @@ def test_history_json_output(tmp_path: Path, capsys) -> None:
     assert payload["runs"][0]["changed_files"] == 0
 
 
+def test_feedback_records_and_lists_latest_run(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    secret = "feedback-password-12345"
+
+    assert cli.main(["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer"]) == 0
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "feedback",
+                "--out",
+                str(out),
+                "--format",
+                "json",
+                "--category",
+                "docs",
+                "--severity",
+                "high",
+                "--source",
+                "alpha-tester",
+                "--note",
+                f"Could not find the HTML report. password={secret}",
+            ]
+        )
+        == 0
+    )
+    payload = _parse_json_output(capsys.readouterr().out)
+    feedback_path = latest_dir / "alpha-feedback.jsonl"
+    assert payload["schema_version"] == "agentledger.feedback.v1"
+    assert payload["ok"] is True
+    assert payload["action"] == "record"
+    assert payload["run_dir"] == str(latest_dir)
+    assert payload["feedback_file"] == str(feedback_path)
+    assert payload["errors"] == []
+    assert payload["entry"]["category"] == "docs"
+    assert payload["entry"]["severity"] == "high"
+    assert payload["entry"]["source"] == "alpha-tester"
+    assert payload["entry"]["redacted"] is True
+    assert secret not in payload["entry"]["note"]
+    assert "password=[REDACTED]" in payload["entry"]["note"]
+
+    entries = [json.loads(line) for line in feedback_path.read_text(encoding="utf-8").splitlines()]
+    assert entries == [payload["entry"]]
+
+    assert cli.main(["feedback", "--out", str(out), "--list"]) == 0
+    output = capsys.readouterr().out
+    assert f"AgentLedger feedback for {latest_dir}:" in output
+    assert "high | docs | alpha-tester:" in output
+    assert secret not in output
+    assert "password=[REDACTED]" in output
+
+    assert cli.main(["feedback", str(latest_dir), "--list", "--format", "json"]) == 0
+    listed = _parse_json_output(capsys.readouterr().out)
+    assert listed["action"] == "list"
+    assert listed["entry"] is None
+    assert listed["entries"] == entries
+
+
+def test_feedback_missing_latest_prints_hint(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "ledger"
+    out.mkdir()
+
+    assert cli.main(["feedback", "--out", str(out), "--note", "Could not find the latest run.", "--format", "json"]) == 2
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.feedback.v1"
+    assert payload["ok"] is False
+    assert payload["action"] == "record"
+    assert payload["run_dir"] is None
+    assert payload["feedback_file"] is None
+    assert "No latest run pointer found:" in payload["errors"][0]
+    assert "Run a capture first:" in payload["errors"][1]
+
+
 def test_review_latest_summarizes_check_status(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

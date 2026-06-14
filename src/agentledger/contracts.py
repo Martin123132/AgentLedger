@@ -37,6 +37,21 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
         "exit_codes": {"0": "history listed", "2": "invalid output directory or options"},
     },
     {
+        "command": "feedback --format json --note <text>",
+        "schema_version": "agentledger.feedback.v1",
+        "purpose": "Record or list local alpha feedback attached to a run.",
+        "stable_fields": [
+            "ok",
+            "action",
+            "run_dir",
+            "feedback_file",
+            "entry",
+            "entries",
+            "errors",
+        ],
+        "exit_codes": {"0": "feedback recorded or listed", "2": "invalid input or missing run"},
+    },
+    {
         "command": "inspect-report --format json <run-dir>",
         "schema_version": "agentledger.inspect_report.v1",
         "purpose": "Summarize one run report.",
