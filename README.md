@@ -200,7 +200,9 @@ Alpha one-command pass:
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
-That script runs install verification, smoke verification, doctor, a captured pytest pass, report inspection, bundle verification, and prints the short summary an alpha tester should send back.
+That script runs install verification, smoke verification, doctor, a captured
+pytest pass, latest status checks, report inspection, bundle verification, and
+prints the short summary an alpha tester should send back.
 
 Alpha release readiness:
 
@@ -216,7 +218,8 @@ python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentle
 ```
 
 That script checks version consistency, git hygiene, tracked evidence guardrails,
-wheel build metadata, pytest, install verification, and the Windows smoke flow.
+wheel build metadata, pytest, install verification, and the Windows smoke flow,
+including the latest status command.
 Use `-RequireCleanGit` before tagging or publishing a release candidate.
 Use `-JsonOutput <path>` to write a machine-readable
 `agentledger.release_check.v1` summary for CI or agent handoffs. Keep that file

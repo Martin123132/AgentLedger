@@ -21,7 +21,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 
 Expected result:
 
-- Install check, smoke check, doctor, captured pytest, inspect, check, and verify all pass.
+- Install check, smoke check, doctor, captured pytest, status, inspect, check,
+  and verify all pass.
 - A short summary is printed for the tester to send back.
 - `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
 

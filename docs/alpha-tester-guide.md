@@ -44,6 +44,7 @@ Expected result:
 - install check passes
 - smoke check passes
 - a real pytest run is captured under `.agentledger/`
+- `status` summarizes the latest captured run
 - latest/history/inspect/check/verify commands all succeed
 - the script prints a short summary to send back
 

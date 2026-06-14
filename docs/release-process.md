@@ -68,9 +68,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 -R
 
 `scripts/release-check.ps1` validates version consistency, changelog release
 notes source, git hygiene, isolated wheel metadata, tests, install check, and
-the Windows smoke flow. `-JsonOutput` writes an
-`agentledger.release_check.v1` summary that can be referenced from PR or release
-notes without parsing console output.
+the Windows smoke flow, including the latest status command. `-JsonOutput`
+writes an `agentledger.release_check.v1` summary that can be referenced from PR
+or release notes without parsing console output.
 
 If `-RequireCleanGit` fails because release prep changes are uncommitted, commit
 the intended source changes and rerun the command from that clean branch.
