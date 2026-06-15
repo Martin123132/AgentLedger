@@ -27,6 +27,7 @@ SCHEMAS = {
     "review": "agentledger.review.v1",
     "signing_key": "agentledger.signing_key.v1",
     "sign_bundle": "agentledger.sign_bundle.v1",
+    "inspect_bundle": "agentledger.inspect_bundle.v1",
     "verify_bundle": "agentledger.verify_bundle.v1",
     "compare": "agentledger.compare.v1",
 }
@@ -227,6 +228,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "verify_bundle": _run_json(capsys, ["verify-bundle", "--format", "json", f"{second}.zip"]),
         "signing_key": _run_json(capsys, ["signing-key", "--format", "json", "--repo", str(repo), "--key-file", str(signature_key)]),
         "sign_bundle": _run_json(capsys, ["sign-bundle", "--format", "json", f"{second}.zip", "--key-file", str(signature_key)]),
+        "inspect_bundle": _run_json(capsys, ["inspect-bundle", "--format", "json", f"{second}.zip"]),
         "compare": _run_json(capsys, ["compare", "--format", "json", str(first), str(second)]),
     }
 
@@ -434,6 +436,18 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "signed_bundle",
             "signature",
             "errors",
+        },
+        "inspect_bundle": {
+            "schema_version",
+            "ok",
+            "bundle",
+            "readable",
+            "manifest",
+            "signature",
+            "reports",
+            "review",
+            "errors",
+            "next_actions",
         },
         "verify_bundle": {
             "schema_version",
@@ -643,6 +657,35 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert sign_bundle["signature"]["algorithm"] == "hmac-sha256"
     assert "signature" not in sign_bundle["signature"]
     assert sign_bundle["errors"] == []
+
+    inspect_bundle = json_payloads["inspect_bundle"]
+    assert inspect_bundle["readable"] is True
+    _assert_keys(inspect_bundle["manifest"], {"member", "schema_version", "digest_algorithm", "file_count", "run_id", "valid", "errors"})
+    _assert_keys(
+        inspect_bundle["signature"],
+        {"member", "status", "verified", "schema_version", "algorithm", "signed_member", "signed_sha256"},
+    )
+    assert inspect_bundle["signature"]["status"] in {"not_present", "present_unverified", "invalid", "multiple"}
+    assert "signature" not in inspect_bundle["signature"]
+    _assert_keys(inspect_bundle["reports"], {"json", "markdown", "html", "missing"})
+    _assert_keys(
+        inspect_bundle["review"],
+        {
+            "status",
+            "ok",
+            "summary",
+            "blockers",
+            "warnings",
+            "run_id",
+            "command",
+            "exit_code",
+            "changed_files",
+            "test_framework",
+            "privacy_mode",
+            "artifacts",
+        },
+    )
+    assert inspect_bundle["next_actions"]
 
     verify_bundle = json_payloads["verify_bundle"]
     assert verify_bundle["ok"] is True

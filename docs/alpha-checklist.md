@@ -89,6 +89,8 @@ Expected result:
 - Check a specific run report:
   - `python -m agentledger check --repo . .agentledger\<run-id>`
 - Verify a bundle:
+  - `python -m agentledger inspect-bundle .agentledger\<run-id>.zip`
+  - `python -m agentledger inspect-bundle .agentledger\<run-id>.zip --format json`
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip`
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --format json`
 - Optional shared-key signature check:

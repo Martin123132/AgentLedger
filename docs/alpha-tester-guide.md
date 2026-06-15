@@ -102,6 +102,8 @@ python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agen
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --repo . $run
+python -m agentledger inspect-bundle "$run.zip"
+python -m agentledger inspect-bundle "$run.zip" --format json
 python -m agentledger verify-bundle "$run.zip"
 python -m agentledger verify-bundle "$run.zip" --format json
 ```
@@ -117,8 +119,9 @@ Expected result:
 - `feedback-export` writes a reviewed Markdown or JSON feedback handoff without local evidence paths
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
+- `inspect-bundle` summarizes manifest, signature presence, reports, command outcome, and pass/warn/block review status without needing a signing key
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
-- `status --format json`, `open-latest --format json`, and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
+- `status --format json`, `open-latest --format json`, `inspect-bundle --format json`, and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
 - Optional: `signing-key` checks shared-key file hygiene before `sign-bundle` adds an HMAC signature that `verify-bundle --signature-key-file --require-signature` can verify
 
 ## Evidence location

@@ -110,6 +110,8 @@ python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agen
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --allow-warnings $run
+python -m agentledger inspect-bundle "${run}.zip"
+python -m agentledger inspect-bundle "${run}.zip" --format json
 python -m agentledger verify-bundle "${run}.zip"
 python -m agentledger verify-bundle "${run}.zip" --format json
 ```
@@ -578,6 +580,8 @@ agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-fe
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger check --allow-warnings $run
+agentledger inspect-bundle "${run}.zip"
+agentledger inspect-bundle "${run}.zip" --format json
 agentledger verify-bundle "${run}.zip"
 agentledger verify-bundle "${run}.zip" --format json
 ```
@@ -604,13 +608,19 @@ Compare two runs:
 agentledger compare .agentledger\2026-06-11T120000Z-abc12345 .agentledger\2026-06-11T120100Z-def67890
 ```
 
-Verify a produced zip bundle:
+Inspect or verify a produced zip bundle:
 
 ```powershell
+agentledger inspect-bundle .agentledger\2026-06-11T120000Z-abc12345.zip
+agentledger inspect-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --format json
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --format json
 ```
 
+`inspect-bundle` reads a bundle without a signing key and summarizes manifest
+metadata, signature presence, report members, command outcome, artifacts, and a
+pass/warn/block review status. Use it for quick triage; it does not verify a
+shared-key signature.
 `verify-bundle` requires `agentledger-bundle-manifest.json` inside the zip and
 checks each listed file's byte size and SHA-256 digest before reporting
 `Bundle OK`. JSON output includes `ok`, `manifest`, `signature`, report

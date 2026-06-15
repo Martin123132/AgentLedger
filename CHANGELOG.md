@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger inspect-bundle` bundle triage output for manifest,
+  signature, report, and review-status summaries.
 - Added `agentledger signing-key` preflight checks for shared signing-key files
   without printing key material.
 - Added machine-readable `agentledger sign-bundle --format json` output for

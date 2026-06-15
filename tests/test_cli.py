@@ -2309,6 +2309,156 @@ def test_verify_bundle_json_output(tmp_path: Path, capsys) -> None:
     assert payload["signature"]["verified"] is True
 
 
+def test_inspect_bundle_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    key_file = tmp_path / "agentledger-signing-key.txt"
+    key_file.write_text("shared-test-key-for-inspect-bundle\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    manifest_member, manifest = _bundle_manifest(bundle)
+    capsys.readouterr()
+
+    assert cli.main(["sign-bundle", str(bundle), "--key-file", str(key_file)]) == 0
+    signature_member, _signature = _bundle_signature(bundle)
+    capsys.readouterr()
+
+    assert cli.main(["inspect-bundle", "--format", "json", str(bundle)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.inspect_bundle.v1"
+    assert payload["ok"] is True
+    assert payload["bundle"] == str(bundle.resolve())
+    assert payload["readable"] is True
+    assert payload["manifest"]["member"] == manifest_member
+    assert payload["manifest"]["valid"] is True
+    assert payload["manifest"]["file_count"] == manifest["file_count"]
+    assert payload["signature"]["member"] == signature_member
+    assert payload["signature"]["status"] == "present_unverified"
+    assert payload["signature"]["verified"] is False
+    assert "signature" not in payload["signature"]
+    assert payload["reports"]["json"].endswith("agentledger-report.json")
+    assert payload["reports"]["markdown"].endswith("agentledger-report.md")
+    assert payload["reports"]["html"].endswith("agentledger-report.html")
+    assert payload["reports"]["missing"] == []
+    assert payload["review"]["status"] == "pass"
+    assert payload["review"]["exit_code"] == 0
+    assert payload["review"]["test_framework"] == "pytest"
+    assert payload["review"]["artifacts"] == {"ok": 0, "warn": 0}
+    assert payload["errors"] == []
+    assert any("--signature-key-file" in action for action in payload["next_actions"])
+
+
+def test_inspect_bundle_reports_missing_json_report(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    broken = out / "missing-report.zip"
+    with ZipFile(bundle) as src, ZipFile(broken, "w") as dst:
+        for name in src.namelist():
+            if name.endswith("agentledger-report.json"):
+                continue
+            dst.writestr(name, src.read(name))
+    capsys.readouterr()
+
+    assert cli.main(["inspect-bundle", "--format", "json", str(broken)]) == 2
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.inspect_bundle.v1"
+    assert payload["ok"] is False
+    assert payload["readable"] is True
+    assert payload["review"]["status"] == "block"
+    assert any("Missing JSON report" in error for error in payload["errors"])
+    assert "agentledger-report.json" not in str(payload["review"]["command"])
+
+
+def test_inspect_bundle_reports_signature_digest_mismatch(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    key_file = tmp_path / "agentledger-signing-key.txt"
+    key_file.write_text("shared-test-key-for-digest-mismatch\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    assert cli.main(["sign-bundle", str(bundle), "--key-file", str(key_file)]) == 0
+    signature_member, signature = _bundle_signature(bundle)
+    capsys.readouterr()
+
+    signature["signed_sha256"] = "0" * 64
+    tampered = out / "tampered-signature-digest.zip"
+    with ZipFile(bundle) as src, ZipFile(tampered, "w") as dst:
+        for item in src.infolist():
+            if item.filename == signature_member:
+                dst.writestr(item, json.dumps(signature))
+            else:
+                dst.writestr(item, src.read(item.filename))
+
+    assert cli.main(["inspect-bundle", "--format", "json", str(tampered)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.inspect_bundle.v1"
+    assert payload["ok"] is False
+    assert payload["signature"]["status"] == "invalid"
+    assert payload["review"]["status"] == "warn"
+    assert any("Signed manifest digest mismatch" in warning for warning in payload["review"]["warnings"])
+    assert payload["errors"] == []
+
+
 def test_verify_bundle_requires_manifest(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

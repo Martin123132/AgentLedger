@@ -123,6 +123,8 @@ try {
     Invoke-AgentLedger @("review", "--out", $out, "--allow-warnings")
     Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings")
     Invoke-AgentLedgerJsonCheck -Run $run -OutputPath $checkJson
+    Invoke-AgentLedger @("inspect-bundle", "${run}.zip")
+    Invoke-AgentLedger @("inspect-bundle", "${run}.zip", "--format", "json")
     Invoke-AgentLedger @("verify-bundle", "${run}.zip")
     Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--format", "json")
     Invoke-AgentLedger @("signing-key", "--repo", $repo, "--key-file", $signatureKey, "--format", "json")
