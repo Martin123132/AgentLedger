@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reduced duplicate GitHub Actions runs by limiting branch push CI to `master`
+  and release tags while keeping PR CI active.
 - Added blocked-doctor alpha summaries with repair hints to `scripts/alpha.ps1`.
 - Added doctor repair hints to blocked `agentledger alpha` summary next actions.
 - Added actionable `hint` text to `agentledger doctor` setup checks.

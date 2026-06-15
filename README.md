@@ -178,6 +178,8 @@ bash ./scripts/smoke.sh
 ```
 
 There are also GitHub Actions for the same flow (pytest + install check + smoke) under `.github/workflows/ci.yml`.
+CI runs on pull requests, `master` pushes, and `v*` release tags; newer runs on
+the same ref cancel stale in-progress runs.
 For pre-tag release validation, run the manual `Release Readiness` workflow in
 GitHub Actions. It executes `.github/workflows/release-check.yml`, which calls
 `scripts/release-check.ps1` on Windows with `-RequireCleanGit` by default.
