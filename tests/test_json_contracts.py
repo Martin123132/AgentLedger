@@ -114,15 +114,17 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
     return {
         "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
-        "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--out", str(out)]),
-        "history": _run_json(capsys, ["history", "--format", "json", "--out", str(out)]),
-        "status": _run_json(capsys, ["status", "--format", "json", "--out", str(out), "--allow-warnings"]),
+        "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--repo", str(repo), "--out", str(out)]),
+        "history": _run_json(capsys, ["history", "--format", "json", "--repo", str(repo), "--out", str(out)]),
+        "status": _run_json(capsys, ["status", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
         "feedback": _run_json(
             capsys,
             [
                 "feedback",
                 "--format",
                 "json",
+                "--repo",
+                str(repo),
                 "--out",
                 str(out),
                 "--note",
@@ -133,7 +135,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
                 "low",
             ],
         ),
-        "feedback_summary": _run_json(capsys, ["feedback-summary", "--format", "json", "--out", str(out)]),
+        "feedback_summary": _run_json(capsys, ["feedback-summary", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "feedback_export": _run_json(
             capsys,
             [
@@ -142,6 +144,8 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
                 "json",
                 "--output-format",
                 "json",
+                "--repo",
+                str(repo),
                 "--out",
                 str(out),
                 "--output",
@@ -150,7 +154,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         ),
         "inspect_report": _run_json(capsys, ["inspect-report", "--format", "json", str(second)]),
         "check": _run_json(capsys, ["check", "--format", "json", "--allow-warnings", str(second)]),
-        "review": _run_json(capsys, ["review", "--format", "json", "--out", str(out), "--allow-warnings"]),
+        "review": _run_json(capsys, ["review", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
         "verify_bundle": _run_json(capsys, ["verify-bundle", "--format", "json", f"{second}.zip"]),
         "compare": _run_json(capsys, ["compare", "--format", "json", str(first), str(second)]),
     }

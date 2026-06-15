@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed explicit `--out` commands so they still inherit the target repo's
+  AgentLedger policy config.
 - Added direct `agentledger status` validation to the one-command alpha pass.
 - Added `agentledger status` to summarize the latest run policy status,
   evidence paths, feedback counts, and next actions in one command.

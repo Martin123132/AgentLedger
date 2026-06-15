@@ -639,8 +639,6 @@ def _check_config_repo(run_dir: Path) -> Path:
 
 
 def _load_output_config(args: argparse.Namespace, repo: Path) -> AgentLedgerConfig:
-    if args.out is not None and getattr(args, "config", None) is None:
-        return AgentLedgerConfig()
     return _load_cli_config(args, repo)
 
 

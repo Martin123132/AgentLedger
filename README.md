@@ -138,10 +138,11 @@ check_allow_warnings = false
 ```
 
 `run`, `snapshot`, `open-latest`, `history`, and `status` read that file from the target
-repo when it exists. `--out` and `--privacy-mode` override the config for a
-single command; boolean entries disable optional integrations or zip export by
-default. `check_*` entries tune the local review policy used by
-`agentledger check`.
+repo when it exists. `--out` overrides only the evidence directory for a single
+command; the repo policy still applies. `--privacy-mode` overrides the privacy
+setting for a single capture. Boolean entries disable optional integrations or
+zip export by default. `check_*` entries tune the local review policy used by
+`agentledger check`, `agentledger review`, and `agentledger status`.
 
 ## CI and smoke checks
 
