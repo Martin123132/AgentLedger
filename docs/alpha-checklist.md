@@ -26,6 +26,8 @@ Expected result:
 - A short summary is printed for the tester to send back.
 - `.agentledger/alpha-summary.json` is written for machine-readable handoffs,
   or `-JsonOutput <path>` writes that summary to a chosen location.
+- `python -m agentledger alpha-summary --out .agentledger` prints the same
+  handoff summary with validated paths and next actions.
 - `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
 
 Manual fallback flow:
@@ -55,6 +57,10 @@ Expected result:
 - Show latest run status, evidence paths, feedback counts, and next action:
   - `python -m agentledger status --out .agentledger --allow-warnings`
   - `python -m agentledger status --out .agentledger --format json --allow-warnings`
+- Inspect the one-command alpha summary if `scripts/alpha.ps1` was run:
+  - `python -m agentledger alpha-summary --out .agentledger`
+  - `python -m agentledger alpha-summary --out .agentledger --format json`
+  - `python -m agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json`
 - List latest run paths:
   - `python -m agentledger open-latest --out .agentledger`
   - `python -m agentledger open-latest --format json --out .agentledger`

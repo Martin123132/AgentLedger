@@ -16,6 +16,7 @@ SCHEMAS = {
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
     "status": "agentledger.status.v1",
+    "alpha_summary": "agentledger.alpha_summary.v1",
     "feedback": "agentledger.feedback.v1",
     "feedback_summary": "agentledger.feedback_summary.v1",
     "feedback_export": "agentledger.feedback_export_result.v1",
@@ -60,6 +61,45 @@ def _run_json(capsys: pytest.CaptureFixture[str], args: list[str], expected_exit
 def _assert_keys(payload: dict, keys: set[str]) -> None:
     missing = keys - payload.keys()
     assert not missing, f"Missing JSON contract fields: {sorted(missing)}"
+
+
+def _write_alpha_summary(path: Path, run_dir: Path) -> None:
+    payload = {
+        "schema_version": "agentledger.alpha_summary.v1",
+        "ok": True,
+        "summary_file": str(path),
+        "started_at": "2026-06-15T00:00:00+00:00",
+        "ended_at": "2026-06-15T00:01:00+00:00",
+        "repo": str(path.parent / "repo"),
+        "out": str(path.parent),
+        "latest_run": str(run_dir),
+        "bundle": f"{run_dir}.zip",
+        "agentledger_version": "agentledger 0.1.8a0",
+        "python_version": "Python 3.13.13",
+        "git_version": "git version 2.54.0.windows.1",
+        "doctor": "AgentLedger doctor: ready",
+        "status": "warn",
+        "status_summary": "2 warnings; review before accepting.",
+        "status_exit_code": 0,
+        "report_paths": {
+            "markdown": str(run_dir / "agentledger-report.md"),
+            "json": str(run_dir / "agentledger-report.json"),
+            "html": str(run_dir / "agentledger-report.html"),
+            "zip": f"{run_dir}.zip",
+        },
+        "feedback": {
+            "total_entries": 0,
+            "returned_entries": 0,
+            "runs_with_feedback": 0,
+            "latest_run_entries": 0,
+            "categories": {},
+            "severities": {},
+            "errors": [],
+        },
+        "next_actions": ["Read the Markdown report before sharing evidence."],
+        "errors": [],
+    }
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
 
 
 @pytest.fixture
@@ -110,6 +150,8 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
     )
     second = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
     capsys.readouterr()
+    alpha_summary = tmp_path / "alpha-summary.json"
+    _write_alpha_summary(alpha_summary, second)
 
     return {
         "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
@@ -117,6 +159,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "status": _run_json(capsys, ["status", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
+        "alpha_summary": _run_json(capsys, ["alpha-summary", "--format", "json", str(alpha_summary)]),
         "feedback": _run_json(
             capsys,
             [
@@ -220,6 +263,28 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "next_actions",
             "errors",
             "status_exit_code",
+        },
+        "alpha_summary": {
+            "schema_version",
+            "ok",
+            "summary_file",
+            "started_at",
+            "ended_at",
+            "repo",
+            "out",
+            "latest_run",
+            "bundle",
+            "agentledger_version",
+            "python_version",
+            "git_version",
+            "doctor",
+            "status",
+            "status_summary",
+            "status_exit_code",
+            "report_paths",
+            "feedback",
+            "next_actions",
+            "errors",
         },
         "feedback": {
             "schema_version",
@@ -378,6 +443,24 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
         },
     )
     assert status["next_actions"]
+
+    alpha_summary = json_payloads["alpha_summary"]
+    assert alpha_summary["ok"] is True
+    assert alpha_summary["status"] == "warn"
+    _assert_keys(alpha_summary["report_paths"], {"markdown", "json", "html", "zip"})
+    _assert_keys(
+        alpha_summary["feedback"],
+        {
+            "total_entries",
+            "returned_entries",
+            "runs_with_feedback",
+            "latest_run_entries",
+            "categories",
+            "severities",
+            "errors",
+        },
+    )
+    assert alpha_summary["next_actions"]
 
     feedback = json_payloads["feedback"]
     assert feedback["ok"] is True

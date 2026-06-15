@@ -126,6 +126,7 @@ try {
     $alphaSummary = [ordered]@{
         schema_version = "agentledger.alpha_summary.v1"
         ok = $true
+        summary_file = $resolvedSummaryPath
         started_at = $startedAt
         ended_at = $endedAt
         repo = $repoRootPath
@@ -142,6 +143,7 @@ try {
         report_paths = $statusPayload.paths
         feedback = $statusPayload.feedback
         next_actions = $statusPayload.next_actions
+        errors = @()
     }
     $alphaSummary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $resolvedSummaryPath -Encoding UTF8
 

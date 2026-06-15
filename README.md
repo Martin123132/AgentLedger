@@ -137,12 +137,13 @@ check_max_changed_files = 25
 check_allow_warnings = true
 ```
 
-`run`, `snapshot`, `open-latest`, `history`, and `status` read that file from the target
-repo when it exists. `--out` overrides only the evidence directory for a single
-command; the repo policy still applies. `--privacy-mode` overrides the privacy
-setting for a single capture. Boolean entries disable optional integrations or
-zip export by default. `check_*` entries tune the local review policy used by
-`agentledger check`, `agentledger review`, and `agentledger status`.
+`run`, `snapshot`, `open-latest`, `history`, `status`, and `alpha-summary` read
+that file from the target repo when it exists. `--out` overrides only the
+evidence directory for a single command; the repo policy still applies.
+`--privacy-mode` overrides the privacy setting for a single capture. Boolean
+entries disable optional integrations or zip export by default. `check_*`
+entries tune the local review policy used by `agentledger check`,
+`agentledger review`, and `agentledger status`.
 
 ## CI and smoke checks
 
@@ -156,6 +157,8 @@ powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1 -JsonOutput $env:TEMP\agentledger-alpha-summary.json
+python -m agentledger alpha-summary --out .agentledger
+python -m agentledger alpha-summary --format json $env:TEMP\agentledger-alpha-summary.json
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 ```
@@ -208,6 +211,14 @@ prints the short summary an alpha tester should send back. It also writes a
 machine-readable `agentledger.alpha_summary.v1` summary to
 `.agentledger/alpha-summary.json` by default; use `-JsonOutput <path>` to write
 that summary outside the repo.
+
+Inspect that summary without opening JSON by hand:
+
+```powershell
+python -m agentledger alpha-summary --out .agentledger
+python -m agentledger alpha-summary --out .agentledger --format json
+python -m agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json
+```
 
 Alpha release readiness:
 
@@ -376,6 +387,19 @@ agentledger status --out .agentledger --format json --allow-warnings
 
 `status` uses the same pass/warn/block policy as `review`, then adds local
 feedback counts so an alpha pass can start from one compact command.
+
+Inspect the latest one-command alpha pass summary:
+
+```powershell
+agentledger alpha-summary --out .agentledger
+agentledger alpha-summary --out .agentledger --format json
+agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json
+```
+
+`alpha-summary` validates the `agentledger.alpha_summary.v1` file written by
+`scripts/alpha.ps1`, prints the important run paths and feedback counts, and
+returns a nonzero exit code if the summary is missing, invalid, or records
+errors.
 
 You can tune the default check policy in `.agentledger.toml`:
 

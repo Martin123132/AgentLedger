@@ -57,6 +57,30 @@ PRIVACY_OMISSION = "[omitted by privacy-mode summary]"
 DEFAULT_OUT = ".agentledger"
 DEFAULT_PRIVACY_MODE = "standard"
 STATUS_SCHEMA = "agentledger.status.v1"
+ALPHA_SUMMARY_SCHEMA = "agentledger.alpha_summary.v1"
+ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
+ALPHA_SUMMARY_REQUIRED_FIELDS = {
+    "schema_version",
+    "ok",
+    "summary_file",
+    "started_at",
+    "ended_at",
+    "repo",
+    "out",
+    "latest_run",
+    "bundle",
+    "agentledger_version",
+    "python_version",
+    "git_version",
+    "doctor",
+    "status",
+    "status_summary",
+    "status_exit_code",
+    "report_paths",
+    "feedback",
+    "next_actions",
+    "errors",
+}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -128,6 +152,13 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--feedback-limit", type=int, default=3, help="Recent feedback entries to inspect for counts.")
     status.add_argument("--allow-warnings", action="store_true", help="Return success for pass or warn statuses.")
     status.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    alpha_summary = sub.add_parser("alpha-summary", help="Inspect one-command alpha summary JSON.")
+    alpha_summary.add_argument("summary_file", nargs="?", help="Path to alpha-summary.json. Defaults to <out>/alpha-summary.json.")
+    alpha_summary.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
+    alpha_summary.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    alpha_summary.add_argument("--out", default=None, help="Evidence output directory.")
+    alpha_summary.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     feedback = sub.add_parser("feedback", help="Record or list alpha feedback for a run.")
     feedback.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
@@ -1071,6 +1102,143 @@ def _handle_status(args: argparse.Namespace) -> int:
     return status_exit_code
 
 
+def _alpha_summary_error(
+    args: argparse.Namespace,
+    errors: list[str],
+    summary_file: Path | None = None,
+) -> int:
+    if getattr(args, "format", "text") == "json":
+        payload = {
+            "schema_version": ALPHA_SUMMARY_SCHEMA,
+            "ok": False,
+            "summary_file": str(summary_file) if summary_file is not None else None,
+            "errors": errors,
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        for message in errors:
+            print(message)
+    return 2
+
+
+def _resolve_alpha_summary_file(args: argparse.Namespace) -> tuple[Path | None, list[str]]:
+    if args.summary_file:
+        return Path(args.summary_file).expanduser().resolve(), []
+
+    repo = Path(args.repo or ".").resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return None, [f"Config error: {exc}"]
+    out_root = _resolve_out_root(args, repo, config)
+    return (out_root / ALPHA_SUMMARY_FILENAME).resolve(), []
+
+
+def _load_alpha_summary(path: Path) -> tuple[dict | None, list[str]]:
+    if not path.exists():
+        return None, [
+            f"Alpha summary file not found: {path}",
+            "Run scripts/alpha.ps1 first, or pass a summary path.",
+        ]
+    if not path.is_file():
+        return None, [f"Alpha summary path is not a file: {path}"]
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return None, [f"Unable to read alpha summary {path}: {exc}"]
+    if not isinstance(payload, dict):
+        return None, [f"Alpha summary JSON must be an object: {path}"]
+    return payload, []
+
+
+def _validate_alpha_summary(payload: dict) -> list[str]:
+    errors: list[str] = []
+    schema = payload.get("schema_version")
+    if schema != ALPHA_SUMMARY_SCHEMA:
+        errors.append(f"Expected schema_version {ALPHA_SUMMARY_SCHEMA}, found {schema!r}.")
+    missing = sorted(ALPHA_SUMMARY_REQUIRED_FIELDS - payload.keys())
+    if missing:
+        errors.append("Missing alpha summary fields: " + ", ".join(missing))
+    if "ok" in payload and not isinstance(payload.get("ok"), bool):
+        errors.append("Alpha summary field ok must be a boolean.")
+    if "errors" in payload and not isinstance(payload.get("errors"), list):
+        errors.append("Alpha summary field errors must be a list.")
+    if "next_actions" in payload and not isinstance(payload.get("next_actions"), list):
+        errors.append("Alpha summary field next_actions must be a list.")
+    if "report_paths" in payload and not isinstance(payload.get("report_paths"), dict):
+        errors.append("Alpha summary field report_paths must be an object.")
+    if "feedback" in payload and not isinstance(payload.get("feedback"), dict):
+        errors.append("Alpha summary field feedback must be an object.")
+    return errors
+
+
+def _format_alpha_summary(path: Path, payload: dict) -> str:
+    status = payload.get("status") or "unknown"
+    status_summary = payload.get("status_summary") or "No status summary."
+    feedback = payload.get("feedback") if isinstance(payload.get("feedback"), dict) else {}
+    paths = payload.get("report_paths") if isinstance(payload.get("report_paths"), dict) else {}
+    next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
+    errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+
+    lines = [
+        f"AgentLedger alpha summary: {status}",
+        f"Summary: {status_summary}",
+        f"Summary file: {path}",
+        f"Repo: {payload.get('repo') or 'n/a'}",
+        f"Output: {payload.get('out') or 'n/a'}",
+        f"Latest run: {payload.get('latest_run') or 'n/a'}",
+        f"Bundle: {payload.get('bundle') or 'n/a'}",
+        f"AgentLedger: {payload.get('agentledger_version') or 'n/a'}",
+        f"Python: {payload.get('python_version') or 'n/a'}",
+        f"Git: {payload.get('git_version') or 'n/a'}",
+        f"Doctor: {payload.get('doctor') or 'n/a'}",
+        (
+            f"Feedback: {feedback.get('total_entries', 0)} total entries across "
+            f"{feedback.get('runs_with_feedback', 0)} runs; latest run has {feedback.get('latest_run_entries', 0)}"
+        ),
+    ]
+    if paths:
+        lines.extend(
+            [
+                f"Markdown report: {paths.get('markdown') or 'n/a'}",
+                f"JSON report: {paths.get('json') or 'n/a'}",
+                f"HTML report: {paths.get('html') or 'n/a'}",
+            ]
+        )
+        if paths.get("zip"):
+            lines.append(f"Zip bundle: {paths['zip']}")
+    if next_actions:
+        lines.append("Next:")
+        for action in next_actions:
+            lines.append(f"- {action}")
+    if errors:
+        lines.append("Errors:")
+        for error in errors:
+            lines.append(f"- {error}")
+    return "\n".join(lines)
+
+
+def _handle_alpha_summary(args: argparse.Namespace) -> int:
+    summary_file, resolve_errors = _resolve_alpha_summary_file(args)
+    if resolve_errors:
+        return _alpha_summary_error(args, resolve_errors, summary_file)
+    assert summary_file is not None
+    payload, load_errors = _load_alpha_summary(summary_file)
+    if load_errors:
+        return _alpha_summary_error(args, load_errors, summary_file)
+    assert payload is not None
+    validation_errors = _validate_alpha_summary(payload)
+    if validation_errors:
+        return _alpha_summary_error(args, validation_errors, summary_file)
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        print(_format_alpha_summary(summary_file, payload))
+    summary_errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+    return 0 if payload.get("ok") is True and not summary_errors else 2
+
+
 def _resolve_feedback_run_dir(args: argparse.Namespace) -> tuple[Path | None, list[str]]:
     if args.run_dir:
         return Path(args.run_dir).resolve(), []
@@ -1683,6 +1851,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_history(args)
     if args.command_name == "status":
         return _handle_status(args)
+    if args.command_name == "alpha-summary":
+        return _handle_alpha_summary(args)
     if args.command_name == "feedback":
         return _handle_feedback(args)
     if args.command_name == "feedback-summary":

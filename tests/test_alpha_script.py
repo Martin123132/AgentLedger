@@ -23,7 +23,9 @@ def test_alpha_script_writes_json_summary() -> None:
 
     assert "[string] $JsonOutput" in text
     assert 'schema_version = "agentledger.alpha_summary.v1"' in text
+    assert "summary_file = $resolvedSummaryPath" in text
     assert 'Join-Path $Out "alpha-summary.json"' in text
     assert '$statusPayload = ($statusJsonOutput -join "`n") | ConvertFrom-Json' in text
+    assert "errors = @()" in text
     assert "$alphaSummary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $resolvedSummaryPath -Encoding UTF8" in text
     assert 'Write-Host "- Alpha summary JSON: $resolvedSummaryPath"' in text
