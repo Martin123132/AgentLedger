@@ -12,6 +12,8 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $repoRootPath = $repoRoot.Path
 $originalLocation = Get-Location
 $startedAt = [DateTimeOffset]::UtcNow.ToString("o")
+$script:alphaExitCode = 0
+$script:alphaSummaryWriteNextAction = "Choose a writable alpha summary path, then run scripts/alpha.ps1 again."
 
 function Resolve-AlphaPath {
     param(
@@ -40,6 +42,51 @@ function Invoke-CheckedCommand {
     if ($LASTEXITCODE -ne 0) {
         throw "$Label failed with code $LASTEXITCODE"
     }
+}
+
+function Add-AlphaSummaryWriteError {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary] $Payload,
+        [Parameter(Mandatory = $true)]
+        [string] $Message
+    )
+
+    $errors = @()
+    if ($Payload.Contains("errors") -and $null -ne $Payload["errors"]) {
+        $errors += @($Payload["errors"])
+    }
+    if ($errors -notcontains $Message) {
+        $errors += $Message
+    }
+
+    $nextActions = @()
+    if ($Payload.Contains("next_actions") -and $null -ne $Payload["next_actions"]) {
+        $nextActions += @($Payload["next_actions"])
+    }
+    if ($nextActions -notcontains $script:alphaSummaryWriteNextAction) {
+        $nextActions += $script:alphaSummaryWriteNextAction
+    }
+
+    $Payload["ok"] = $false
+    $Payload["status_exit_code"] = 2
+    $Payload["errors"] = @($errors)
+    $Payload["next_actions"] = @($nextActions)
+}
+
+function Write-AlphaSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary] $Payload
+    )
+
+    $summaryParent = Split-Path -Parent $Path
+    if ($summaryParent) {
+        New-Item -ItemType Directory -Force -Path $summaryParent | Out-Null
+    }
+    $Payload | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
 function Invoke-CapturedCommand {
@@ -119,10 +166,6 @@ try {
         $summaryPath = Join-Path $Out "alpha-summary.json"
     }
     $resolvedSummaryPath = Resolve-AlphaPath -Path $summaryPath
-    $summaryParent = Split-Path -Parent $resolvedSummaryPath
-    if ($summaryParent) {
-        New-Item -ItemType Directory -Force -Path $summaryParent | Out-Null
-    }
     $alphaSummary = [ordered]@{
         schema_version = "agentledger.alpha_summary.v1"
         ok = $true
@@ -145,10 +188,23 @@ try {
         next_actions = $statusPayload.next_actions
         errors = @()
     }
-    $alphaSummary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $resolvedSummaryPath -Encoding UTF8
+    $summaryWriteError = $null
+    try {
+        Write-AlphaSummary -Path $resolvedSummaryPath -Payload $alphaSummary
+    }
+    catch {
+        $summaryWriteError = "Unable to write alpha summary ${resolvedSummaryPath}: $($_.Exception.Message)"
+        Add-AlphaSummaryWriteError -Payload $alphaSummary -Message $summaryWriteError
+        $script:alphaExitCode = 2
+    }
 
     Write-Host ""
-    Write-Host "== Alpha complete =="
+    if ($summaryWriteError) {
+        Write-Host "== Alpha complete with summary write error =="
+    }
+    else {
+        Write-Host "== Alpha complete =="
+    }
     Write-Host "Send back this summary:"
     Write-Host "- OS: $([System.Environment]::OSVersion.VersionString)"
     Write-Host "- Python: $pythonVersion"
@@ -158,7 +214,13 @@ try {
     Write-Host "- Status: $statusSummary"
     Write-Host "- Latest run: $latestRun"
     Write-Host "- Bundle verified: $latestRun.zip"
-    Write-Host "- Alpha summary JSON: $resolvedSummaryPath"
+    if ($summaryWriteError) {
+        Write-Host "- Alpha summary JSON: not written"
+        Write-Host "- Alpha summary write error: $summaryWriteError"
+    }
+    else {
+        Write-Host "- Alpha summary JSON: $resolvedSummaryPath"
+    }
     Write-Host "- First confusing command, if any: <fill in>"
     Write-Host "- Report clarity: <clear / unclear + notes>"
     Write-Host "- Optional local feedback: python -m agentledger feedback --out $Out --note ""First confusing thing: ..."""
@@ -169,4 +231,8 @@ try {
 }
 finally {
     Set-Location -LiteralPath $originalLocation
+}
+
+if ($script:alphaExitCode -ne 0) {
+    exit $script:alphaExitCode
 }

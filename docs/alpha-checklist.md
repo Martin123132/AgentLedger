@@ -36,6 +36,8 @@ Expected result:
 - `--strict` is available when warning status should fail the alpha pass.
 - If required setup is blocked, the summary records config or doctor errors
   instead of stopping with a traceback.
+- If the Windows `-JsonOutput` path cannot be written, the script prints the
+  write error and exits 2.
 - `python -m agentledger alpha-summary --out .agentledger` prints the same
   handoff summary with validated paths and next actions.
 - `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
