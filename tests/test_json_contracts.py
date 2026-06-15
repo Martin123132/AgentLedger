@@ -410,6 +410,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "command_exit_code",
             "paths",
             "history",
+            "comparison",
             "check",
             "review_exit_code",
         },
@@ -657,6 +658,23 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
             "current",
         },
     )
+    _assert_keys(review["comparison"], {"available", "current_run", "previous_run", "compare", "errors"})
+    assert review["comparison"]["available"] is True
+    assert review["comparison"]["errors"] == []
+    _assert_keys(
+        review["comparison"]["compare"],
+        {
+            "schema_version",
+            "changed_files",
+            "exit_code",
+            "artifacts",
+            "command",
+            "tokometer",
+            "test_framework",
+            "privacy_mode",
+        },
+    )
+    assert review["comparison"]["compare"]["schema_version"] == SCHEMAS["compare"]
     assert review["check"]["schema_version"] == SCHEMAS["check"]
 
     signing_key = json_payloads["signing_key"]

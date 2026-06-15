@@ -479,7 +479,8 @@ agentledger review --out .agentledger --history-limit 5 --allow-warnings
 
 `review` uses the same pass/warn/block policy and exit codes as `check`, then
 adds the Markdown/JSON/HTML report paths, zip bundle path when present, warning
-or blocking rule summaries, recent run context, and a short next-action hint.
+or blocking rule summaries, recent run context, previous-run comparison when
+available, and a short next-action hint.
 It shows the three most recent runs by default; pass `--history-limit 0` to
 hide that context.
 

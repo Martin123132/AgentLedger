@@ -209,7 +209,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
     {
         "command": "review --format json",
         "schema_version": "agentledger.review.v1",
-        "purpose": "Combine policy status with direct evidence paths and recent-run context.",
+        "purpose": "Combine policy status with direct evidence paths, recent-run context, and previous-run comparison.",
         "stable_fields": [
             "status",
             "ok",
@@ -218,6 +218,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "command_exit_code",
             "paths",
             "history",
+            "comparison",
             "check",
             "review_exit_code",
         ],

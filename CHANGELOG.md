@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added latest-vs-previous comparison details to `agentledger review`.
 - Added recent-run context to `agentledger review`, including JSON history
   fields and a `--history-limit` control.
 - Added `agentledger inspect-bundle` bundle triage output for manifest,

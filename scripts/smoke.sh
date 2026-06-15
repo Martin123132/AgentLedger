@@ -112,4 +112,5 @@ python -m agentledger run \
   -- python -c "from pathlib import Path; Path('note.txt').write_text('hello again'); Path('second.txt').write_text('there')"
 
 RUN2="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
+python -m agentledger review --format json --out "$OUT" --allow-warnings --history-limit 2
 python -m agentledger compare --format json "$RUN" "$RUN2"

@@ -1522,6 +1522,7 @@ def test_review_latest_summarizes_check_status(tmp_path: Path, capsys) -> None:
     assert f"Zip bundle: {run_dir}.zip" in output
     assert "Recent runs:" in output
     assert f"* {run_dir.name} | exit=0 | changed=1" in output
+    assert "Previous comparison:" not in output
     assert "Warnings:" in output
     assert "- test_evidence: Command was not recognized as a test or verification command." in output
     assert "- repo_state: Repository had 1 changed file after the run." in output
@@ -1578,10 +1579,86 @@ def test_review_json_output(tmp_path: Path, capsys) -> None:
     assert payload["history"]["runs"][0]["run_dir"] == str(run_dir)
     assert payload["history"]["runs"][0]["current"] is True
     assert payload["history"]["runs"][0]["test_framework"] == "pytest"
+    assert payload["comparison"]["available"] is False
+    assert payload["comparison"]["current_run"] == str(run_dir.resolve())
+    assert payload["comparison"]["previous_run"] is None
+    assert payload["comparison"]["compare"] is None
+    assert payload["comparison"]["errors"] == []
     assert payload["check"]["schema_version"] == "agentledger.check.v1"
     assert payload["check"]["command"].startswith(str(sys.executable))
     assert payload["command_exit_code"] == 0
     assert payload["review_exit_code"] == 0
+
+
+def test_review_compares_latest_with_previous_run(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('README.md').write_text('hello one')",
+            ]
+        )
+        == 0
+    )
+    first = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('new'); Path('README.md').write_text('hello two')",
+            ]
+        )
+        == 0
+    )
+    second = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["review", "--out", str(out), "--allow-warnings"]) == 0
+    output = capsys.readouterr().out
+    assert "Previous comparison:" in output
+    assert f"Previous run: {first.resolve()}" in output
+    assert "Changed files: 1 -> 2 (+1)" in output
+    assert "Exit code: 0 -> 0 (unchanged)" in output
+    assert "Test framework: n/a -> n/a" in output
+
+    assert cli.main(["review", "--format", "json", "--out", str(out), "--allow-warnings"]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["comparison"]["available"] is True
+    assert payload["comparison"]["previous_run"] == str(first.resolve())
+    assert payload["comparison"]["current_run"] == str(second.resolve())
+    assert payload["comparison"]["errors"] == []
+    assert payload["comparison"]["compare"]["schema_version"] == "agentledger.compare.v1"
+    assert payload["comparison"]["compare"]["changed_files"] == {
+        "old": 1,
+        "new": 2,
+        "delta": 1,
+        "delta_text": "+1",
+    }
+    assert payload["comparison"]["compare"]["exit_code"]["trend"] == "unchanged"
 
 
 def test_review_rejects_negative_history_limit(tmp_path: Path, capsys) -> None:
