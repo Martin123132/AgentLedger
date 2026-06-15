@@ -155,6 +155,7 @@ python -m pytest
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
+powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1 -JsonOutput $env:TEMP\agentledger-alpha-summary.json
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 ```
@@ -203,7 +204,10 @@ powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 
 That script runs install verification, smoke verification, doctor, a captured
 pytest pass, latest status checks, report inspection, bundle verification, and
-prints the short summary an alpha tester should send back.
+prints the short summary an alpha tester should send back. It also writes a
+machine-readable `agentledger.alpha_summary.v1` summary to
+`.agentledger/alpha-summary.json` by default; use `-JsonOutput <path>` to write
+that summary outside the repo.
 
 Alpha release readiness:
 

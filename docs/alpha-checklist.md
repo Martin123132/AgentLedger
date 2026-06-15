@@ -24,6 +24,8 @@ Expected result:
 - Install check, smoke check, doctor, captured pytest, status, inspect, check,
   and verify all pass.
 - A short summary is printed for the tester to send back.
+- `.agentledger/alpha-summary.json` is written for machine-readable handoffs,
+  or `-JsonOutput <path>` writes that summary to a chosen location.
 - `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
 
 Manual fallback flow:

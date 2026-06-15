@@ -25,6 +25,7 @@ Result:
 
 - Passed:
 - Failed:
+- Alpha summary JSON path:
 - Confusing:
 
 ## Smoke test
