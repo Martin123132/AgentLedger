@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Expanded release rehearsals to write the target command index, metadata JSON,
+  and fast readiness report into one local output directory.
 - Added a fast release readiness report for metadata, release-process,
   release-notes, and git-hygiene preflight checks before full release readiness.
 - Added the release-process consistency checker to the release-readiness gate

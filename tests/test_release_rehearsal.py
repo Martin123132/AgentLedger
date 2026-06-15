@@ -30,6 +30,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentledger"
 version = "0.1.7a0"
+description = "Local-first black box recorder for AI coding agents."
+requires-python = ">=3.10"
+license = { text = "PolyForm Noncommercial License 1.0.0" }
+authors = [{ name = "Martin Ollett" }]
+dependencies = []
 """,
         encoding="utf-8",
     )
@@ -47,6 +52,22 @@ version = "0.1.7a0"
 
 - Previous release.
 """,
+        encoding="utf-8",
+    )
+    (root / "README.md").write_text(
+        """# AgentLedger
+
+Source-available for non-commercial use under the PolyForm Noncommercial License 1.0.0.
+Commercial use requires separate permission.
+""",
+        encoding="utf-8",
+    )
+    (root / "LICENSE").write_text(
+        "# PolyForm Noncommercial License 1.0.0\n",
+        encoding="utf-8",
+    )
+    (root / "COMMERCIAL.md").write_text(
+        "Commercial use is not granted by the public license.\n",
         encoding="utf-8",
     )
 
@@ -75,6 +96,14 @@ def test_rehearsal_dry_run_writes_summary_without_mutating_repo(tmp_path: Path) 
     assert result["status"] == "rehearsal_passed"
     assert result["release_version"] == "0.1.8-alpha"
     assert result["working_tree_dirty"] is None
+    assert Path(result["release_command_index_json"]).exists()
+    assert Path(result["release_command_index_markdown"]).exists()
+    assert Path(result["release_metadata_json"]).exists()
+    assert result["release_readiness_json"] is None
+    assert any(
+        step["name"] == "Fast release readiness report" and step["status"] == "skipped"
+        for step in result["steps"]
+    )
 
     draft_notes = Path(result["draft_release_notes"])
     assert draft_notes.exists()
@@ -86,9 +115,16 @@ def test_rehearsal_dry_run_writes_summary_without_mutating_repo(tmp_path: Path) 
     summary = json.loads(summary_json.read_text(encoding="utf-8"))
     assert summary["schema_version"] == "agentledger.release_rehearsal.v1"
     assert summary["ok"] is True
+    assert summary["release_command_index_markdown"].endswith("release-command-index.md")
+    assert summary["release_metadata_json"].endswith("release-metadata.json")
     assert any(step["status"] == "pending" for step in summary["steps"])
     assert any(step["status"] == "skipped" for step in summary["steps"])
-    assert Path(result["summary_markdown"]).exists()
+    summary_markdown = Path(result["summary_markdown"])
+    assert summary_markdown.exists()
+    summary_text = summary_markdown.read_text(encoding="utf-8")
+    assert "- Release command index:" in summary_text
+    assert "- Release metadata JSON:" in summary_text
+    assert "- Fast readiness report: not written" in summary_text
 
     after = {
         path.relative_to(tmp_path).as_posix(): path.read_text(encoding="utf-8")
@@ -154,6 +190,68 @@ def test_rehearsal_records_release_check_summary_path(tmp_path: Path, monkeypatc
     summary_text = Path(result["summary_markdown"]).read_text(encoding="utf-8")
     assert f"- Release-check summary: {result['release_check_summary']}" in summary_text
     assert "Use the release-check JSON and summary paths" in summary_text
+
+
+def test_rehearsal_records_fast_readiness_report_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    write_release_repo(tmp_path)
+
+    monkeypatch.setattr(
+        rehearse_release,
+        "collect_git_state",
+        lambda repo_root, *, require_clean_git: {
+            "branch": "release-test",
+            "head": "abc1234",
+            "working_tree_dirty": False,
+            "status": "",
+            "skipped": False,
+        },
+    )
+
+    def fake_readiness(
+        repo_root: Path,
+        output_dir: Path,
+        *,
+        require_clean_git: bool,
+    ) -> dict[str, str]:
+        json_path = output_dir / "release-readiness-report.json"
+        markdown_path = output_dir / "release-readiness-report.md"
+        json_path.write_text('{"ok": true, "status": "ready"}\n', encoding="utf-8")
+        markdown_path.write_text("# AgentLedger Release Readiness Report\n", encoding="utf-8")
+        return {
+            "json": str(json_path),
+            "markdown": str(markdown_path),
+            "status": "ready",
+            "checks": "6",
+        }
+
+    monkeypatch.setattr(
+        rehearse_release,
+        "write_release_readiness_report",
+        fake_readiness,
+    )
+
+    result = rehearse_release.rehearse_release(
+        repo_root=tmp_path,
+        version="0.1.8a0",
+        release_date="2026-06-15",
+        output_dir=tmp_path / "rehearsal",
+        require_clean_git=True,
+        run_full_release_check=False,
+    )
+
+    assert result["ok"] is True
+    assert result["release_readiness_json"] == str(
+        tmp_path / "rehearsal" / "release-readiness-report.json"
+    )
+    assert result["release_readiness_markdown"] == str(
+        tmp_path / "rehearsal" / "release-readiness-report.md"
+    )
+    summary_text = Path(result["summary_markdown"]).read_text(encoding="utf-8")
+    assert "- Fast readiness report:" in summary_text
+    assert "release-readiness-report.md" in summary_text
 
 
 def test_main_skip_release_check(tmp_path: Path, capsys) -> None:

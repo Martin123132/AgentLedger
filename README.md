@@ -322,8 +322,9 @@ to run the GitHub release check, write `agentledger.github_release_check.v1`,
 build the public-safe evidence packet, and write
 `agentledger.post_release_check.v1` summary files under one output directory.
 Use `scripts/rehearse_release.py` before release prep to dry-run the target
-version, draft release notes outside the repo, run release readiness, and write
-one local checklist summary.
+version, draft release notes outside the repo, write the target command index,
+source metadata JSON, fast readiness report, release readiness artifacts, and
+one local checklist summary under the chosen output directory.
 Use `scripts/prepare_release.py` to move current Unreleased notes into a dated
 release section while updating `pyproject.toml` and `src/agentledger/__init__.py`
 together. Run it with `--dry-run` first. Add `--release-notes-output` to write

@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PREPARE_RELEASE_SCRIPT = ROOT / "scripts" / "prepare_release.py"
 RELEASE_NOTES_SCRIPT = ROOT / "scripts" / "release_notes.py"
 RELEASE_CHECK_SUMMARY_SCRIPT = ROOT / "scripts" / "release_check_summary.py"
+CHECK_RELEASE_METADATA_SCRIPT = ROOT / "scripts" / "check_release_metadata.py"
+RELEASE_COMMAND_INDEX_SCRIPT = ROOT / "scripts" / "release_command_index.py"
+RELEASE_READINESS_REPORT_SCRIPT = ROOT / "scripts" / "release_readiness_report.py"
 
 
 class ReleaseRehearsalError(ValueError):
@@ -39,6 +42,18 @@ release_notes = load_script("agentledger_release_notes_rehearsal", RELEASE_NOTES
 release_check_summary = load_script(
     "agentledger_release_check_summary_rehearsal",
     RELEASE_CHECK_SUMMARY_SCRIPT,
+)
+check_release_metadata = load_script(
+    "agentledger_check_release_metadata_rehearsal",
+    CHECK_RELEASE_METADATA_SCRIPT,
+)
+release_command_index = load_script(
+    "agentledger_release_command_index_rehearsal",
+    RELEASE_COMMAND_INDEX_SCRIPT,
+)
+release_readiness_report = load_script(
+    "agentledger_release_readiness_report_rehearsal",
+    RELEASE_READINESS_REPORT_SCRIPT,
 )
 
 
@@ -128,6 +143,64 @@ def build_draft_notes(repo_root: Path, *, version: str, release_date: str) -> st
     )
 
 
+def write_release_command_index(
+    output_dir: Path,
+    *,
+    version: str,
+    release_date: str,
+) -> dict[str, str]:
+    index = release_command_index.build_release_command_index(
+        version=version,
+        release_date=release_date,
+    )
+    json_path = output_dir / "release-command-index.json"
+    markdown_path = output_dir / "release-command-index.md"
+    json_path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    markdown_path.write_text(
+        release_command_index.format_markdown(index),
+        encoding="utf-8",
+    )
+    return {"json": str(json_path), "markdown": str(markdown_path)}
+
+
+def write_release_metadata_check(repo_root: Path, output_dir: Path) -> dict[str, str]:
+    payload = check_release_metadata.check_release_metadata(repo_root)
+    json_path = output_dir / "release-metadata.json"
+    json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    if not payload.get("ok"):
+        errors = "; ".join(payload.get("errors", []))
+        raise ReleaseRehearsalError(f"Release metadata check failed: {errors}")
+    return {"json": str(json_path)}
+
+
+def write_release_readiness_report(
+    repo_root: Path,
+    output_dir: Path,
+    *,
+    require_clean_git: bool,
+) -> dict[str, str]:
+    payload = release_readiness_report.build_release_readiness_report(
+        repo_root=repo_root,
+        require_clean_git=require_clean_git,
+    )
+    json_path = output_dir / "release-readiness-report.json"
+    markdown_path = output_dir / "release-readiness-report.md"
+    json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    markdown_path.write_text(
+        release_readiness_report.format_markdown(payload),
+        encoding="utf-8",
+    )
+    if not payload.get("ok"):
+        errors = "; ".join(payload.get("errors", []))
+        raise ReleaseRehearsalError(f"Fast release readiness report failed: {errors}")
+    return {
+        "json": str(json_path),
+        "markdown": str(markdown_path),
+        "status": str(payload.get("status") or "unknown"),
+        "checks": str(payload.get("summary", {}).get("total", 0)),
+    }
+
+
 def find_powershell() -> str | None:
     for candidate in ("pwsh", "powershell"):
         path = shutil.which(candidate)
@@ -203,6 +276,9 @@ def write_markdown_summary(result: dict[str, Any], path: Path) -> None:
             "",
             "## Outputs",
             "",
+            f"- Release command index: {result.get('release_command_index_markdown') or 'not written'}",
+            f"- Release metadata JSON: {result.get('release_metadata_json') or 'not written'}",
+            f"- Fast readiness report: {result.get('release_readiness_markdown') or 'not written'}",
             f"- Draft release notes: {result.get('draft_release_notes') or 'not written'}",
             f"- JSON summary: {result.get('summary_json') or path.with_suffix('.json')}",
         ]
@@ -273,6 +349,11 @@ def rehearse_release(
         "release_date": normalized_date,
         "output_dir": str(out),
         "draft_release_notes": str(draft_notes),
+        "release_command_index_json": None,
+        "release_command_index_markdown": None,
+        "release_metadata_json": None,
+        "release_readiness_json": None,
+        "release_readiness_markdown": None,
         "release_check_json": None,
         "release_check_summary": None,
         "release_check_log": None,
@@ -310,6 +391,66 @@ def rehearse_release(
     except Exception as error:
         add_step(result, name="Git hygiene", status="failed", detail=str(error))
         return finalize_result(result, out)
+
+    try:
+        command_index = write_release_command_index(
+            out,
+            version=package_version,
+            release_date=normalized_date,
+        )
+        result["release_command_index_json"] = command_index["json"]
+        result["release_command_index_markdown"] = command_index["markdown"]
+        add_step(
+            result,
+            name="Release command index",
+            status="passed",
+            detail=f"Wrote target release command index: {command_index['markdown']}",
+        )
+    except Exception as error:
+        add_step(result, name="Release command index", status="failed", detail=str(error))
+        return finalize_result(result, out)
+
+    try:
+        metadata = write_release_metadata_check(root, out)
+        result["release_metadata_json"] = metadata["json"]
+        add_step(
+            result,
+            name="Release metadata check",
+            status="passed",
+            detail=f"Wrote current checkout metadata JSON: {metadata['json']}",
+        )
+    except Exception as error:
+        add_step(result, name="Release metadata check", status="failed", detail=str(error))
+        return finalize_result(result, out)
+
+    if git_state["skipped"]:
+        add_step(
+            result,
+            name="Fast release readiness report",
+            status="skipped",
+            detail="Skipped because git state was unavailable and --allow-dirty was used.",
+        )
+    else:
+        try:
+            readiness = write_release_readiness_report(
+                root,
+                out,
+                require_clean_git=require_clean_git,
+            )
+            result["release_readiness_json"] = readiness["json"]
+            result["release_readiness_markdown"] = readiness["markdown"]
+            add_step(
+                result,
+                name="Fast release readiness report",
+                status="passed",
+                detail=(
+                    f"Wrote {readiness['status']} report with "
+                    f"{readiness['checks']} checks: {readiness['markdown']}"
+                ),
+            )
+        except Exception as error:
+            add_step(result, name="Fast release readiness report", status="failed", detail=str(error))
+            return finalize_result(result, out)
 
     try:
         prep = prepare_release.prepare_release(
@@ -452,6 +593,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Status: {result['status']}")
     print(f"Summary: {result['summary_markdown']}")
     print(f"JSON: {result['summary_json']}")
+    if result.get("release_command_index_markdown"):
+        print(f"Release command index: {result['release_command_index_markdown']}")
+    if result.get("release_metadata_json"):
+        print(f"Release metadata JSON: {result['release_metadata_json']}")
+    if result.get("release_readiness_markdown"):
+        print(f"Fast readiness report: {result['release_readiness_markdown']}")
     print(f"Draft notes: {result['draft_release_notes']}")
     if result.get("release_check_json"):
         print(f"Release-check JSON: {result['release_check_json']}")

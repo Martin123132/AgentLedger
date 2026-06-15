@@ -40,8 +40,9 @@ every generated command, artifact path, placeholder, and do-not-commit reminder.
 
 ## 2. Prepare source files
 
-Run a local rehearsal first. It writes draft release notes and summaries outside
-the repo:
+Run a local rehearsal first. It writes draft release notes, the target command
+index, source metadata, fast readiness, and release-check summaries outside the
+repo:
 
 ```powershell
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
@@ -65,8 +66,12 @@ Expected result:
   version.
 - `CHANGELOG.md` has an empty `Unreleased` section followed by a dated release
   section.
-- The rehearsal summary lists git hygiene, dry-run release prep, draft release
-  notes, publish-readiness status, and release-check status.
+- The rehearsal summary lists git hygiene, target command index, source
+  metadata, fast readiness, dry-run release prep, draft release notes,
+  publish-readiness status, and release-check status.
+- The rehearsal output directory contains `release-command-index.md`,
+  `release-command-index.json`, `release-metadata.json`, and, from a git
+  checkout, `release-readiness-report.md` and `release-readiness-report.json`.
 - The draft release notes file is outside the repo, usually under `$env:TEMP`.
 
 Do not commit generated release note files, evidence folders, zip bundles, or
