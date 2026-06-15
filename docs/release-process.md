@@ -47,6 +47,7 @@ repo:
 ```powershell
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
 python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
+python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage rehearsal --rehearsal-manifest $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
 ```
 
 Then run the release prep dry run:
@@ -79,6 +80,9 @@ Expected result:
   manifest itself.
 - `scripts/verify_release_rehearsal.py` reports
   `agentledger.release_rehearsal_manifest_verify.v1` with `ok=true`.
+- `scripts/release_artifact_doctor.py --stage rehearsal` reports
+  `agentledger.release_artifact_doctor.v1` with `ok=true` before source files
+  are changed.
 - The draft release notes file is outside the repo, usually under `$env:TEMP`.
 
 Do not commit generated release note files, evidence folders, zip bundles, or
@@ -263,7 +267,7 @@ Confirm:
 - The release body includes validation links.
 - `scripts/release_artifact_doctor.py` reports
   `agentledger.release_artifact_doctor.v1` with `ok=true` before final release
-  notes and post-release commands.
+  notes, post-release commands, and rehearsal handoffs.
 - `scripts/post_release_check.py` reports `agentledger.post_release_check.v1`
   with `ok=true`, writes the GitHub release check artifacts, and builds the
   evidence packet.

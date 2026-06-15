@@ -16,12 +16,13 @@ import finalize_release_notes
 import release_check_summary
 import release_evidence_packet
 import release_notes
+import verify_release_rehearsal
 
 
 ROOT = SCRIPT_DIR.parent
 DEFAULT_CHANGELOG = ROOT / "CHANGELOG.md"
 SCHEMA_VERSION = "agentledger.release_artifact_doctor.v1"
-STAGES = ("final-notes", "post-release", "evidence-packet")
+STAGES = ("rehearsal", "final-notes", "post-release", "evidence-packet")
 
 
 class ReleaseArtifactDoctorError(ValueError):
@@ -142,6 +143,7 @@ def _safe_validate(
         release_evidence_packet.ReleaseEvidencePacketError,
         finalize_release_notes.FinalizeReleaseNotesError,
         check_github_release.GitHubReleaseCheckError,
+        verify_release_rehearsal.ReleaseRehearsalVerifyError,
     ) as error:
         _add_check(
             checks,
@@ -204,10 +206,30 @@ def _validate_github_release_check(*, version: str, github_release_check_json: P
     )
 
 
+def _validate_rehearsal_manifest(*, version: str, rehearsal_manifest: Path) -> dict[str, Any]:
+    result = verify_release_rehearsal.verify_release_rehearsal_manifest(rehearsal_manifest)
+    if not result["ok"]:
+        errors = result.get("errors") or ["release rehearsal manifest verification failed."]
+        raise ReleaseArtifactDoctorError("; ".join(str(error) for error in errors))
+    if result.get("package_version") != version:
+        raise ReleaseArtifactDoctorError(
+            "release rehearsal manifest package_version "
+            f"{result.get('package_version')!r} does not match requested version {version!r}."
+        )
+    release_label = release_notes.normalize_version(version)
+    if result.get("release_version") != release_label:
+        raise ReleaseArtifactDoctorError(
+            "release rehearsal manifest release_version "
+            f"{result.get('release_version')!r} does not match requested release label {release_label!r}."
+        )
+    return result
+
+
 def check_release_artifacts(
     *,
     version: str,
     stage: str,
+    rehearsal_manifest: Path | None = None,
     release_check_json: Path | None = None,
     release_check_summary_file: Path | None = None,
     release_notes_file: Path | None = None,
@@ -219,6 +241,50 @@ def check_release_artifacts(
 
     checks: list[dict[str, Any]] = []
     normalized = release_notes.normalize_version(version)
+
+    if stage == "rehearsal":
+        rehearsal_manifest_path = _require_path(
+            checks,
+            name="release rehearsal manifest",
+            path=rehearsal_manifest,
+            next_action=(
+                "Run `python scripts/rehearse_release.py --version <version> --date <date> "
+                "--output-dir <dir>`, then `python scripts/verify_release_rehearsal.py <manifest>`."
+            ),
+        )
+        if rehearsal_manifest_path:
+            rehearsal_result = _safe_validate(
+                checks,
+                name="release rehearsal manifest verification",
+                path=rehearsal_manifest_path,
+                action=lambda: _validate_rehearsal_manifest(
+                    version=version,
+                    rehearsal_manifest=rehearsal_manifest_path,
+                ),
+                next_action="Rerun `scripts/rehearse_release.py`, then verify the new manifest.",
+            )
+            if rehearsal_result:
+                checks[-1]["detail"] = (
+                    f"Verified {rehearsal_result['verified_artifacts']} of "
+                    f"{rehearsal_result['artifact_count']} rehearsal artifacts."
+                )
+
+        failed = [check for check in checks if check["status"] == "failed"]
+        next_actions = [
+            check["next_action"]
+            for check in checks
+            if check["status"] == "failed" and check.get("next_action")
+        ]
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "ok": not failed,
+            "status": "ready" if not failed else "blocked",
+            "version": version,
+            "release_label": normalized,
+            "stage": stage,
+            "checks": checks,
+            "next_actions": list(dict.fromkeys(next_actions)),
+        }
 
     release_check_json_path = _require_path(
         checks,
@@ -376,10 +442,11 @@ def format_markdown(result: dict[str, Any]) -> str:
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Check release artifact paths before final notes or post-release commands."
+        description="Check release artifact paths before release rehearsal, final notes, or post-release commands."
     )
     parser.add_argument("--version", required=True, help="Package version, for example 0.1.8a0.")
     parser.add_argument("--stage", choices=STAGES, required=True)
+    parser.add_argument("--rehearsal-manifest", type=Path)
     parser.add_argument("--release-check-json", type=Path)
     parser.add_argument("--release-check-summary", type=Path)
     parser.add_argument("--release-notes", type=Path)
@@ -398,6 +465,7 @@ def main(argv: list[str] | None = None) -> int:
         result = check_release_artifacts(
             version=args.version,
             stage=args.stage,
+            rehearsal_manifest=args.rehearsal_manifest,
             release_check_json=args.release_check_json,
             release_check_summary_file=args.release_check_summary,
             release_notes_file=args.release_notes,

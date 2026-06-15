@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -157,6 +158,88 @@ def write_inputs(tmp_path: Path, *, release_payload: dict | None = None) -> dict
     }
 
 
+def write_rehearsal_manifest(tmp_path: Path) -> Path:
+    output_dir = tmp_path / "rehearsal"
+    output_dir.mkdir()
+    artifact = output_dir / "release-command-index.json"
+    artifact.write_text('{"schema_version":"agentledger.release_command_index.v1"}\n', encoding="utf-8")
+    digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    manifest = output_dir / "release-rehearsal-manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "agentledger.release_rehearsal_manifest.v1",
+                "ok": True,
+                "status": "ready",
+                "generated_at": "2026-06-15T00:00:00+00:00",
+                "repo": "D:\\Projects\\AgentLedger",
+                "branch": "master",
+                "head": "abcdef1",
+                "package_version": "0.1.8a0",
+                "release_version": "0.1.8-alpha",
+                "release_date": "2026-06-15",
+                "output_dir": str(output_dir),
+                "manifest_json": str(manifest),
+                "artifact_count": 1,
+                "artifacts": [
+                    {
+                        "kind": "release-command-index-json",
+                        "file": "release-command-index.json",
+                        "bytes": artifact.stat().st_size,
+                        "sha256": digest,
+                        "handling": "local-release-rehearsal-output",
+                    }
+                ],
+                "handling": {
+                    "store_outside_repo": True,
+                    "manifest_includes_private_evidence": False,
+                    "manifest_includes_file_hashes": True,
+                    "manifest_hashes_itself": False,
+                    "do_not_commit": [
+                        ".agentledger/",
+                        "*.zip",
+                        ".agentledger-signing-key",
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    return manifest
+
+
+def test_rehearsal_stage_validates_manifest_without_release_check(tmp_path: Path) -> None:
+    manifest = write_rehearsal_manifest(tmp_path)
+
+    result = release_artifact_doctor.check_release_artifacts(
+        version="0.1.8a0",
+        stage="rehearsal",
+        rehearsal_manifest=manifest,
+    )
+
+    assert result["ok"] is True
+    assert result["status"] == "ready"
+    assert result["stage"] == "rehearsal"
+    assert {check["name"] for check in result["checks"]} == {
+        "release rehearsal manifest",
+        "release rehearsal manifest verification",
+    }
+    assert result["checks"][-1]["detail"] == "Verified 1 of 1 rehearsal artifacts."
+
+
+def test_rehearsal_stage_reports_missing_manifest_with_next_action(tmp_path: Path) -> None:
+    result = release_artifact_doctor.check_release_artifacts(
+        version="0.1.8a0",
+        stage="rehearsal",
+        rehearsal_manifest=tmp_path / "missing-manifest.json",
+    )
+
+    assert result["ok"] is False
+    assert result["status"] == "blocked"
+    assert any("rehearse_release.py" in action for action in result["next_actions"])
+    assert any(check["detail"] == "File does not exist." for check in result["checks"])
+
+
 def test_final_notes_stage_validates_release_check_and_changelog(tmp_path: Path) -> None:
     paths = write_inputs(tmp_path)
 
@@ -256,6 +339,26 @@ def test_main_writes_json_result(tmp_path: Path, capsys) -> None:
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["ok"] is True
     assert payload["stage"] == "evidence-packet"
+
+
+def test_main_accepts_rehearsal_stage(tmp_path: Path, capsys) -> None:
+    manifest = write_rehearsal_manifest(tmp_path)
+
+    exit_code = release_artifact_doctor.main(
+        [
+            "--version",
+            "0.1.8a0",
+            "--stage",
+            "rehearsal",
+            "--rehearsal-manifest",
+            str(manifest),
+        ]
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Release artifact doctor OK: rehearsal" in output
+    assert "Verified 1 of 1 rehearsal artifacts." in output
 
 
 def test_main_returns_nonzero_for_blocked_stage(tmp_path: Path, capsys) -> None:
