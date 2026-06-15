@@ -94,6 +94,7 @@ python -m agentledger open-latest --out .agentledger
 python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
 python -m agentledger review --out .agentledger --allow-warnings
+python -m agentledger review --format markdown --out .agentledger --allow-warnings --output $env:TEMP\agentledger-review.md
 python -m agentledger status --out .agentledger --allow-warnings
 python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
@@ -113,6 +114,7 @@ Expected result:
 - The captured command exits with code `0`
 - `history` shows the pytest run
 - `review` prints the latest report paths, pass/warn/block policy status, recent run context, and previous-run comparison when available
+- `review --format markdown --output <path>` writes a compact review handoff file without copying raw `.agentledger` evidence
 - `status` rolls latest run policy, evidence paths, feedback counts, and next action into one view
 - `feedback` records local notes in the latest run folder and lists them back
 - `feedback-summary` rolls local notes up across run folders

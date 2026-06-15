@@ -65,6 +65,7 @@ Expected result:
   - `python -m agentledger contracts --format json`
 - Review the latest run with policy status, report paths, and previous-run comparison:
   - `python -m agentledger review --out .agentledger --allow-warnings`
+  - `python -m agentledger review --format markdown --out .agentledger --allow-warnings --output $env:TEMP\agentledger-review.md`
   - `python -m agentledger review --format json --out .agentledger --allow-warnings`
   - `python -m agentledger review --out .agentledger --history-limit 5 --allow-warnings`
 - Show latest run status, evidence paths, feedback counts, and next action:

@@ -99,6 +99,7 @@ Manual review loop:
 ```powershell
 python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 python -m agentledger review --out .agentledger --allow-warnings
+python -m agentledger review --format markdown --out .agentledger --allow-warnings --output $env:TEMP\agentledger-review.md
 python -m agentledger status --out .agentledger --allow-warnings
 python -m agentledger open-latest --out .agentledger
 python -m agentledger open-latest --format json --out .agentledger
@@ -473,6 +474,7 @@ Review the latest run with report paths and policy status in one command:
 ```powershell
 agentledger review --out .agentledger --allow-warnings
 agentledger review .agentledger\2026-06-11T120000Z-abc12345
+agentledger review --format markdown --out .agentledger --allow-warnings --output $env:TEMP\agentledger-review.md
 agentledger review --format json --out .agentledger --allow-warnings
 agentledger review --out .agentledger --history-limit 5 --allow-warnings
 ```
@@ -482,7 +484,8 @@ adds the Markdown/JSON/HTML report paths, zip bundle path when present, warning
 or blocking rule summaries, recent run context, previous-run comparison when
 available, and a short next-action hint.
 It shows the three most recent runs by default; pass `--history-limit 0` to
-hide that context.
+hide that context. Use `--format markdown --output <path>` to write a compact
+review handoff file without opening the full report.
 
 Show the latest run status, evidence paths, feedback counts, and next action:
 
@@ -574,6 +577,7 @@ The normal local review loop is:
 ```powershell
 agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 agentledger review --out .agentledger --allow-warnings
+agentledger review --format markdown --out .agentledger --allow-warnings --output $env:TEMP\agentledger-review.md
 agentledger review --out .agentledger --history-limit 5 --allow-warnings
 agentledger status --out .agentledger --allow-warnings
 agentledger open-latest --out .agentledger
@@ -597,6 +601,7 @@ folder and privacy mode:
 ```powershell
 agentledger run --repo . -- python -m pytest
 agentledger review --repo . --allow-warnings
+agentledger review --repo . --format markdown --allow-warnings --output $env:TEMP\agentledger-review.md
 agentledger review --repo . --history-limit 5 --allow-warnings
 agentledger status --repo . --allow-warnings
 agentledger open-latest --repo .

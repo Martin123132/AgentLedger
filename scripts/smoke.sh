@@ -12,6 +12,8 @@ OUT="$ROOT/ledger"
 SIGNATURE_KEY="$ROOT/agentledger-signing-key.txt"
 FEEDBACK_EXPORT_MD="$ROOT/agentledger-feedback.md"
 FEEDBACK_EXPORT_JSON="$ROOT/agentledger-feedback.json"
+REVIEW_EXPORT_MD="$ROOT/agentledger-review.md"
+REVIEW_EXPORT_JSON="$ROOT/agentledger-review.json"
 
 mkdir -p "$REPO"
 mkdir -p "$OUT"
@@ -53,7 +55,8 @@ RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"
 python -m agentledger check --allow-warnings "$RUN"
 python -m agentledger review --out "$OUT" --allow-warnings
-python -m agentledger review --format json --out "$OUT" --allow-warnings --history-limit 1
+python -m agentledger review --format markdown --out "$OUT" --allow-warnings --output "$REVIEW_EXPORT_MD"
+python -m agentledger review --format json --out "$OUT" --allow-warnings --history-limit 1 --output "$REVIEW_EXPORT_JSON"
 CHECK_JSON="$ROOT/agentledger-check.json"
 set +e
 python -m agentledger check --format json --allow-warnings "$RUN" > "$CHECK_JSON"

@@ -1535,6 +1535,32 @@ def test_review_latest_summarizes_check_status(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     assert "Recent runs:" not in output
 
+    review_markdown = tmp_path / "handoff" / "agentledger-review.md"
+    assert (
+        cli.main(
+            [
+                "review",
+                "--format",
+                "markdown",
+                "--out",
+                str(out),
+                "--allow-warnings",
+                "--output",
+                str(review_markdown),
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert review_markdown.read_text(encoding="utf-8") == output
+    assert output.startswith("# AgentLedger Review\n")
+    assert "- Status: warn" in output
+    assert "## Evidence" in output
+    assert f"- Markdown report: `{run_dir / 'agentledger-report.md'}`" in output
+    assert "## Recent Runs" in output
+    assert "## Warnings" in output
+    assert "- Do not commit .agentledger folders or zip bundles." in output
+
 
 def test_review_json_output(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
@@ -1587,7 +1613,14 @@ def test_review_json_output(tmp_path: Path, capsys) -> None:
     assert payload["check"]["schema_version"] == "agentledger.check.v1"
     assert payload["check"]["command"].startswith(str(sys.executable))
     assert payload["command_exit_code"] == 0
+    assert payload["output"] is None
     assert payload["review_exit_code"] == 0
+
+    review_json = tmp_path / "handoff" / "agentledger-review.json"
+    assert cli.main(["review", "--format", "json", "--out", str(out), "--output", str(review_json)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["output"] == str(review_json.resolve())
+    assert json.loads(review_json.read_text(encoding="utf-8")) == payload
 
 
 def test_review_compares_latest_with_previous_run(tmp_path: Path, capsys) -> None:
