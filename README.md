@@ -620,14 +620,17 @@ Optionally sign a bundle manifest with a local shared-key HMAC:
 
 ```powershell
 agentledger sign-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --key-file .agentledger-signing-key
+agentledger sign-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --key-file .agentledger-signing-key --format json
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --signature-key-file .agentledger-signing-key
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --signature-key-file .agentledger-signing-key --require-signature
 agentledger verify-bundle .agentledger\2026-06-11T120000Z-abc12345.zip --format json --signature-key-file .agentledger-signing-key --require-signature
 ```
 
 This is a shared-key HMAC-SHA256 integrity check over the bundle manifest, not
-a public-key signature. Keep signing keys private, rotate them if shared too
-widely, and do not commit them.
+a public-key signature. `sign-bundle --format json` reports the signature
+member, signed manifest, algorithm, and digest but omits the raw HMAC value.
+Keep signing keys private, rotate them if shared too widely, and do not commit
+them.
 
 ## Current Integrations
 

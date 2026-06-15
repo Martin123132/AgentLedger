@@ -2389,6 +2389,90 @@ def test_sign_bundle_adds_and_verifies_hmac_signature(tmp_path: Path, capsys) ->
     assert f"Signature: {signature_member} verified" in output
 
 
+def test_sign_bundle_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    key_file = tmp_path / "agentledger-signing-key.txt"
+    key_file.write_text("shared-test-key\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    bundle = run_dir.with_suffix(".zip")
+    signed_bundle = tmp_path / "signed-agentledger.zip"
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "sign-bundle",
+                str(bundle),
+                "--key-file",
+                str(key_file),
+                "--output",
+                str(signed_bundle),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.sign_bundle.v1"
+    assert payload["ok"] is True
+    assert payload["bundle"] == str(bundle.resolve())
+    assert payload["signed_bundle"] == str(signed_bundle.resolve())
+    assert payload["signature"]["schema_version"] == BUNDLE_SIGNATURE_SCHEMA
+    assert payload["signature"]["algorithm"] == "hmac-sha256"
+    assert payload["signature"]["member"].endswith(f"/{BUNDLE_SIGNATURE_NAME}")
+    assert payload["signature"]["signed_member"].endswith(f"/{BUNDLE_MANIFEST_NAME}")
+    assert payload["signature"]["signed_sha256"]
+    assert "signature" not in payload["signature"]
+    assert payload["errors"] == []
+
+    assert cli.main(["verify-bundle", str(signed_bundle), "--signature-key-file", str(key_file)]) == 0
+    assert "verified" in capsys.readouterr().out
+
+
+def test_sign_bundle_json_reports_key_error(tmp_path: Path, capsys) -> None:
+    bundle = tmp_path / "missing.zip"
+    key_file = tmp_path / "missing-key.txt"
+
+    assert (
+        cli.main(
+            [
+                "sign-bundle",
+                str(bundle),
+                "--key-file",
+                str(key_file),
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.sign_bundle.v1"
+    assert payload["ok"] is False
+    assert payload["bundle"] == str(bundle.resolve())
+    assert payload["signed_bundle"] == str(bundle.resolve())
+    assert payload["signature"] is None
+    assert any("Key file not found" in error for error in payload["errors"])
+
+
 def test_sign_bundle_replaces_existing_signature(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

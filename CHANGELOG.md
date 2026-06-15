@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added machine-readable `agentledger sign-bundle --format json` output for
+  signed bundle handoffs without exposing raw HMAC values.
 - Added a release rehearsal receipt for summarizing verified rehearsal
   manifests, key artifacts, doctor status, and next release-prep commands.
 - Added a rehearsal stage to the release artifact doctor for validating saved
