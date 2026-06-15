@@ -117,6 +117,7 @@ def test_rehearsal_dry_run_writes_summary_without_mutating_repo(tmp_path: Path) 
     assert summary["ok"] is True
     assert summary["release_command_index_markdown"].endswith("release-command-index.md")
     assert summary["release_metadata_json"].endswith("release-metadata.json")
+    assert summary["manifest_json"].endswith("release-rehearsal-manifest.json")
     assert any(step["status"] == "pending" for step in summary["steps"])
     assert any(step["status"] == "skipped" for step in summary["steps"])
     summary_markdown = Path(result["summary_markdown"])
@@ -125,6 +126,28 @@ def test_rehearsal_dry_run_writes_summary_without_mutating_repo(tmp_path: Path) 
     assert "- Release command index:" in summary_text
     assert "- Release metadata JSON:" in summary_text
     assert "- Fast readiness report: not written" in summary_text
+    assert "- Rehearsal manifest:" in summary_text
+
+    manifest_path = Path(result["manifest_json"])
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    artifact_files = {artifact["file"] for artifact in manifest["artifacts"]}
+    assert manifest["schema_version"] == "agentledger.release_rehearsal_manifest.v1"
+    assert manifest["artifact_count"] == len(manifest["artifacts"])
+    assert manifest["handling"]["store_outside_repo"] is True
+    assert manifest["handling"]["manifest_hashes_itself"] is False
+    assert "release-rehearsal-manifest.json" not in artifact_files
+    assert {
+        "release-command-index.json",
+        "release-command-index.md",
+        "release-metadata.json",
+        "release-rehearsal-summary.json",
+        "release-rehearsal-summary.md",
+        "agentledger-0.1.8-alpha-release.md",
+    }.issubset(artifact_files)
+    for artifact in manifest["artifacts"]:
+        assert artifact["bytes"] > 0
+        assert len(artifact["sha256"]) == 64
+    rehearse_release.validate_release_rehearsal_manifest(manifest, tmp_path / "rehearsal")
 
     after = {
         path.relative_to(tmp_path).as_posix(): path.read_text(encoding="utf-8")
@@ -190,6 +213,31 @@ def test_rehearsal_records_release_check_summary_path(tmp_path: Path, monkeypatc
     summary_text = Path(result["summary_markdown"]).read_text(encoding="utf-8")
     assert f"- Release-check summary: {result['release_check_summary']}" in summary_text
     assert "Use the release-check JSON and summary paths" in summary_text
+
+
+def test_rehearsal_manifest_validator_detects_hash_drift(tmp_path: Path) -> None:
+    write_release_repo(tmp_path)
+    result = rehearse_release.rehearse_release(
+        repo_root=tmp_path,
+        version="0.1.8a0",
+        release_date="2026-06-15",
+        output_dir=tmp_path / "rehearsal",
+        require_clean_git=False,
+        run_full_release_check=False,
+    )
+    manifest_path = Path(result["manifest_json"])
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    rehearse_release.validate_release_rehearsal_manifest(manifest, tmp_path / "rehearsal")
+
+    metadata = tmp_path / "rehearsal" / "release-metadata.json"
+    contents = bytearray(metadata.read_bytes())
+    contents[-2] = ord("X") if contents[-2] != ord("X") else ord("Y")
+    metadata.write_bytes(contents)
+
+    with pytest.raises(rehearse_release.ReleaseRehearsalError) as error:
+        rehearse_release.validate_release_rehearsal_manifest(manifest, tmp_path / "rehearsal")
+
+    assert "hash drifted" in str(error.value)
 
 
 def test_rehearsal_records_fast_readiness_report_paths(
@@ -276,3 +324,4 @@ def test_main_skip_release_check(tmp_path: Path, capsys) -> None:
     assert exit_code == 0
     assert "Release rehearsal: 0.1.8a0 -> 0.1.8-alpha" in output
     assert "Status: rehearsal_passed" in output
+    assert "Manifest:" in output

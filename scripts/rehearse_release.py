@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, datetime, timezone
+import hashlib
 import importlib.util
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,16 @@ RELEASE_CHECK_SUMMARY_SCRIPT = ROOT / "scripts" / "release_check_summary.py"
 CHECK_RELEASE_METADATA_SCRIPT = ROOT / "scripts" / "check_release_metadata.py"
 RELEASE_COMMAND_INDEX_SCRIPT = ROOT / "scripts" / "release_command_index.py"
 RELEASE_READINESS_REPORT_SCRIPT = ROOT / "scripts" / "release_readiness_report.py"
+MANIFEST_SCHEMA_VERSION = "agentledger.release_rehearsal_manifest.v1"
+MANIFEST_FILENAME = "release-rehearsal-manifest.json"
+DO_NOT_COMMIT = [
+    "release rehearsal output",
+    "draft release notes",
+    ".agentledger/",
+    "*.zip",
+    ".agentledger-signing-key",
+    "signing keys",
+]
 
 
 class ReleaseRehearsalError(ValueError):
@@ -201,6 +212,112 @@ def write_release_readiness_report(
     }
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _expected_output_kinds(result: dict[str, Any]) -> dict[str, str]:
+    mapping = {
+        "draft_release_notes": "draft-release-notes",
+        "release_command_index_json": "release-command-index-json",
+        "release_command_index_markdown": "release-command-index-markdown",
+        "release_metadata_json": "release-metadata-json",
+        "release_readiness_json": "release-readiness-json",
+        "release_readiness_markdown": "release-readiness-markdown",
+        "release_check_json": "release-check-json",
+        "release_check_summary": "release-check-summary",
+        "release_check_log": "release-check-log",
+        "summary_json": "release-rehearsal-summary-json",
+        "summary_markdown": "release-rehearsal-summary-markdown",
+    }
+    kinds: dict[str, str] = {}
+    for field, kind in mapping.items():
+        value = result.get(field)
+        if value:
+            kinds[Path(str(value)).name] = kind
+    return kinds
+
+
+def build_release_rehearsal_manifest(
+    result: dict[str, Any],
+    output_dir: Path,
+    manifest_path: Path,
+) -> dict[str, Any]:
+    out = output_dir.resolve()
+    kinds = _expected_output_kinds(result)
+    artifacts: list[dict[str, Any]] = []
+
+    for path in sorted(out.rglob("*")):
+        if not path.is_file() or path.resolve() == manifest_path.resolve():
+            continue
+        relative = path.relative_to(out).as_posix()
+        artifacts.append(
+            {
+                "kind": kinds.get(path.name, "rehearsal-output"),
+                "file": relative,
+                "bytes": path.stat().st_size,
+                "sha256": sha256_file(path),
+                "handling": "local-release-rehearsal-output",
+            }
+        )
+
+    return {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "ok": True,
+        "status": "ready",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "repo": result.get("repo"),
+        "branch": result.get("branch"),
+        "head": result.get("head"),
+        "package_version": result.get("package_version"),
+        "release_version": result.get("release_version"),
+        "release_date": result.get("release_date"),
+        "output_dir": str(out),
+        "manifest_json": str(manifest_path),
+        "artifact_count": len(artifacts),
+        "artifacts": artifacts,
+        "handling": {
+            "store_outside_repo": True,
+            "manifest_includes_private_evidence": False,
+            "manifest_includes_file_hashes": True,
+            "manifest_hashes_itself": False,
+            "do_not_commit": DO_NOT_COMMIT,
+        },
+    }
+
+
+def validate_release_rehearsal_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
+    if manifest.get("schema_version") != MANIFEST_SCHEMA_VERSION:
+        raise ReleaseRehearsalError(
+            f"release rehearsal manifest schema_version must be {MANIFEST_SCHEMA_VERSION}."
+        )
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        raise ReleaseRehearsalError("release rehearsal manifest artifacts must be a list.")
+    if manifest.get("artifact_count") != len(artifacts):
+        raise ReleaseRehearsalError("release rehearsal manifest artifact_count does not match artifacts.")
+
+    out = output_dir.resolve()
+    for artifact in artifacts:
+        if not isinstance(artifact, dict):
+            raise ReleaseRehearsalError("release rehearsal manifest artifact entries must be objects.")
+        relative = str(artifact.get("file") or "")
+        relative_path = PurePosixPath(relative)
+        if not relative or relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ReleaseRehearsalError(f"release rehearsal manifest has unsafe file path: {relative!r}")
+        path = out.joinpath(*relative_path.parts)
+        if not path.is_file():
+            raise ReleaseRehearsalError(f"release rehearsal manifest file is missing: {relative}")
+        if artifact.get("bytes") != path.stat().st_size:
+            raise ReleaseRehearsalError(f"release rehearsal manifest byte size drifted: {relative}")
+        if artifact.get("sha256") != sha256_file(path):
+            raise ReleaseRehearsalError(f"release rehearsal manifest hash drifted: {relative}")
+
+
 def find_powershell() -> str | None:
     for candidate in ("pwsh", "powershell"):
         path = shutil.which(candidate)
@@ -281,6 +398,7 @@ def write_markdown_summary(result: dict[str, Any], path: Path) -> None:
             f"- Fast readiness report: {result.get('release_readiness_markdown') or 'not written'}",
             f"- Draft release notes: {result.get('draft_release_notes') or 'not written'}",
             f"- JSON summary: {result.get('summary_json') or path.with_suffix('.json')}",
+            f"- Rehearsal manifest: {result.get('manifest_json') or 'not written'}",
         ]
     )
     if result.get("release_check_json"):
@@ -314,10 +432,14 @@ def finalize_result(result: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     result["status"] = "rehearsal_passed" if result["ok"] else "failed"
     summary_json = output_dir / "release-rehearsal-summary.json"
     summary_md = output_dir / "release-rehearsal-summary.md"
+    manifest_json = output_dir / MANIFEST_FILENAME
     result["summary_json"] = str(summary_json)
     result["summary_markdown"] = str(summary_md)
+    result["manifest_json"] = str(manifest_json)
     summary_json.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     write_markdown_summary(result, summary_md)
+    manifest = build_release_rehearsal_manifest(result, output_dir, manifest_json)
+    manifest_json.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return result
 
 
@@ -357,6 +479,7 @@ def rehearse_release(
         "release_check_json": None,
         "release_check_summary": None,
         "release_check_log": None,
+        "manifest_json": None,
         "branch": None,
         "head": None,
         "working_tree_dirty": None,
@@ -593,6 +716,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Status: {result['status']}")
     print(f"Summary: {result['summary_markdown']}")
     print(f"JSON: {result['summary_json']}")
+    print(f"Manifest: {result['manifest_json']}")
     if result.get("release_command_index_markdown"):
         print(f"Release command index: {result['release_command_index_markdown']}")
     if result.get("release_metadata_json"):

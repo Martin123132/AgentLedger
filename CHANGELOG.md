@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a release rehearsal manifest with file sizes, SHA-256 hashes, and
+  handling notes for local release dry-run outputs.
 - Expanded release rehearsals to write the target command index, metadata JSON,
   and fast readiness report into one local output directory.
 - Added a fast release readiness report for metadata, release-process,

@@ -67,6 +67,8 @@ def test_release_process_documents_required_release_gates() -> None:
         "agentledger.release_readiness_report.v1",
         "python scripts/rehearse_release.py --version",
         "agentledger-release-rehearsal",
+        "release-rehearsal-manifest.json",
+        "agentledger.release_rehearsal_manifest.v1",
         "python scripts/prepare_release.py --version",
         "--release-notes-output",
         "--dry-run",

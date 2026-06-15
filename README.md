@@ -324,7 +324,9 @@ build the public-safe evidence packet, and write
 Use `scripts/rehearse_release.py` before release prep to dry-run the target
 version, draft release notes outside the repo, write the target command index,
 source metadata JSON, fast readiness report, release readiness artifacts, and
-one local checklist summary under the chosen output directory.
+one local checklist summary under the chosen output directory. It also writes
+`release-rehearsal-manifest.json` with file sizes and SHA-256 hashes for the
+generated rehearsal outputs.
 Use `scripts/prepare_release.py` to move current Unreleased notes into a dated
 release section while updating `pyproject.toml` and `src/agentledger/__init__.py`
 together. Run it with `--dry-run` first. Add `--release-notes-output` to write
