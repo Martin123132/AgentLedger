@@ -232,8 +232,9 @@ powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 That script additionally runs install verification and smoke verification
 before the same captured pytest/status/report/bundle flow. It writes the same
 summary schema to `.agentledger/alpha-summary.json` by default; use
-`-JsonOutput <path>` to write that summary outside the repo. If the summary
-path cannot be written, the script prints a clear error and exits 2.
+`-JsonOutput <path>` to write that summary outside the repo. If doctor setup is
+blocked, it writes a blocked summary with repair hints before exiting 2. If the
+summary path cannot be written, the script prints a clear error and exits 2.
 
 Inspect that summary without opening JSON by hand:
 
