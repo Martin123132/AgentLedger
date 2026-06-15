@@ -179,6 +179,8 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     assert "summary.json" in normalized_alpha_summary_help
     assert "--output-dir OUTPUT_DIR" in alpha_handoff_help
     assert "--strict" in alpha_handoff_help
+    assert "--share-safe" in alpha_handoff_help
+    assert "--redact-local-paths" in alpha_handoff_help
 
     for documented in [
         "--json-output <path>",
@@ -186,6 +188,8 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
         "alpha --format json",
         "alpha-summary --out .agentledger",
         "alpha-handoff --out .agentledger",
+        "alpha-handoff --out .agentledger --output-dir $env:TEMP\\agentledger-alpha-handoff-safe --share-safe",
+        "--redact-local-paths",
         "agentledger.alpha_handoff.v1",
     ]:
         assert documented in docs_text

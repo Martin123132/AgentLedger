@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import platform
+import re
 import subprocess
 import sys
 import uuid
@@ -208,6 +209,13 @@ def build_parser() -> argparse.ArgumentParser:
     alpha_handoff.add_argument("--feedback-limit", type=int, default=20, help="Maximum feedback entries to include.")
     alpha_handoff.add_argument("--history-limit", type=int, default=5, help="Recent runs to include for review context.")
     alpha_handoff.add_argument("--strict", action="store_true", help="Return nonzero when the latest status has warnings.")
+    alpha_handoff.add_argument(
+        "--share-safe",
+        "--redact-local-paths",
+        action="store_true",
+        dest="share_safe",
+        help="Redact local absolute paths from the written handoff packet.",
+    )
     alpha_handoff.add_argument("--format", choices=["text", "json"], default="text", help="Command output format.")
 
     feedback = sub.add_parser("feedback", help="Record or list alpha feedback for a run.")
@@ -3034,6 +3042,69 @@ def _handle_review(args: argparse.Namespace) -> int:
     return exit_code
 
 
+_WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/][^\s`\"'<>|{}()[\]]+")
+_POSIX_LOCAL_PATH_RE = re.compile(r"(?<![A-Za-z0-9_])/(?:tmp|var/tmp|private/tmp|home|Users|mnt|workspace|workspaces)/[^\s`\"'<>|{}()[\]]+")
+
+
+def _share_safe_path_replacements(paths: dict[str, Path | None]) -> list[tuple[str, str]]:
+    replacements: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for marker, path in paths.items():
+        if path is None:
+            continue
+        variants = {str(path), str(path).replace("\\", "/")}
+        try:
+            resolved = path.resolve()
+            variants.add(str(resolved))
+            variants.add(str(resolved).replace("\\", "/"))
+        except OSError:
+            pass
+        for variant in variants:
+            if not variant or variant in seen:
+                continue
+            seen.add(variant)
+            replacements.append((variant, marker))
+    return sorted(replacements, key=lambda item: len(item[0]), reverse=True)
+
+
+def _redact_share_safe_text(text: str, replacements: list[tuple[str, str]]) -> str:
+    redacted = text
+    for raw_path, marker in replacements:
+        redacted = redacted.replace(raw_path, marker)
+    redacted = _WINDOWS_ABSOLUTE_PATH_RE.sub("[redacted-local-path]", redacted)
+    return _POSIX_LOCAL_PATH_RE.sub("[redacted-local-path]", redacted)
+
+
+def _redact_share_safe_value(value: object, replacements: list[tuple[str, str]]) -> object:
+    if isinstance(value, dict):
+        return {key: _redact_share_safe_value(item, replacements) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_share_safe_value(item, replacements) for item in value]
+    if isinstance(value, str):
+        return _redact_share_safe_text(value, replacements)
+    return value
+
+
+def _share_safe_alpha_handoff_payload(
+    payload: dict,
+    *,
+    repo: Path,
+    out_root: Path | None,
+    latest_dir: Path | None,
+    output_dir: Path,
+) -> dict:
+    replacements = _share_safe_path_replacements(
+        {
+            "[latest-run]": latest_dir,
+            "[agentledger-output]": out_root,
+            "[handoff-output]": output_dir,
+            "[repo]": repo,
+        }
+    )
+    redacted = _redact_share_safe_value(payload, replacements)
+    return redacted if isinstance(redacted, dict) else {}
+
+
 def _alpha_handoff_error(
     args: argparse.Namespace,
     *,
@@ -3042,6 +3113,7 @@ def _alpha_handoff_error(
     errors: list[str],
     out_root: Path | None = None,
 ) -> int:
+    share_safe = bool(getattr(args, "share_safe", False))
     if getattr(args, "format", "text") == "json":
         payload = {
             "schema_version": ALPHA_HANDOFF_SCHEMA,
@@ -3055,25 +3127,59 @@ def _alpha_handoff_error(
             "latest_run": None,
             "output_dir": str(output_dir) if output_dir is not None else None,
             "files": {},
+            "share_safe": share_safe,
+            "redactions": _alpha_handoff_redactions(share_safe),
             "review": None,
             "status_payload": None,
             "feedback_summary": None,
             "alpha_summary": None,
-            "handling": _alpha_handoff_handling(),
+            "handling": _alpha_handoff_handling(share_safe),
             "next_actions": ["Fix the reported handoff errors, then run agentledger alpha-handoff again."],
             "errors": errors,
         }
+        if share_safe and repo is not None and output_dir is not None:
+            payload = _share_safe_alpha_handoff_payload(
+                payload,
+                repo=repo,
+                out_root=out_root,
+                latest_dir=None,
+                output_dir=output_dir,
+            )
         print(json.dumps(payload, indent=2))
     else:
-        for message in errors:
+        messages = errors
+        if share_safe and repo is not None and output_dir is not None:
+            replacements = _share_safe_path_replacements(
+                {
+                    "[agentledger-output]": out_root,
+                    "[handoff-output]": output_dir,
+                    "[repo]": repo,
+                }
+            )
+            messages = [_redact_share_safe_text(message, replacements) for message in errors]
+        for message in messages:
             print(message)
     return 2
 
 
-def _alpha_handoff_handling() -> dict[str, object]:
+def _alpha_handoff_redactions(share_safe: bool) -> dict[str, object]:
+    return {
+        "local_paths": share_safe,
+        "markers": ["[repo]", "[agentledger-output]", "[latest-run]", "[handoff-output]"] if share_safe else [],
+        "note": (
+            "Local absolute paths are replaced with stable markers for sharing."
+            if share_safe
+            else "Local absolute paths are preserved; review before sharing."
+        ),
+    }
+
+
+def _alpha_handoff_handling(share_safe: bool = False) -> dict[str, object]:
     return {
         "raw_evidence_copied": False,
         "copied_files": [],
+        "share_safe": share_safe,
+        "local_paths_redacted": share_safe,
         "omits": [
             ".agentledger run folders",
             "zip evidence bundles",
@@ -3331,14 +3437,24 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
             "markdown": str(markdown_path),
             "json": str(json_path),
         },
+        "share_safe": bool(args.share_safe),
+        "redactions": _alpha_handoff_redactions(bool(args.share_safe)),
         "review": review_payload,
         "status_payload": status_payload,
         "feedback_summary": feedback_summary,
         "alpha_summary": alpha_summary,
-        "handling": _alpha_handoff_handling(),
+        "handling": _alpha_handoff_handling(bool(args.share_safe)),
         "next_actions": next_actions,
         "errors": errors,
     }
+    if args.share_safe:
+        payload = _share_safe_alpha_handoff_payload(
+            payload,
+            repo=repo,
+            out_root=out_root,
+            latest_dir=latest_dir,
+            output_dir=output_dir,
+        )
     markdown = _format_alpha_handoff_markdown(payload)
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -3359,6 +3475,7 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
         print(f"Alpha handoff written: {output_dir}")
         print(f"Markdown: {markdown_path}")
         print(f"JSON: {json_path}")
+        print(f"Share-safe: {'yes' if args.share_safe else 'no'}")
         print(f"Status: {payload['status']}")
         print(f"Summary: {payload['summary']}")
         print("Raw evidence copied: no")

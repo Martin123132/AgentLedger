@@ -365,6 +365,8 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "latest_run",
             "output_dir",
             "files",
+            "share_safe",
+            "redactions",
             "review",
             "status_payload",
             "feedback_summary",
@@ -610,13 +612,18 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     alpha_handoff = json_payloads["alpha_handoff"]
     assert alpha_handoff["ok"] is True
     assert alpha_handoff["status"] in {"pass", "warn"}
+    assert alpha_handoff["share_safe"] is False
+    _assert_keys(alpha_handoff["redactions"], {"local_paths", "markers", "note"})
+    assert alpha_handoff["redactions"]["local_paths"] is False
     _assert_keys(alpha_handoff["files"], {"markdown", "json"})
     _assert_keys(
         alpha_handoff["handling"],
-        {"raw_evidence_copied", "copied_files", "omits", "do_not_commit"},
+        {"raw_evidence_copied", "copied_files", "share_safe", "local_paths_redacted", "omits", "do_not_commit"},
     )
     assert alpha_handoff["handling"]["raw_evidence_copied"] is False
     assert alpha_handoff["handling"]["copied_files"] == []
+    assert alpha_handoff["handling"]["share_safe"] is False
+    assert alpha_handoff["handling"]["local_paths_redacted"] is False
     assert alpha_handoff["review"]["schema_version"] == SCHEMAS["review"]
     assert alpha_handoff["status_payload"]["schema_version"] == SCHEMAS["status"]
     assert alpha_handoff["feedback_summary"]["schema_version"] == SCHEMAS["feedback_summary"]

@@ -158,6 +158,8 @@ Stable fields:
 - `latest_run`
 - `output_dir`
 - `files`: written `markdown` and `json` packet paths
+- `share_safe`: boolean, true when local absolute paths were redacted
+- `redactions`: path-redaction status, marker labels, and sharing note
 - `review`: embedded `agentledger.review.v1` payload
 - `status_payload`: embedded `agentledger.status.v1` payload
 - `feedback_summary`: embedded `agentledger.feedback_summary.v1` payload
@@ -168,9 +170,12 @@ Stable fields:
 - `next_actions`
 - `errors`
 
-Use `--strict` when warning status should make the command exit nonzero.
-Review the packet before sharing because it contains local evidence paths and
-feedback notes, even though it does not copy raw evidence.
+Use `--strict` when warning status should make the command exit nonzero. Use
+`--share-safe` or `--redact-local-paths` to replace local absolute paths with
+stable markers such as `[repo]`, `[agentledger-output]`, `[latest-run]`, and
+`[handoff-output]` in the written packet. Review the packet before sharing
+because feedback notes and command summaries can still contain project context,
+even though raw evidence is not copied.
 
 ### `agentledger feedback-summary --format json`
 
