@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a public-safe release evidence packet generator that validates release
+  artifacts and writes summary-only Markdown/JSON handoffs.
 - Added a GitHub release artifact checker for post-release validation of tags,
   prerelease status, publish-ready release notes, and compact JSON/Markdown summaries.
 - Added a guarded final-release-notes helper that builds publish-ready GitHub
