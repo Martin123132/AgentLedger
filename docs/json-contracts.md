@@ -356,8 +356,9 @@ Stable fields:
 
 Schema: `agentledger.release_rehearsal.v1`
 
-Use this to dry-run release prep, draft release notes outside the repo, run the
-release readiness check, and write a local release-day checklist.
+Use this to dry-run release prep, draft release notes outside the repo, collect
+target command index and release preflight artifacts, run the release readiness
+check, and write a local release-day checklist.
 
 Stable fields:
 
@@ -369,6 +370,11 @@ Stable fields:
 - `release_date`
 - `output_dir`
 - `draft_release_notes`
+- `release_command_index_json`
+- `release_command_index_markdown`
+- `release_metadata_json`
+- `release_readiness_json`
+- `release_readiness_markdown`
 - `release_check_json`
 - `release_check_summary`
 - `release_check_log`
