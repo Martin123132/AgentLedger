@@ -234,7 +234,8 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--repo", default=None, help="Target git repository for config/output lookup.")
     review.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
     review.add_argument("--out", default=None, help="Evidence output directory.")
-    review.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    review.add_argument("--format", choices=["text", "json", "markdown"], default="text", help="Output format.")
+    review.add_argument("--output", default=None, help="Optional path to write the rendered review output.")
     review.add_argument(
         "--history-limit",
         type=int,
@@ -2698,6 +2699,14 @@ def _load_review_run_dir(args: argparse.Namespace) -> Path | None:
     return latest_dir
 
 
+def _review_next_line(status: str) -> str:
+    if status == "block":
+        return "Fix blockers, rerun the command, then review again."
+    if status == "warn":
+        return "Read the Markdown report and warning rules before accepting the work."
+    return "Read the Markdown report, then keep or share only evidence you have reviewed."
+
+
 def _format_review(result: dict, paths: dict[str, str | None], history: dict, comparison: dict) -> str:
     lines = [
         f"AgentLedger review: {result['status']}",
@@ -2780,12 +2789,7 @@ def _format_review(result: dict, paths: dict[str, str | None], history: dict, co
         for rule in result["warning_rules"]:
             lines.append(f"- {rule['id']}: {rule['message']}")
 
-    if result["status"] == "block":
-        next_line = "Fix blockers, rerun the command, then review again."
-    elif result["status"] == "warn":
-        next_line = "Read the Markdown report and warning rules before accepting the work."
-    else:
-        next_line = "Read the Markdown report, then keep or share only evidence you have reviewed."
+    next_line = _review_next_line(result["status"])
     lines.extend(
         [
             "Next:",
@@ -2794,6 +2798,129 @@ def _format_review(result: dict, paths: dict[str, str | None], history: dict, co
         ]
     )
     return "\n".join(lines)
+
+
+def _markdown_inline(value: object) -> str:
+    text = str(value)
+    longest_tick_run = 0
+    current_tick_run = 0
+    for character in text:
+        if character == "`":
+            current_tick_run += 1
+            longest_tick_run = max(longest_tick_run, current_tick_run)
+        else:
+            current_tick_run = 0
+    delimiter = "`" * (longest_tick_run + 1)
+    padding = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{delimiter}{padding}{text}{padding}{delimiter}"
+
+
+def _format_review_markdown(result: dict, paths: dict[str, str | None], history: dict, comparison: dict) -> str:
+    lines = [
+        "# AgentLedger Review",
+        "",
+        f"- Status: {result['status']}",
+        f"- Summary: {result['summary']}",
+        f"- Run: {_markdown_inline(result['run_dir'])}",
+    ]
+    if "command" in result:
+        lines.extend(
+            [
+                f"- Command: {_markdown_inline(result['command'])}",
+                f"- Exit code: {result['exit_code'] if result['exit_code'] is not None else 'n/a'}",
+                f"- Changed files: {result['changed_files']}",
+                f"- Test framework: {result['test_framework']}",
+                f"- Privacy mode: {result['privacy_mode']}",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Evidence",
+            "",
+            f"- Markdown report: {_markdown_inline(paths['markdown'])}",
+            f"- JSON report: {_markdown_inline(paths['json'])}",
+            f"- HTML report: {_markdown_inline(paths['html'])}",
+        ]
+    )
+    if paths["zip"]:
+        lines.append(f"- Zip bundle: {_markdown_inline(paths['zip'])}")
+
+    history_runs = history.get("runs") if isinstance(history.get("runs"), list) else []
+    if history_runs:
+        lines.extend(["", "## Recent Runs", ""])
+        for item in history_runs:
+            marker = "current" if item.get("current") is True else "previous"
+            exit_code = item["exit_code"] if item.get("exit_code") is not None else "n/a"
+            lines.append(
+                f"- {marker}: {item['run_id']} | exit={exit_code} | changed={item['changed_files']} | "
+                f"test={item['test_framework']} | command={_markdown_inline(item['command'])}"
+            )
+    history_errors = history.get("errors") if isinstance(history.get("errors"), list) else []
+    if history_errors:
+        lines.extend(["", "## History Warnings", ""])
+        for error in history_errors:
+            lines.append(f"- {error}")
+
+    compare_payload = comparison.get("compare") if isinstance(comparison.get("compare"), dict) else None
+    if comparison.get("available") is True and compare_payload:
+        changed = compare_payload["changed_files"]
+        exit_code = compare_payload["exit_code"]
+        artifacts = compare_payload["artifacts"]
+        lines.extend(
+            [
+                "",
+                "## Previous Comparison",
+                "",
+                f"- Previous run: {_markdown_inline(comparison['previous_run'])}",
+                f"- Changed files: {changed['old']} -> {changed['new']} ({changed['delta_text']})",
+                (
+                    "- Exit code: "
+                    f"{exit_code['old'] if exit_code['old'] is not None else 'n/a'} -> "
+                    f"{exit_code['new'] if exit_code['new'] is not None else 'n/a'} "
+                    f"({exit_code['trend']})"
+                ),
+                (
+                    f"- Artifacts: {artifacts['old']['ok']} ok/{artifacts['old']['warn']} warn -> "
+                    f"{artifacts['new']['ok']} ok/{artifacts['new']['warn']} warn"
+                ),
+                (
+                    f"- Test framework: {compare_payload['test_framework']['old']} -> "
+                    f"{compare_payload['test_framework']['new']}"
+                ),
+            ]
+        )
+    comparison_errors = comparison.get("errors") if isinstance(comparison.get("errors"), list) else []
+    if comparison_errors:
+        lines.extend(["", "## Comparison Warnings", ""])
+        for error in comparison_errors:
+            lines.append(f"- {error}")
+
+    if result["blocking_rules"]:
+        lines.extend(["", "## Blockers", ""])
+        for rule in result["blocking_rules"]:
+            lines.append(f"- {rule['id']}: {rule['message']}")
+    if result["warning_rules"]:
+        lines.extend(["", "## Warnings", ""])
+        for rule in result["warning_rules"]:
+            lines.append(f"- {rule['id']}: {rule['message']}")
+
+    lines.extend(
+        [
+            "",
+            "## Next",
+            "",
+            f"- {_review_next_line(result['status'])}",
+            "- Do not commit .agentledger folders or zip bundles.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _write_rendered_output(path: Path, rendered: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(rendered.rstrip("\n") + "\n", encoding="utf-8")
 
 
 def _handle_review(args: argparse.Namespace) -> int:
@@ -2815,7 +2942,9 @@ def _handle_review(args: argparse.Namespace) -> int:
     history = _review_history(run_dir, args.history_limit)
     comparison = _review_previous_comparison(run_dir)
     exit_code = check_exit_code(result["status"], allow_warnings)
-    if getattr(args, "format", "text") == "json":
+    output_path = Path(args.output).expanduser().resolve() if getattr(args, "output", None) else None
+    output_format = getattr(args, "format", "text")
+    if output_format == "json":
         payload = {
             "schema_version": "agentledger.review.v1",
             "status": result["status"],
@@ -2827,11 +2956,21 @@ def _handle_review(args: argparse.Namespace) -> int:
             "history": history,
             "comparison": comparison,
             "check": result,
+            "output": str(output_path) if output_path is not None else None,
             "review_exit_code": exit_code,
         }
-        print(json.dumps(payload, indent=2))
+        rendered = json.dumps(payload, indent=2)
+    elif output_format == "markdown":
+        rendered = _format_review_markdown(result, paths, history, comparison)
     else:
-        print(_format_review(result, paths, history, comparison))
+        rendered = _format_review(result, paths, history, comparison)
+    if output_path is not None:
+        try:
+            _write_rendered_output(output_path, rendered)
+        except OSError as exc:
+            print(f"Unable to write review output {output_path}: {exc}")
+            return 2
+    print(rendered)
     return exit_code
 
 

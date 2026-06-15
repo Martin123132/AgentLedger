@@ -72,6 +72,8 @@ $out = Join-Path $root "ledger"
 $checkJson = Join-Path $root "agentledger-check.json"
 $feedbackExportMarkdown = Join-Path $root "agentledger-feedback.md"
 $feedbackExportJson = Join-Path $root "agentledger-feedback.json"
+$reviewExportMarkdown = Join-Path $root "agentledger-review.md"
+$reviewExportJson = Join-Path $root "agentledger-review.json"
 $signatureKey = Join-Path $root "agentledger-signing-key.txt"
 
 try {
@@ -121,7 +123,8 @@ try {
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)
     Invoke-AgentLedger @("check", "--allow-warnings", $run)
     Invoke-AgentLedger @("review", "--out", $out, "--allow-warnings")
-    Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings", "--history-limit", "1")
+    Invoke-AgentLedger @("review", "--format", "markdown", "--out", $out, "--allow-warnings", "--output", $reviewExportMarkdown)
+    Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings", "--history-limit", "1", "--output", $reviewExportJson)
     Invoke-AgentLedgerJsonCheck -Run $run -OutputPath $checkJson
     Invoke-AgentLedger @("inspect-bundle", "${run}.zip")
     Invoke-AgentLedger @("inspect-bundle", "${run}.zip", "--format", "json")

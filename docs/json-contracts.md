@@ -222,7 +222,7 @@ Stable fields:
 - `rules`: ordered rule results with `id`, `status`, and `message`
 - `policy`: effective check policy when the report loaded
 
-### `agentledger review --format json`
+### `agentledger review --format json [--output <path>]`
 
 Schema: `agentledger.review.v1`
 
@@ -243,6 +243,8 @@ Stable fields:
   `previous_run`, embedded `agentledger.compare.v1` payload, and non-blocking
   `errors`
 - `check`: embedded `agentledger.check.v1` payload
+- `output`: resolved review output path when `--output` is used, otherwise
+  `null`
 - `review_exit_code`
 
 Each history run includes the same summary fields as
@@ -250,6 +252,8 @@ Each history run includes the same summary fields as
 Pass `--history-limit 0` to return an empty history list.
 When a previous run exists in the same output folder, `comparison.compare`
 matches the `agentledger compare --format json` shape.
+For human handoffs, use `agentledger review --format markdown --output <path>`
+to write the same compact review as a Markdown file.
 
 ### `agentledger inspect-bundle --format json <bundle.zip>`
 

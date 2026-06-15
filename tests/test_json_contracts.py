@@ -412,6 +412,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "history",
             "comparison",
             "check",
+            "output",
             "review_exit_code",
         },
         "signing_key": {
@@ -676,6 +677,7 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     )
     assert review["comparison"]["compare"]["schema_version"] == SCHEMAS["compare"]
     assert review["check"]["schema_version"] == SCHEMAS["check"]
+    assert review["output"] is None
 
     signing_key = json_payloads["signing_key"]
     assert signing_key["ok"] is True
