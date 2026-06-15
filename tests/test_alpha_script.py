@@ -13,6 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ALPHA_SCRIPT = ROOT / "scripts" / "alpha.ps1"
 ENSURE_GIT_SCRIPT = ROOT / "scripts" / "ensure-git.ps1"
+ALPHA_SCRIPT_TIMEOUT_SECONDS = 180
 
 
 def _powershell() -> str | None:
@@ -21,6 +22,13 @@ def _powershell() -> str | None:
         if path:
             return path
     return None
+
+
+def _timeout_output(exc: subprocess.TimeoutExpired) -> str:
+    output = exc.output or exc.stdout or ""
+    if isinstance(output, bytes):
+        return output.decode("utf-8", errors="replace")
+    return output
 
 
 def test_alpha_script_validates_status_command() -> None:
@@ -104,27 +112,34 @@ def test_alpha_script_blocked_doctor_summary_executes(tmp_path: Path) -> None:
         env["PYTHONPATH"] = python_path + os.pathsep + env["PYTHONPATH"]
     else:
         env["PYTHONPATH"] = python_path
-    result = subprocess.run(
-        [
-            shell,
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(script),
-            "-Out",
-            "ledger",
-            "-JsonOutput",
-            str(summary),
-            "-SkipEditableInstall",
-        ],
-        cwd=tmp_path,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        timeout=60,
-    )
+    try:
+        result = subprocess.run(
+            [
+                shell,
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(script),
+                "-Out",
+                "ledger",
+                "-JsonOutput",
+                str(summary),
+                "-SkipEditableInstall",
+            ],
+            cwd=tmp_path,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=ALPHA_SCRIPT_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        pytest.fail(
+            "alpha.ps1 blocked-doctor regression timed out after "
+            f"{ALPHA_SCRIPT_TIMEOUT_SECONDS} seconds.\n"
+            f"Output so far:\n{_timeout_output(exc)}"
+        )
 
     assert result.returncode == 2, result.stdout
     assert "== Alpha blocked ==" in result.stdout
