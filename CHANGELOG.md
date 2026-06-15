@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added a post-release check wrapper that runs GitHub release validation and
+  public-safe evidence packet generation under one output directory.
+- Updated release rehearsal output to include the rendered release-check
+  Markdown summary path used by final release notes and post-release packets.
 - Added a public-safe release evidence packet generator that validates release
   artifacts and writes summary-only Markdown/JSON handoffs.
 - Added a GitHub release artifact checker for post-release validation of tags,

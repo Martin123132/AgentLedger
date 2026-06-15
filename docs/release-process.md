@@ -173,18 +173,34 @@ After publishing:
 ```powershell
 git status --short --branch
 gh release view v0.1.8-alpha --repo Martin123132/AgentLedger
+python scripts/post_release_check.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --output-dir $env:TEMP\agentledger-post-release-0.1.8-alpha
+python scripts/release_notes.py --version 0.1.8a0 --check
+```
+
+`scripts/post_release_check.py` runs `scripts/check_github_release.py` logic,
+writes `agentledger-github-release-check.json` and
+`agentledger-github-release-check.md`, then builds
+`agentledger-release-evidence.json` and `agentledger-release-evidence.md` with
+`scripts/release_evidence_packet.py`. It also writes
+`agentledger-post-release-check.json` and `agentledger-post-release-check.md`
+as the wrapper-level summary. Use the lower-level scripts directly when
+debugging one artifact at a time:
+
+```powershell
 python scripts/check_github_release.py --version 0.1.8a0 --format json --output $env:TEMP\agentledger-github-release-check.json
 python scripts/check_github_release.py --version 0.1.8a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
 python scripts/release_evidence_packet.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json --output $env:TEMP\agentledger-release-evidence.md --json-output $env:TEMP\agentledger-release-evidence.json
-python scripts/release_notes.py --version 0.1.8a0 --check
 ```
 
 Confirm:
 
 - The release is marked as a prerelease.
 - The release body includes validation links.
+- `scripts/post_release_check.py` reports `agentledger.post_release_check.v1`
+  with `ok=true`, writes the GitHub release check artifacts, and builds the
+  evidence packet.
 - `scripts/check_github_release.py` reports `agentledger.github_release_check.v1`
-  with `ok=true` and writes a Markdown summary for the release handoff.
+  with `ok=true` inside the post-release output directory.
 - `scripts/release_evidence_packet.py` reports
   `agentledger.release_evidence_packet.v1` with `ok=true`, stores only
   validation status and artifact names, and refuses `.agentledger/`, zip

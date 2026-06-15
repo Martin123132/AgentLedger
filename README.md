@@ -174,6 +174,7 @@ python scripts/finalize_release_notes.py --version 0.1.8a0 --release-check-json 
 python scripts/check_github_release.py --version 0.1.8a0 --format json --output $env:TEMP\agentledger-github-release-check.json
 python scripts/check_github_release.py --version 0.1.8a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
 python scripts/release_evidence_packet.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json --output $env:TEMP\agentledger-release-evidence.md --json-output $env:TEMP\agentledger-release-evidence.json
+python scripts/post_release_check.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --output-dir $env:TEMP\agentledger-post-release-0.1.8-alpha
 ```
 
 ```bash
@@ -291,6 +292,10 @@ a public-safe `agentledger.release_evidence_packet.v1` handoff summary from the
 validated release-check JSON, rendered summary, final release notes, and GitHub
 release check JSON. It records validation status and artifact names only; it
 refuses `.agentledger/`, zip bundles, and signing-key paths.
+Use `scripts/post_release_check.py` after publishing when you want one command
+to run the GitHub release check, write `agentledger.github_release_check.v1`,
+build the public-safe evidence packet, and write
+`agentledger.post_release_check.v1` summary files under one output directory.
 Use `scripts/rehearse_release.py` before release prep to dry-run the target
 version, draft release notes outside the repo, run release readiness, and write
 one local checklist summary.
