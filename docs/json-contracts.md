@@ -58,7 +58,8 @@ Stable fields:
 - `status`: `ready` or `blocked`
 - `required_ok`: boolean
 - `optional`: configured and missing optional integration summary
-- `checks`: ordered setup checks with `name`, `ok`, `detail`, and `required`
+- `checks`: ordered setup checks with `name`, `ok`, `detail`, `required`, and
+  `hint`
 
 ### `agentledger open-latest --format json`
 

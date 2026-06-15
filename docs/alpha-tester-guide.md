@@ -29,6 +29,7 @@ Expected result:
 
 - `agentledger --version` prints the installed AgentLedger version
 - `doctor` should say `ready` when required checks pass
+- If `doctor` reports a missing check, read the `Hint:` line directly below it
 - Missing RepoMori, Jester, or Tokometer warnings are OK for this alpha
 
 ## One-command alpha pass

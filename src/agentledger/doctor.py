@@ -15,6 +15,7 @@ class Check:
     ok: bool
     detail: str
     required: bool = False
+    hint: str = "No action needed."
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -22,6 +23,7 @@ class Check:
             "ok": self.ok,
             "detail": self.detail,
             "required": self.required,
+            "hint": "No action needed." if self.ok else self.hint,
         }
 
 
@@ -49,33 +51,99 @@ def run_doctor(repo: Path | None = None) -> dict[str, Any]:
     checks: list[Check] = []
 
     git_path = shutil.which("git")
-    checks.append(Check("git", bool(git_path), git_path or "git not found", required=True))
+    checks.append(
+        Check(
+            "git",
+            bool(git_path),
+            git_path or "git not found",
+            required=True,
+            hint="Install Git and make sure git is available on PATH.",
+        )
+    )
 
     if repo:
         code, output = _run(["git", "rev-parse", "--show-toplevel"], repo)
-        checks.append(Check("target_git_repo", code == 0, output or str(repo), required=True))
+        checks.append(
+            Check(
+                "target_git_repo",
+                code == 0,
+                output or str(repo),
+                required=True,
+                hint="Run from a git checkout or pass --repo <path> to an existing git repo.",
+            )
+        )
 
     python_code, python_output = _run(["python", "--version"])
-    checks.append(Check("python", python_code == 0, python_output or "python not found", required=True))
+    checks.append(
+        Check(
+            "python",
+            python_code == 0,
+            python_output or "python not found",
+            required=True,
+            hint="Install Python 3.10+ and make sure python is available on PATH.",
+        )
+    )
 
     repomori_code, repomori_output = _run(["python", "-m", "repomori", "--help"])
-    checks.append(Check("repomori", repomori_code == 0, "python -m repomori available" if repomori_code == 0 else repomori_output))
+    checks.append(
+        Check(
+            "repomori",
+            repomori_code == 0,
+            "python -m repomori available" if repomori_code == 0 else repomori_output,
+            hint="Optional: install RepoMori, or keep using --no-repomori / repomori = false.",
+        )
+    )
 
     jester_path = shutil.which("jester") or shutil.which("memento-mori-jester")
-    checks.append(Check("jester", bool(jester_path), jester_path or "jester not found on PATH"))
+    checks.append(
+        Check(
+            "jester",
+            bool(jester_path),
+            jester_path or "jester not found on PATH",
+            hint="Optional: install Jester, or keep using --no-jester / jester = false.",
+        )
+    )
 
     npx_path = shutil.which("npx") or shutil.which("npx.cmd")
-    checks.append(Check("npx", bool(npx_path), npx_path or "npx not found"))
+    checks.append(
+        Check(
+            "npx",
+            bool(npx_path),
+            npx_path or "npx not found",
+            hint="Optional: install Node.js/npm if you need npx-based helper integrations.",
+        )
+    )
 
     tsx_code, tsx_output = _run([npx_path or "npx", "-y", "tsx", "--version"]) if npx_path else (127, "npx missing")
-    checks.append(Check("tsx", tsx_code == 0, tsx_output or "tsx not available through npx"))
+    checks.append(
+        Check(
+            "tsx",
+            tsx_code == 0,
+            tsx_output or "tsx not available through npx",
+            hint="Optional: make sure npx can run tsx, usually with npx -y tsx --version.",
+        )
+    )
 
     tokometer_root = Path(os.environ.get("AGENTLEDGER_TOKOMETER_ROOT", Path.home() / "OneDrive" / "Documents" / "codex-token-gauge"))
     tokometer_usage = tokometer_root / "server" / "usage.ts"
-    checks.append(Check("tokometer_checkout", tokometer_usage.exists(), str(tokometer_usage)))
+    checks.append(
+        Check(
+            "tokometer_checkout",
+            tokometer_usage.exists(),
+            str(tokometer_usage),
+            hint="Optional: set AGENTLEDGER_TOKOMETER_ROOT to a codex-token-gauge checkout, or keep tokometer = false.",
+        )
+    )
 
     codex_home = Path(os.environ.get("TOKEN_GAUGE_CODEX_HOME", Path.home() / ".codex"))
-    checks.append(Check("codex_home", codex_home.exists(), str(codex_home)))
+    checks.append(
+        Check(
+            "codex_home",
+            codex_home.exists(),
+            str(codex_home),
+            hint="Optional: set TOKEN_GAUGE_CODEX_HOME to the Codex home directory if needed.",
+        )
+    )
 
     required_ok = all(check.ok for check in checks if check.required)
     optional_checks = [check for check in checks if not check.required]
@@ -122,6 +190,8 @@ def format_doctor(report: dict[str, Any]) -> str:
         else:
             mark = "available" if check["ok"] else "not configured"
         lines.append(f"- {check['name']}: {mark} ({required}) - {check['detail']}")
+        if not check["ok"] and check.get("hint"):
+            lines.append(f"  Hint: {check['hint']}")
     return "\n".join(lines)
 
 
