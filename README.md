@@ -171,6 +171,8 @@ powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
 python scripts/finalize_release_notes.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.8-alpha-release.md
+python scripts/check_github_release.py --version 0.1.8a0 --format json --output $env:TEMP\agentledger-github-release-check.json
+python scripts/check_github_release.py --version 0.1.8a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
 ```
 
 ```bash
@@ -279,6 +281,10 @@ Use `scripts/finalize_release_notes.py` after PR, master, Release Readiness, and
 tag CI have real GitHub Actions URLs. It refuses dirty release-check JSON,
 missing metadata summaries, mismatched versions, placeholder TODO validation,
 and non-AgentLedger Actions URLs before writing publish-ready release notes.
+Use `scripts/check_github_release.py` after publishing to verify the GitHub
+release tag, prerelease/draft status, release URL, publish-ready body, and
+published timestamp. It can call `gh release view` directly or validate saved
+release JSON with `--release-json`.
 Use `scripts/rehearse_release.py` before release prep to dry-run the target
 version, draft release notes outside the repo, run release readiness, and write
 one local checklist summary.

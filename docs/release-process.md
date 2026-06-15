@@ -173,6 +173,8 @@ After publishing:
 ```powershell
 git status --short --branch
 gh release view v0.1.8-alpha --repo Martin123132/AgentLedger
+python scripts/check_github_release.py --version 0.1.8a0 --format json --output $env:TEMP\agentledger-github-release-check.json
+python scripts/check_github_release.py --version 0.1.8a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
 python scripts/release_notes.py --version 0.1.8a0 --check
 ```
 
@@ -180,6 +182,8 @@ Confirm:
 
 - The release is marked as a prerelease.
 - The release body includes validation links.
+- `scripts/check_github_release.py` reports `agentledger.github_release_check.v1`
+  with `ok=true` and writes a Markdown summary for the release handoff.
 - No local evidence bundles, signing keys, or temp release-note files were
   committed.
 - `CHANGELOG.md` is ready for the next `Unreleased` entries.
