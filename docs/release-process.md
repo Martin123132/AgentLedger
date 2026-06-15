@@ -152,8 +152,16 @@ with real links or commit identifiers:
 Then validate the final notes file:
 
 ```powershell
+python scripts/finalize_release_notes.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --check-publish-ready
 ```
+
+`scripts/finalize_release_notes.py` builds the publish-ready GitHub release body
+from `CHANGELOG.md`, clean release-check JSON, the rendered release-check
+Markdown summary, and real GitHub Actions run URLs. It refuses dirty
+release-check results, mismatched versions, missing metadata summaries,
+placeholder validation TODOs, non-AgentLedger Actions URLs, and invalid merge
+SHAs.
 
 Keep the alpha footer in the release notes unless there is a deliberate reason
 to remove it.
