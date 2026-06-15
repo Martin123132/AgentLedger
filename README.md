@@ -167,6 +167,7 @@ python -m agentledger alpha --repo . --out .agentledger --json-output $env:TEMP\
 python scripts/check_release_metadata.py
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+powershell -ExecutionPolicy Bypass -File scripts/release-dry-run.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1 -JsonOutput $env:TEMP\agentledger-alpha-summary.json
 python -m agentledger alpha-summary --out .agentledger
@@ -291,6 +292,7 @@ python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --dry-run
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --release-notes-output $env:TEMP\agentledger-0.1.8-alpha-release.md
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit
+powershell -ExecutionPolicy Bypass -File scripts/release-dry-run.ps1
 python scripts/release_notes.py --version 0.1.8a0 --check
 python scripts/release_notes.py --version 0.1.8-alpha --output $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --check-publish-ready
@@ -303,6 +305,10 @@ the latest status command.
 Use `scripts/check_release_metadata.py` directly when you only need the
 cross-platform source metadata check for version, license, README, and changelog
 alignment.
+Use `scripts/release-dry-run.ps1` to prove the current checkout can build a
+wheel, install that wheel into a temporary virtual environment, run the smoke
+flow from the installed package, and generate a validated share-safe alpha
+packet without leaving temp evidence in the repo.
 Use `-RequireCleanGit` before tagging or publishing a release candidate.
 Use `-JsonOutput <path>` to write a machine-readable
 `agentledger.release_check.v1` summary for CI or agent handoffs. The summary
@@ -365,7 +371,8 @@ Use `scripts/release_notes.py` to draft GitHub release notes from the matching
 TODOs with real run links before publishing, then run `--check-publish-ready`
 against the final notes file.
 See the [release process](docs/release-process.md) for the full release-day
-checklist.
+checklist and `docs/release-checklist.md` for the shorter private-alpha
+preflight.
 
 Notes:
 
