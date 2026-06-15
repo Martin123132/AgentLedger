@@ -108,14 +108,15 @@ def test_build_release_rehearsal_receipt_reports_ready(tmp_path: Path) -> None:
         "release-rehearsal-summary-markdown",
         "release-metadata-json",
     ]
+    draft_notes = manifest.parent / "agentledger-0.1.8-alpha-release.md"
     assert result["next_commands"] == [
         (
             "python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-15 "
-            f"--release-notes-output {manifest.parent}\\agentledger-0.1.8-alpha-release.md --dry-run"
+            f"--release-notes-output {draft_notes} --dry-run"
         ),
         (
             "python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-15 "
-            f"--release-notes-output {manifest.parent}\\agentledger-0.1.8-alpha-release.md"
+            f"--release-notes-output {draft_notes}"
         ),
     ]
     assert result["handling"]["do_not_commit"] == [".agentledger/", "*.zip", ".agentledger-signing-key"]
