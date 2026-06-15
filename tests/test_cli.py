@@ -567,6 +567,17 @@ def test_doctor_returns_status() -> None:
     assert report["checks"]
 
 
+def test_doctor_reports_missing_repo_without_raising(tmp_path: Path) -> None:
+    report = run_doctor(tmp_path / "missing-repo")
+
+    assert report["schema_version"] == "agentledger.doctor.v1"
+    assert report["status"] == "blocked"
+    target_repo = next(check for check in report["checks"] if check["name"] == "target_git_repo")
+    assert target_repo["ok"] is False
+    assert target_repo["required"] is True
+    assert target_repo["detail"]
+
+
 def test_doctor_formats_missing_optional_as_ready() -> None:
     report = {
         "schema_version": "agentledger.doctor.v1",
@@ -939,6 +950,47 @@ def test_alpha_command_reports_failed_capture(tmp_path: Path, capsys) -> None:
     assert payload["status_exit_code"] == 2
     assert Path(payload["latest_run"]).exists()
     assert Path(payload["bundle"]).exists()
+
+
+def test_alpha_command_reports_non_git_repo_without_traceback(tmp_path: Path, capsys) -> None:
+    repo = tmp_path / "not-a-repo"
+    repo.mkdir()
+    out = tmp_path / "ledger"
+
+    assert cli.main(["alpha", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 2
+
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    summary_file = out / "alpha-summary.json"
+    assert json.loads(summary_file.read_text(encoding="utf-8")) == payload
+    assert "Traceback" not in output
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is False
+    assert payload["status"] == "block"
+    assert payload["latest_run"] is None
+    assert payload["bundle"] is None
+    assert payload["report_paths"] == {}
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert any("Required doctor check failed: target_git_repo" in error for error in payload["errors"])
+    assert payload["next_actions"] == ["Fix required doctor checks, then run agentledger alpha again."]
+
+
+def test_alpha_command_reports_missing_repo_without_traceback(tmp_path: Path, capsys) -> None:
+    repo = tmp_path / "missing-repo"
+    out = tmp_path / "ledger"
+
+    assert cli.main(["alpha", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 2
+
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    summary_file = out / "alpha-summary.json"
+    assert json.loads(summary_file.read_text(encoding="utf-8")) == payload
+    assert "Traceback" not in output
+    assert payload["ok"] is False
+    assert payload["status"] == "block"
+    assert payload["latest_run"] is None
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert any("Required doctor check failed: target_git_repo" in error for error in payload["errors"])
 
 
 def test_alpha_summary_reads_direct_path(tmp_path: Path, capsys) -> None:

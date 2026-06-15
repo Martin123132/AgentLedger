@@ -39,6 +39,8 @@ def _run(command: list[str], cwd: Path | None = None) -> tuple[int, str]:
         return result.returncode, result.stdout.strip()
     except FileNotFoundError as exc:
         return 127, str(exc)
+    except OSError as exc:
+        return 1, str(exc)
     except subprocess.SubprocessError as exc:
         return 1, str(exc)
 

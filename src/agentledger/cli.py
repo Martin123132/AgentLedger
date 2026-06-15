@@ -1178,6 +1178,58 @@ def _write_alpha_summary(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _alpha_required_setup_errors(doctor_report: dict) -> list[str]:
+    errors = []
+    for check in doctor_report.get("checks") or []:
+        if not isinstance(check, dict) or check.get("ok") is True or check.get("required") is not True:
+            continue
+        name = check.get("name") or "unknown"
+        detail = check.get("detail") or "required check failed"
+        errors.append(f"Required doctor check failed: {name} - {detail}")
+    return errors
+
+
+def _alpha_payload(
+    *,
+    ok: bool,
+    summary_path: Path,
+    started_at: str,
+    repo: Path,
+    out_root: Path,
+    doctor_summary: str,
+    status: str,
+    status_summary: str,
+    status_exit_code: int,
+    errors: list[str],
+    latest_dir: Path | None = None,
+    report_paths: dict | None = None,
+    feedback: dict | None = None,
+    next_actions: list[str] | None = None,
+) -> dict:
+    return {
+        "schema_version": ALPHA_SUMMARY_SCHEMA,
+        "ok": ok,
+        "summary_file": str(summary_path),
+        "started_at": started_at,
+        "ended_at": utc_now_iso(),
+        "repo": str(repo),
+        "out": str(out_root),
+        "latest_run": str(latest_dir) if latest_dir is not None else None,
+        "bundle": str(latest_dir.with_suffix(".zip")) if latest_dir is not None else None,
+        "agentledger_version": f"agentledger {__version__}",
+        "python_version": f"Python {platform.python_version()}",
+        "git_version": _git_version(),
+        "doctor": doctor_summary,
+        "status": status,
+        "status_summary": status_summary,
+        "status_exit_code": status_exit_code,
+        "report_paths": report_paths or {},
+        "feedback": feedback or _empty_status_feedback(),
+        "next_actions": next_actions or [],
+        "errors": errors,
+    }
+
+
 def _handle_alpha(args: argparse.Namespace) -> int:
     output_format = getattr(args, "format", "text")
     quiet = output_format == "json"
@@ -1218,7 +1270,28 @@ def _handle_alpha(args: argparse.Namespace) -> int:
     if not quiet:
         print(format_doctor(doctor_report))
     if doctor_report.get("status") != "ready":
-        errors.append("Doctor check did not report ready.")
+        errors.extend(_alpha_required_setup_errors(doctor_report) or ["Doctor check did not report ready."])
+        payload = _alpha_payload(
+            ok=False,
+            summary_path=summary_path,
+            started_at=started_at,
+            repo=repo,
+            out_root=out_root,
+            doctor_summary=doctor_summary,
+            status="block",
+            status_summary="Required setup is blocked; fix doctor errors before running alpha again.",
+            status_exit_code=2,
+            errors=errors,
+            next_actions=["Fix required doctor checks, then run agentledger alpha again."],
+        )
+        _write_alpha_summary(summary_path, payload)
+        if quiet:
+            print(json.dumps(payload, indent=2))
+        else:
+            print("")
+            print("== Alpha blocked ==")
+            print(_format_alpha_summary(summary_path, payload))
+        return 2
 
     capture_args = argparse.Namespace(
         repo=str(repo),
@@ -1352,31 +1425,24 @@ def _handle_alpha(args: argparse.Namespace) -> int:
     report_paths = status_payload.get("paths") if isinstance(status_payload.get("paths"), dict) else {}
     feedback = status_payload.get("feedback") if isinstance(status_payload.get("feedback"), dict) else _empty_status_feedback()
     next_actions = status_payload.get("next_actions") if isinstance(status_payload.get("next_actions"), list) else []
-    ended_at = utc_now_iso()
     status_exit_code = int(status_payload.get("status_exit_code") or status_exit)
     ok = not errors and status_exit_code == 0
-    payload = {
-        "schema_version": ALPHA_SUMMARY_SCHEMA,
-        "ok": ok,
-        "summary_file": str(summary_path),
-        "started_at": started_at,
-        "ended_at": ended_at,
-        "repo": str(repo),
-        "out": str(out_root),
-        "latest_run": str(latest_dir) if latest_dir is not None else None,
-        "bundle": str(latest_dir.with_suffix(".zip")) if latest_dir is not None else None,
-        "agentledger_version": f"agentledger {__version__}",
-        "python_version": f"Python {platform.python_version()}",
-        "git_version": _git_version(),
-        "doctor": doctor_summary,
-        "status": status,
-        "status_summary": status_summary,
-        "status_exit_code": status_exit_code,
-        "report_paths": report_paths,
-        "feedback": feedback,
-        "next_actions": next_actions,
-        "errors": errors,
-    }
+    payload = _alpha_payload(
+        ok=ok,
+        summary_path=summary_path,
+        started_at=started_at,
+        repo=repo,
+        out_root=out_root,
+        latest_dir=latest_dir,
+        doctor_summary=doctor_summary,
+        status=status,
+        status_summary=status_summary,
+        status_exit_code=status_exit_code,
+        report_paths=report_paths,
+        feedback=feedback,
+        next_actions=next_actions,
+        errors=errors,
+    )
     _write_alpha_summary(summary_path, payload)
 
     if quiet:
