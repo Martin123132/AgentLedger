@@ -4,10 +4,10 @@ AgentLedger is a local-first evidence recorder for AI coding-agent work. This al
 
 ## What you need
 
-- Windows PowerShell
 - Python 3.12 or newer
-- Git available in PowerShell
+- Git available in your shell
 - Access to an AgentLedger checkout
+- Windows PowerShell if you use the extended script
 
 If PowerShell cannot find `git`, let AgentLedger locate a common Git install for the current session:
 
@@ -36,19 +36,25 @@ Expected result:
 Run:
 
 ```powershell
+python -m agentledger alpha --repo . --out .agentledger
+```
+
+Windows users can also run the extended script:
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 Expected result:
 
-- install check passes
-- smoke check passes
+- doctor passes
 - a real pytest run is captured under `.agentledger/`
 - `status` summarizes the latest captured run
 - latest/history/inspect/check/verify commands all succeed
-- the script prints a short summary to send back
+- a short summary is printed to send back
 - `.agentledger/alpha-summary.json` records the same alpha pass for tools or
   agent handoffs
+- the Windows script also runs install and smoke checks
 
 Inspect the saved summary:
 

@@ -279,14 +279,25 @@ Stable fields:
 
 ## Script Summaries
 
+### `agentledger alpha --format json [-- command]`
+
+Schema: `agentledger.alpha_summary.v1`
+
+Use this to run the core alpha pass, capture a verification command, validate
+the latest report and bundle, and write a machine-readable handoff summary.
+When no command is supplied after `--`, AgentLedger captures the current Python
+interpreter running `-m pytest`.
+
+Stable fields are the same as `agentledger alpha-summary --format json`.
+
 ### `agentledger alpha-summary --format json [summary-file]`
 
 Schema: `agentledger.alpha_summary.v1`
 
 Use this to inspect the one-command alpha pass result without scraping terminal
-output. `scripts/alpha.ps1` writes the same schema to
-`.agentledger/alpha-summary.json` by default, or to `-JsonOutput <path>` when a
-different handoff path is requested.
+output. `agentledger alpha` and `scripts/alpha.ps1` write the same schema to
+`.agentledger/alpha-summary.json` by default, or to a requested JSON handoff
+path.
 
 Stable fields:
 

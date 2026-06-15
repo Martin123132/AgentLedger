@@ -85,6 +85,12 @@ Open the `agentledger-report.md` inside that latest run folder.
 Five-minute public alpha check:
 
 ```powershell
+python -m agentledger alpha --repo . --out .agentledger
+```
+
+Windows extended alpha check:
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
@@ -137,13 +143,13 @@ check_max_changed_files = 25
 check_allow_warnings = true
 ```
 
-`run`, `snapshot`, `open-latest`, `history`, `status`, and `alpha-summary` read
-that file from the target repo when it exists. `--out` overrides only the
-evidence directory for a single command; the repo policy still applies.
-`--privacy-mode` overrides the privacy setting for a single capture. Boolean
-entries disable optional integrations or zip export by default. `check_*`
-entries tune the local review policy used by `agentledger check`,
-`agentledger review`, and `agentledger status`.
+`run`, `snapshot`, `open-latest`, `history`, `status`, `alpha`, and
+`alpha-summary` read that file from the target repo when it exists. `--out`
+overrides only the evidence directory for a single command; the repo policy
+still applies. `--privacy-mode` overrides the privacy setting for a single
+capture. Boolean entries disable optional integrations or zip export by
+default. `check_*` entries tune the local review policy used by
+`agentledger check`, `agentledger review`, and `agentledger status`.
 
 ## CI and smoke checks
 
@@ -153,6 +159,7 @@ Local checks:
 python -m pip install -e ".[dev]"
 agentledger --version
 python -m pytest
+python -m agentledger alpha --repo . --out .agentledger --json-output $env:TEMP\agentledger-alpha-cli-summary.json --format json
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
@@ -202,15 +209,27 @@ That script installs AgentLedger from the local checkout into a temporary virtua
 Alpha one-command pass:
 
 ```powershell
+python -m agentledger alpha --repo . --out .agentledger
+python -m agentledger alpha --repo . --out .agentledger --format json
+```
+
+The cross-platform `alpha` command runs doctor, captures a real pytest pass by
+default, checks latest status/history/report/bundle evidence, and writes a
+machine-readable `agentledger.alpha_summary.v1` summary to
+`.agentledger/alpha-summary.json` by default. Pass a command after `--` to
+capture something other than the current Python interpreter running `-m pytest`,
+and use `--json-output <path>` to write the summary outside the repo.
+
+Windows extended alpha pass:
+
+```powershell
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
-That script runs install verification, smoke verification, doctor, a captured
-pytest pass, latest status checks, report inspection, bundle verification, and
-prints the short summary an alpha tester should send back. It also writes a
-machine-readable `agentledger.alpha_summary.v1` summary to
-`.agentledger/alpha-summary.json` by default; use `-JsonOutput <path>` to write
-that summary outside the repo.
+That script additionally runs install verification and smoke verification
+before the same captured pytest/status/report/bundle flow. It writes the same
+summary schema to `.agentledger/alpha-summary.json` by default; use
+`-JsonOutput <path>` to write that summary outside the repo.
 
 Inspect that summary without opening JSON by hand:
 
@@ -397,9 +416,9 @@ agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json
 ```
 
 `alpha-summary` validates the `agentledger.alpha_summary.v1` file written by
-`scripts/alpha.ps1`, prints the important run paths and feedback counts, and
-returns a nonzero exit code if the summary is missing, invalid, or records
-errors.
+`agentledger alpha` or `scripts/alpha.ps1`, prints the important run paths and
+feedback counts, and returns a nonzero exit code if the summary is missing,
+invalid, or records errors.
 
 You can tune the default check policy in `.agentledger.toml`:
 

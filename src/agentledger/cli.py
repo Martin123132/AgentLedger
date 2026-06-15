@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
+import platform
 import subprocess
+import sys
 import uuid
 from zipfile import BadZipFile, ZipFile
 from pathlib import Path
@@ -152,6 +156,25 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--feedback-limit", type=int, default=3, help="Recent feedback entries to inspect for counts.")
     status.add_argument("--allow-warnings", action="store_true", help="Return success for pass or warn statuses.")
     status.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    alpha = sub.add_parser("alpha", help="Run a cross-platform one-command alpha pass.")
+    alpha.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
+    alpha.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    alpha.add_argument("--out", default=None, help="Evidence output directory.")
+    alpha.add_argument(
+        "--json-output",
+        default=None,
+        help="Path to write alpha-summary.json. Defaults to <out>/alpha-summary.json.",
+    )
+    alpha.add_argument(
+        "--privacy-mode",
+        choices=["standard", "summary"],
+        default="summary",
+        help="Evidence detail level for the captured verification command.",
+    )
+    alpha.add_argument("--strict", action="store_true", help="Return nonzero for warning status.")
+    alpha.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    alpha.add_argument("task", nargs=argparse.REMAINDER, help="Command to capture after --. Defaults to pytest.")
 
     alpha_summary = sub.add_parser("alpha-summary", help="Inspect one-command alpha summary JSON.")
     alpha_summary.add_argument("summary_file", nargs="?", help="Path to alpha-summary.json. Defaults to <out>/alpha-summary.json.")
@@ -1102,6 +1125,267 @@ def _handle_status(args: argparse.Namespace) -> int:
     return status_exit_code
 
 
+def _first_line(text: str) -> str:
+    lines = text.splitlines()
+    return lines[0] if lines else ""
+
+
+def _run_alpha_step(label: str, handler, args: argparse.Namespace, *, quiet: bool) -> tuple[int, str]:
+    if not quiet:
+        print("")
+        print(f"== {label} ==")
+        exit_code = handler(args)
+        return exit_code, ""
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        exit_code = handler(args)
+    return exit_code, buffer.getvalue()
+
+
+def _git_version() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "--version"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except OSError as exc:
+        return f"git unavailable: {exc}"
+    text = (result.stdout or result.stderr).strip()
+    return _first_line(text) or f"git exited {result.returncode}"
+
+
+def _alpha_summary_path(args: argparse.Namespace, out_root: Path) -> Path:
+    if args.json_output:
+        return Path(args.json_output).expanduser().resolve()
+    return (out_root / ALPHA_SUMMARY_FILENAME).resolve()
+
+
+def _alpha_default_task(task: list[str] | None) -> list[str]:
+    command = _clean_task(task or [])
+    return command or [sys.executable, "-m", "pytest"]
+
+
+def _write_alpha_summary(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _handle_alpha(args: argparse.Namespace) -> int:
+    output_format = getattr(args, "format", "text")
+    quiet = output_format == "json"
+    repo = Path(args.repo or ".").resolve()
+    started_at = utc_now_iso()
+    errors: list[str] = []
+
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        message = f"Config error: {exc}"
+        if quiet:
+            print(
+                json.dumps(
+                    {
+                        "schema_version": ALPHA_SUMMARY_SCHEMA,
+                        "ok": False,
+                        "summary_file": None,
+                        "errors": [message],
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(message)
+        return 2
+
+    out_root = _resolve_out_root(args, repo, config)
+    summary_path = _alpha_summary_path(args, out_root)
+
+    if not quiet:
+        print("== Check AgentLedger version ==")
+        print(f"agentledger {__version__}")
+        print("")
+        print("== Check local readiness ==")
+    doctor_report = run_doctor(repo)
+    doctor_summary = _first_line(format_doctor(doctor_report))
+    if not quiet:
+        print(format_doctor(doctor_report))
+    if doctor_report.get("status") != "ready":
+        errors.append("Doctor check did not report ready.")
+
+    capture_args = argparse.Namespace(
+        repo=str(repo),
+        config=args.config,
+        out=str(out_root),
+        no_repomori=True,
+        no_jester=True,
+        no_tokometer=True,
+        no_zip=False,
+        privacy_mode=args.privacy_mode,
+    )
+    capture_exit, _ = _run_alpha_step(
+        "Capture verification run",
+        lambda capture_args: _capture(capture_args, _alpha_default_task(args.task)),
+        capture_args,
+        quiet=quiet,
+    )
+    if capture_exit != 0:
+        errors.append(f"Captured command exited {capture_exit}.")
+
+    latest_dir, latest_errors = _resolve_latest_run_dir(out_root)
+    if latest_errors:
+        errors.extend(latest_errors)
+
+    status_payload = _status_payload(
+        ok=False,
+        status="unknown",
+        repo=repo,
+        out_root=out_root,
+        latest_dir=latest_dir,
+        paths={},
+        missing_reports=[],
+        check=None,
+        feedback=_empty_status_feedback(),
+        next_actions=_status_next_actions("unknown", _empty_status_feedback(), errors),
+        errors=errors,
+        status_exit_code=2,
+    )
+    status_exit = 2
+    if latest_dir is not None:
+        common_output_args = {
+            "repo": str(repo),
+            "config": args.config,
+            "out": str(out_root),
+        }
+        _run_alpha_step(
+            "Show latest run paths",
+            _handle_open_latest,
+            argparse.Namespace(**common_output_args, format="text"),
+            quiet=quiet,
+        )
+        _run_alpha_step(
+            "Show run history",
+            _handle_history,
+            argparse.Namespace(**common_output_args, limit=10, format="text"),
+            quiet=quiet,
+        )
+        _run_alpha_step(
+            "Show latest status",
+            _handle_status,
+            argparse.Namespace(
+                **common_output_args,
+                feedback_limit=3,
+                allow_warnings=not args.strict,
+                format="text",
+            ),
+            quiet=quiet,
+        )
+        status_exit, status_json = _run_alpha_step(
+            "Check latest status JSON",
+            _handle_status,
+            argparse.Namespace(
+                **common_output_args,
+                feedback_limit=3,
+                allow_warnings=not args.strict,
+                format="json",
+            ),
+            quiet=True,
+        )
+        try:
+            status_payload = json.loads(status_json)
+        except json.JSONDecodeError as exc:
+            errors.append(f"Unable to parse status JSON: {exc}")
+
+        _run_alpha_step(
+            "Inspect latest report",
+            _handle_inspect_report,
+            argparse.Namespace(run_dir=str(latest_dir), format="text"),
+            quiet=quiet,
+        )
+        check_exit, _ = _run_alpha_step(
+            "Check latest report",
+            _handle_check,
+            argparse.Namespace(
+                run_dir=str(latest_dir),
+                repo=str(repo),
+                config=args.config,
+                format="text",
+                allow_warnings=not args.strict,
+            ),
+            quiet=quiet,
+        )
+        if check_exit not in {0, 1} or (args.strict and check_exit != 0):
+            errors.append(f"Report check exited {check_exit}.")
+        bundle_path = latest_dir.with_suffix(".zip")
+        verify_exit, _ = _run_alpha_step(
+            "Verify latest bundle",
+            _handle_verify_bundle,
+            argparse.Namespace(
+                bundle=str(bundle_path),
+                signature_key_file=None,
+                require_signature=False,
+                format="text",
+            ),
+            quiet=quiet,
+        )
+        if verify_exit != 0:
+            errors.append(f"Bundle verification exited {verify_exit}.")
+
+    status = str(status_payload.get("status") or "unknown")
+    status_summary = ""
+    check_payload = status_payload.get("check")
+    if isinstance(check_payload, dict):
+        status_summary = str(check_payload.get("summary") or "")
+    if not status_summary:
+        status_summary = "Alpha pass did not produce a status summary."
+    status_errors = status_payload.get("errors") if isinstance(status_payload.get("errors"), list) else []
+    for error in status_errors:
+        if error not in errors:
+            errors.append(str(error))
+    report_paths = status_payload.get("paths") if isinstance(status_payload.get("paths"), dict) else {}
+    feedback = status_payload.get("feedback") if isinstance(status_payload.get("feedback"), dict) else _empty_status_feedback()
+    next_actions = status_payload.get("next_actions") if isinstance(status_payload.get("next_actions"), list) else []
+    ended_at = utc_now_iso()
+    status_exit_code = int(status_payload.get("status_exit_code") or status_exit)
+    ok = not errors and status_exit_code == 0
+    payload = {
+        "schema_version": ALPHA_SUMMARY_SCHEMA,
+        "ok": ok,
+        "summary_file": str(summary_path),
+        "started_at": started_at,
+        "ended_at": ended_at,
+        "repo": str(repo),
+        "out": str(out_root),
+        "latest_run": str(latest_dir) if latest_dir is not None else None,
+        "bundle": str(latest_dir.with_suffix(".zip")) if latest_dir is not None else None,
+        "agentledger_version": f"agentledger {__version__}",
+        "python_version": f"Python {platform.python_version()}",
+        "git_version": _git_version(),
+        "doctor": doctor_summary,
+        "status": status,
+        "status_summary": status_summary,
+        "status_exit_code": status_exit_code,
+        "report_paths": report_paths,
+        "feedback": feedback,
+        "next_actions": next_actions,
+        "errors": errors,
+    }
+    _write_alpha_summary(summary_path, payload)
+
+    if quiet:
+        print(json.dumps(payload, indent=2))
+    else:
+        print("")
+        print("== Alpha complete ==")
+        print(_format_alpha_summary(summary_path, payload))
+        print("")
+        print("Do not send or commit .agentledger folders, zip bundles, secrets, or sensitive evidence unless requested.")
+    return 0 if ok else 2
+
+
 def _alpha_summary_error(
     args: argparse.Namespace,
     errors: list[str],
@@ -1138,7 +1422,7 @@ def _load_alpha_summary(path: Path) -> tuple[dict | None, list[str]]:
     if not path.exists():
         return None, [
             f"Alpha summary file not found: {path}",
-            "Run scripts/alpha.ps1 first, or pass a summary path.",
+            "Run agentledger alpha or scripts/alpha.ps1 first, or pass a summary path.",
         ]
     if not path.is_file():
         return None, [f"Alpha summary path is not a file: {path}"]
@@ -1851,6 +2135,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_history(args)
     if args.command_name == "status":
         return _handle_status(args)
+    if args.command_name == "alpha":
+        return _handle_alpha(args)
     if args.command_name == "alpha-summary":
         return _handle_alpha_summary(args)
     if args.command_name == "feedback":

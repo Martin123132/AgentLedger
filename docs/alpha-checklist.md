@@ -16,16 +16,23 @@
 Preferred one-command alpha pass:
 
 ```powershell
+python -m agentledger alpha --repo . --out .agentledger
+```
+
+Windows extended alpha pass:
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
 Expected result:
 
-- Install check, smoke check, doctor, captured pytest, status, inspect, check,
-  and verify all pass.
+- Doctor, captured pytest, status, inspect, check, and verify all pass.
+- The Windows script also runs install and smoke checks.
 - A short summary is printed for the tester to send back.
 - `.agentledger/alpha-summary.json` is written for machine-readable handoffs,
-  or `-JsonOutput <path>` writes that summary to a chosen location.
+  or `--json-output <path>` / `-JsonOutput <path>` writes that summary to a
+  chosen location.
 - `python -m agentledger alpha-summary --out .agentledger` prints the same
   handoff summary with validated paths and next actions.
 - `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
@@ -57,7 +64,7 @@ Expected result:
 - Show latest run status, evidence paths, feedback counts, and next action:
   - `python -m agentledger status --out .agentledger --allow-warnings`
   - `python -m agentledger status --out .agentledger --format json --allow-warnings`
-- Inspect the one-command alpha summary if `scripts/alpha.ps1` was run:
+- Inspect the one-command alpha summary if `agentledger alpha` or `scripts/alpha.ps1` was run:
   - `python -m agentledger alpha-summary --out .agentledger`
   - `python -m agentledger alpha-summary --out .agentledger --format json`
   - `python -m agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json`
