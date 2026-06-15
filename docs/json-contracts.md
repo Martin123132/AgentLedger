@@ -280,6 +280,25 @@ Stable fields:
 
 ## Script Summaries
 
+### `scripts/release_command_index.py --format json`
+
+Schema: `agentledger.release_command_index.v1`
+
+Use this to generate the ordered release-day command flow with stable temp
+artifact names, required placeholders, and evidence-handling reminders.
+
+Stable fields:
+
+- `version`
+- `release_label`
+- `tag`
+- `release_date`
+- `repository`
+- `artifacts`: expected temp paths for release notes, release checks, post-release output, and evidence packets
+- `placeholders`: values that must be replaced before publishing
+- `do_not_commit`
+- `sections`: ordered release sections with purpose, commands, and notes
+
 ### `scripts/rehearse_release.py`
 
 Schema: `agentledger.release_rehearsal.v1`
