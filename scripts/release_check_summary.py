@@ -9,6 +9,7 @@ from typing import Any
 
 RELEASE_CHECK_SCHEMA = "agentledger.release_check.v1"
 RELEASE_METADATA_SCHEMA = "agentledger.release_metadata_check.v1"
+RELEASE_PROCESS_SCHEMA = "agentledger.release_process_check.v1"
 
 
 class ReleaseCheckSummaryError(ValueError):
@@ -81,6 +82,25 @@ def validate_release_check(payload: dict[str, Any]) -> None:
         raise ReleaseCheckSummaryError("release_metadata.ok must be a boolean.")
     _as_list(metadata_payload.get("checks"), "release_metadata.checks")
 
+    process = payload.get("release_process")
+    if process is None:
+        if payload["ok"]:
+            raise ReleaseCheckSummaryError("release_process is required when ok is true.")
+        return
+
+    process_payload = _as_mapping(process, "release_process")
+    if process_payload.get("schema_version") != RELEASE_PROCESS_SCHEMA:
+        raise ReleaseCheckSummaryError(
+            "release_process.schema_version must be "
+            f"{RELEASE_PROCESS_SCHEMA}."
+        )
+    if not isinstance(process_payload.get("ok"), bool):
+        raise ReleaseCheckSummaryError("release_process.ok must be a boolean.")
+    summary = _as_mapping(process_payload.get("summary"), "release_process.summary")
+    for field in ["total", "passed", "failed"]:
+        if not isinstance(summary.get(field), int):
+            raise ReleaseCheckSummaryError(f"release_process.summary.{field} must be an integer.")
+
 
 def release_metadata_counts(metadata: dict[str, Any] | None) -> tuple[int, int]:
     if not metadata:
@@ -91,12 +111,31 @@ def release_metadata_counts(metadata: dict[str, Any] | None) -> tuple[int, int]:
     return passed, failed
 
 
+def release_process_counts(process: dict[str, Any] | None) -> tuple[int, int, int]:
+    if not process:
+        return (0, 0, 0)
+    summary = process.get("summary", {})
+    if not isinstance(summary, dict):
+        return (0, 0, 0)
+    total = summary.get("total")
+    passed = summary.get("passed")
+    failed = summary.get("failed")
+    return (
+        total if isinstance(total, int) else 0,
+        passed if isinstance(passed, int) else 0,
+        failed if isinstance(failed, int) else 0,
+    )
+
+
 def render_release_check_markdown(payload: dict[str, Any]) -> str:
     validate_release_check(payload)
 
     metadata = payload.get("release_metadata")
     metadata_payload = metadata if isinstance(metadata, dict) else None
+    process = payload.get("release_process")
+    process_payload = process if isinstance(process, dict) else None
     metadata_passed, metadata_failed = release_metadata_counts(metadata_payload)
+    process_total, process_passed, process_failed = release_process_counts(process_payload)
     result = "passed" if payload.get("ok") else "failed"
     working_tree = "dirty" if payload.get("working_tree_dirty") else "clean"
 
@@ -137,6 +176,26 @@ def render_release_check_markdown(payload: dict[str, Any]) -> str:
     else:
         lines.append("- Status: not available")
         lines.append("- Checks: 0 passed, 0 failed")
+
+    lines.extend(["", "## Release Process", ""])
+    if process_payload:
+        lines.extend(
+            [
+                f"- Status: {_text(process_payload.get('status'))}",
+                f"- Document: {_text(process_payload.get('doc'))}",
+                f"- Command index schema: {_text(process_payload.get('index_schema_version'))}",
+                f"- Checks: {process_passed} passed, {process_failed} failed, {process_total} total",
+            ]
+        )
+        errors = [str(error) for error in process_payload.get("errors", []) if str(error).strip()]
+        if errors:
+            lines.append("")
+            lines.append("Release-process errors:")
+            for error in errors:
+                lines.append(f"- {error}")
+    else:
+        lines.append("- Status: not available")
+        lines.append("- Checks: 0 passed, 0 failed, 0 total")
 
     lines.extend(
         [

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import json
 import re
 import sys
@@ -100,6 +101,23 @@ def _add_check(checks: list[dict[str, str]], name: str, ok: bool, detail: str) -
     )
 
 
+def _changelog_release_date(changelog_text: str, label: str) -> str | None:
+    heading_re = re.compile(
+        rf"^##\s+{re.escape(label)}(?:\s+-\s+(?P<date>\d{{4}}-\d{{2}}-\d{{2}}))?\s*$",
+        re.MULTILINE,
+    )
+    match = heading_re.search(changelog_text)
+    if not match:
+        return None
+    release_date = match.group("date")
+    if release_date is None:
+        return None
+    try:
+        return date.fromisoformat(release_date).isoformat()
+    except ValueError:
+        return None
+
+
 def _has_changelog_section(changelog_text: str, label: str) -> bool:
     heading_re = re.compile(rf"^##\s+{re.escape(label)}(?:\s+-\s+.+)?\s*$", re.MULTILINE)
     return bool(heading_re.search(changelog_text))
@@ -136,6 +154,8 @@ def check_release_metadata(repo_root: Path) -> dict[str, Any]:
     release_label = changelog_version(project_version)
     license_text = _parse_inline_text_table(project.get("license"), "text")
     authors = _parse_author_names(project.get("authors"))
+    changelog = texts.get("CHANGELOG.md", "")
+    release_date = _changelog_release_date(changelog, release_label) if release_label else None
 
     _add_check(
         checks,
@@ -189,7 +209,6 @@ def check_release_metadata(repo_root: Path) -> dict[str, Any]:
     readme = texts.get("README.md", "")
     license_file = texts.get("LICENSE", "")
     commercial = texts.get("COMMERCIAL.md", "")
-    changelog = texts.get("CHANGELOG.md", "")
     _add_check(
         checks,
         "readme license notice",
@@ -220,6 +239,12 @@ def check_release_metadata(repo_root: Path) -> dict[str, Any]:
         bool(release_label and _has_changelog_section(changelog, release_label)),
         f"CHANGELOG.md should contain a section for current release label {release_label!r}",
     )
+    _add_check(
+        checks,
+        "current release date",
+        bool(release_date),
+        f"CHANGELOG.md current release section should include a YYYY-MM-DD date; found {release_date!r}",
+    )
 
     failed = [check for check in checks if check["status"] == "failed"]
     return {
@@ -231,6 +256,7 @@ def check_release_metadata(repo_root: Path) -> dict[str, Any]:
         "project_version": project_version,
         "package_version": package_version,
         "release_label": release_label,
+        "release_date": release_date,
         "license": license_text,
         "checks": checks,
         "errors": [f"{check['name']}: {check['detail']}" for check in failed],
@@ -281,6 +307,7 @@ def main(argv: list[str] | None = None) -> int:
             "project_version": None,
             "package_version": None,
             "release_label": None,
+            "release_date": None,
             "license": None,
             "checks": [],
             "errors": [str(error)],

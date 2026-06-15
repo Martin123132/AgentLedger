@@ -48,6 +48,7 @@ def sample_release_check_payload(**overrides) -> dict:
             "project_version": "0.1.8a0",
             "package_version": "0.1.8a0",
             "release_label": "0.1.8-alpha",
+            "release_date": "2026-06-14",
             "license": "PolyForm Noncommercial License 1.0.0",
             "checks": [
                 {"name": "project name", "status": "passed", "detail": "agentledger"},
@@ -55,9 +56,25 @@ def sample_release_check_payload(**overrides) -> dict:
             ],
             "errors": [],
         },
+        "release_process": {
+            "schema_version": "agentledger.release_process_check.v1",
+            "ok": True,
+            "status": "ready",
+            "version": "0.1.8a0",
+            "release_label": "0.1.8-alpha",
+            "release_date": "2026-06-14",
+            "repository": "Martin123132/AgentLedger",
+            "doc": "D:\\Projects\\AgentLedger\\docs\\release-process.md",
+            "index_schema_version": "agentledger.release_command_index.v1",
+            "summary": {"total": 64, "passed": 64, "failed": 0},
+            "checks": [],
+            "errors": [],
+            "next_actions": [],
+        },
         "steps": [
             {"name": "Check release versions", "status": "passed", "seconds": 0.2, "error": None},
             {"name": "Check release metadata", "status": "passed", "seconds": 0.1, "error": None},
+            {"name": "Check release process docs", "status": "passed", "seconds": 0.1, "error": None},
         ],
         "error": None,
     }

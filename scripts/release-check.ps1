@@ -21,6 +21,7 @@ $script:branch = $null
 $script:head = $null
 $script:wheelPath = $null
 $script:metadataCheck = $null
+$script:releaseProcessCheck = $null
 
 function Invoke-Step {
     param(
@@ -237,6 +238,7 @@ function Write-JsonSummary {
         working_tree_dirty = [bool] $script:workingTreeDirty
         wheel = $wheelName
         release_metadata = $script:metadataCheck
+        release_process = $script:releaseProcessCheck
         steps = $stepPayload
         error = Get-ReleaseCheckErrorMessage
     }
@@ -291,6 +293,32 @@ try {
             throw "scripts/check_release_metadata.py reported failed metadata"
         }
         Write-Host "Metadata: $($script:metadataCheck.project_name) $($script:metadataCheck.project_version) ($($script:metadataCheck.release_label))"
+    }
+
+    Invoke-Step "Check release process docs" {
+        if (-not $script:metadataCheck.release_date) {
+            throw "Release metadata did not report a release date"
+        }
+
+        $processJson = (
+            & python "scripts/check_release_process.py" `
+                "--version" $script:projectVersion `
+                "--date" $script:metadataCheck.release_date `
+                "--format" "json"
+        ) -join "`n"
+        if ($processJson) {
+            $script:releaseProcessCheck = $processJson | ConvertFrom-Json
+        }
+        if ($LASTEXITCODE -ne 0) {
+            if ($processJson) {
+                Write-Host $processJson
+            }
+            throw "scripts/check_release_process.py failed with code $LASTEXITCODE"
+        }
+        if (-not $script:releaseProcessCheck.ok) {
+            throw "scripts/check_release_process.py reported release-process drift"
+        }
+        Write-Host "Release process: $($script:releaseProcessCheck.summary.passed) passed, $($script:releaseProcessCheck.summary.failed) failed"
     }
 
     Invoke-Step "Check release notes source" {

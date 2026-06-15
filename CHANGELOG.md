@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added the release-process consistency checker to the release-readiness gate
+  and release evidence summaries.
 - Added a release-process consistency checker that compares the generated
   release command index with `docs/release-process.md`.
 - Added a release command index generator for the ordered release-day command

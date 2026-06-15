@@ -362,9 +362,13 @@ Stable fields:
 - `agentledger_version`
 - `package_version`
 - `require_clean_git`
+- `skip_editable_install`
 - `working_tree_dirty`
+- `wheel`
 - `release_metadata`: embedded `agentledger.release_metadata_check.v1` payload
+- `release_process`: embedded `agentledger.release_process_check.v1` payload
 - `steps`: release readiness steps with status, seconds, and optional error
+- `error`
 
 ### `scripts/release_artifact_doctor.py --format json`
 
@@ -422,7 +426,7 @@ Stable fields:
 - `repository`
 - `release_url`
 - `private_evidence_included`
-- `release_check`: branch, head, clean-git status, step counts, and metadata counts
+- `release_check`: branch, head, clean-git status, step counts, metadata counts, and release-process counts
 - `github_release_check`: check counts, draft/prerelease status, and publish timestamp
 - `artifacts`: validated artifact names, not artifact bodies
 - `handling`
