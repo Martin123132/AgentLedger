@@ -220,7 +220,8 @@ machine-readable `agentledger.alpha_summary.v1` summary to
 capture something other than the current Python interpreter running `-m pytest`,
 and use `--json-output <path>` to write the summary outside the repo. Use
 `--strict` when warning status should fail the alpha pass. If required setup is
-blocked, `alpha` still writes a summary with the doctor errors and next action.
+blocked, `alpha` still writes a summary with config or doctor errors and next
+action when an output path is available.
 
 Windows extended alpha pass:
 
