@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger signing-key` preflight checks for shared signing-key files
+  without printing key material.
 - Added machine-readable `agentledger sign-bundle --format json` output for
   signed bundle handoffs without exposing raw HMAC values.
 - Added a release rehearsal receipt for summarizing verified rehearsal

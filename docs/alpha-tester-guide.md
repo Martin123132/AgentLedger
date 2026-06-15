@@ -119,7 +119,7 @@ Expected result:
 - `check` evaluates the run using `.agentledger.toml`
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
 - `status --format json`, `open-latest --format json`, and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
-- Optional: `sign-bundle` adds a shared-key HMAC signature that `verify-bundle --signature-key-file --require-signature` can verify
+- Optional: `signing-key` checks shared-key file hygiene before `sign-bundle` adds an HMAC signature that `verify-bundle --signature-key-file --require-signature` can verify
 
 ## Evidence location
 

@@ -15,7 +15,7 @@ FEEDBACK_EXPORT_JSON="$ROOT/agentledger-feedback.json"
 
 mkdir -p "$REPO"
 mkdir -p "$OUT"
-printf '%s\n' 'agentledger-smoke-signing-key' > "$SIGNATURE_KEY"
+printf '%s\n' 'agentledger-smoke-signing-key-0123456789' > "$SIGNATURE_KEY"
 cd "$REPO"
 
 git init -q
@@ -96,6 +96,7 @@ print(f"AgentLedger check JSON: {payload['status']} - {payload['summary']}")
 PY
 python -m agentledger verify-bundle "${RUN}.zip"
 python -m agentledger verify-bundle "${RUN}.zip" --format json
+python -m agentledger signing-key --repo "$REPO" --key-file "$SIGNATURE_KEY" --format json
 python -m agentledger sign-bundle "${RUN}.zip" --key-file "$SIGNATURE_KEY"
 python -m agentledger verify-bundle "${RUN}.zip" --signature-key-file "$SIGNATURE_KEY"
 python -m agentledger verify-bundle "${RUN}.zip" --format json --signature-key-file "$SIGNATURE_KEY"

@@ -63,6 +63,7 @@ DEFAULT_PRIVACY_MODE = "standard"
 STATUS_SCHEMA = "agentledger.status.v1"
 ALPHA_SUMMARY_SCHEMA = "agentledger.alpha_summary.v1"
 ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
+SIGNING_KEY_SCHEMA = "agentledger.signing_key.v1"
 SIGN_BUNDLE_SCHEMA = "agentledger.sign_bundle.v1"
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
@@ -255,6 +256,11 @@ def build_parser() -> argparse.ArgumentParser:
     init_config.add_argument("--repo", default=".", help="Target repository or project directory.")
     init_config.add_argument("--config", default=None, help="Path to write config file.")
     init_config.add_argument("--force", action="store_true", help="Overwrite an existing config file.")
+
+    signing_key = sub.add_parser("signing-key", help="Check shared signing-key file safety without printing the key.")
+    signing_key.add_argument("--key-file", required=True, help="Text file containing the shared signing key.")
+    signing_key.add_argument("--repo", default=".", help="Target git repository for ignore/tracking checks.")
+    signing_key.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     verify = sub.add_parser("verify-bundle", help="Validate a zip evidence bundle.")
     verify.add_argument("bundle", help="Path to bundle zip file.")
@@ -654,6 +660,176 @@ def _read_signature_key(path: Path) -> bytes:
     if not key:
         raise BundleError(f"Key file is empty: {path}")
     return key
+
+
+def _git_root(repo: Path) -> tuple[Path | None, str | None]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--show-toplevel"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None, "git was not found on PATH."
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        return None, detail or f"Not a git repository: {repo}"
+    root = result.stdout.strip()
+    if not root:
+        return None, f"Git did not report a repository root for: {repo}"
+    return Path(root).resolve(), None
+
+
+def _relative_to(path: Path, root: Path) -> Path | None:
+    try:
+        return path.relative_to(root)
+    except ValueError:
+        return None
+
+
+def _git_boolean_check(repo_root: Path, args: list[str], expected_false: int = 1) -> tuple[bool | None, str | None]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), *args],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None, "git was not found on PATH."
+    if result.returncode == 0:
+        return True, None
+    if result.returncode == expected_false:
+        return False, None
+    detail = (result.stderr or result.stdout).strip()
+    return None, detail or f"git {' '.join(args)} failed with exit code {result.returncode}."
+
+
+def _signing_key_next_actions(ok: bool, inside_repo: bool, ignored_by_git: bool | None, tracked_by_git: bool | None) -> list[str]:
+    if not ok:
+        actions = ["Fix the reported signing-key issue, then run agentledger signing-key again."]
+        if inside_repo and ignored_by_git is not True:
+            actions.append("Add a local ignore rule such as .agentledger-signing-key* before signing bundles.")
+        if tracked_by_git:
+            actions.append("Remove the key from git history and rotate it before using it again.")
+        return actions
+    actions = [
+        "Use this key with agentledger sign-bundle --key-file when signing evidence bundles.",
+        "Keep the signing key private and rotate it if it was shared too widely.",
+    ]
+    if inside_repo:
+        actions.append("Keep the key covered by .gitignore and never commit it.")
+    return actions
+
+
+def _handle_signing_key(args: argparse.Namespace) -> int:
+    key_path = Path(args.key_file).resolve()
+    repo = Path(args.repo).resolve()
+    errors: list[str] = []
+    warnings: list[str] = []
+    key_size: int | None = None
+    empty: bool | None = None
+    exists = key_path.exists()
+    is_file = key_path.is_file() if exists else False
+
+    if not exists:
+        errors.append(f"Key file not found: {key_path}")
+    elif not is_file:
+        errors.append(f"Key path is not a file: {key_path}")
+    else:
+        try:
+            key = key_path.read_bytes().strip()
+        except OSError as exc:
+            errors.append(f"Unable to read key file: {exc}")
+        else:
+            key_size = len(key)
+            empty = key_size == 0
+            if empty:
+                errors.append(f"Key file is empty: {key_path}")
+            elif key_size < 32:
+                warnings.append("Signing key is shorter than 32 bytes; use a longer random key for production signing.")
+
+    git_root, git_error = _git_root(repo)
+    if git_error:
+        warnings.append(f"Unable to check git ignore/tracking status: {git_error}")
+
+    inside_repo = False
+    ignored_by_git: bool | None = None
+    tracked_by_git: bool | None = None
+    if git_root is not None:
+        relative_key = _relative_to(key_path, git_root)
+        inside_repo = relative_key is not None
+        if inside_repo and relative_key is not None:
+            git_key = relative_key.as_posix()
+            ignored_by_git, ignore_error = _git_boolean_check(git_root, ["check-ignore", "-q", "--", git_key])
+            tracked_by_git, tracked_error = _git_boolean_check(
+                git_root,
+                ["ls-files", "--error-unmatch", "--", git_key],
+            )
+            if ignore_error:
+                errors.append(f"Unable to check whether key is ignored by git: {ignore_error}")
+            if tracked_error:
+                errors.append(f"Unable to check whether key is tracked by git: {tracked_error}")
+            if tracked_by_git:
+                errors.append(f"Signing key is tracked by git: {key_path}")
+            if ignored_by_git is not True:
+                errors.append(f"Signing key is inside the repo but is not ignored by git: {key_path}")
+
+    ok = not errors
+    payload = {
+        "schema_version": SIGNING_KEY_SCHEMA,
+        "ok": ok,
+        "key_file": str(key_path),
+        "repo": str(repo),
+        "git_root": str(git_root) if git_root is not None else None,
+        "exists": exists,
+        "file": is_file,
+        "size_bytes": key_size,
+        "empty": empty,
+        "inside_repo": inside_repo,
+        "ignored_by_git": ignored_by_git,
+        "tracked_by_git": tracked_by_git,
+        "warnings": warnings,
+        "errors": errors,
+        "next_actions": _signing_key_next_actions(ok, inside_repo, ignored_by_git, tracked_by_git),
+    }
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0 if ok else 2
+
+    print(f"AgentLedger signing key: {'ready' if ok else 'blocked'}")
+    print(f"Key file: {key_path}")
+    print(f"Repo: {repo}")
+    print(f"Git root: {git_root if git_root is not None else 'not checked'}")
+    print(f"Exists: {'yes' if exists else 'no'}")
+    print(f"File: {'yes' if is_file else 'no'}")
+    print(f"Size: {key_size if key_size is not None else 'n/a'} bytes")
+    print(f"Inside repo: {'yes' if inside_repo else 'no'}")
+    print(f"Git ignored: {_format_optional_bool(ignored_by_git)}")
+    print(f"Git tracked: {_format_optional_bool(tracked_by_git)}")
+    if warnings:
+        print("Warnings:")
+        for warning in warnings:
+            print(f"- {warning}")
+    if errors:
+        print("Errors:")
+        for error in errors:
+            print(f"- {error}")
+    print("Next:")
+    for action in payload["next_actions"]:
+        print(f"- {action}")
+    return 0 if ok else 2
+
+
+def _format_optional_bool(value: bool | None) -> str:
+    if value is True:
+        return "yes"
+    if value is False:
+        return "no"
+    return "not checked"
 
 
 def _check_policy_from_config(config: AgentLedgerConfig) -> CheckPolicy:
@@ -2353,6 +2529,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_check(args)
     if args.command_name == "init-config":
         return _handle_init_config(args)
+    if args.command_name == "signing-key":
+        return _handle_signing_key(args)
     if args.command_name == "verify-bundle":
         return _handle_verify_bundle(args)
     if args.command_name == "sign-bundle":

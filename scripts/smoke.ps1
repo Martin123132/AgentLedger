@@ -84,7 +84,7 @@ try {
     Set-Content -Path "README.md" -Value "# Smoke Demo`r`n"
     git add README.md | Out-Null
     git commit -m "initial" | Out-Null
-    Set-Content -LiteralPath $signatureKey -Value "agentledger-smoke-signing-key" -Encoding UTF8
+    Set-Content -LiteralPath $signatureKey -Value "agentledger-smoke-signing-key-0123456789" -Encoding UTF8
 
     Invoke-AgentLedger @("contracts")
     Invoke-AgentLedger @("contracts", "--format", "json")
@@ -125,6 +125,7 @@ try {
     Invoke-AgentLedgerJsonCheck -Run $run -OutputPath $checkJson
     Invoke-AgentLedger @("verify-bundle", "${run}.zip")
     Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--format", "json")
+    Invoke-AgentLedger @("signing-key", "--repo", $repo, "--key-file", $signatureKey, "--format", "json")
     Invoke-AgentLedger @("sign-bundle", "${run}.zip", "--key-file", $signatureKey)
     Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--signature-key-file", $signatureKey)
     Invoke-AgentLedger @("verify-bundle", "${run}.zip", "--format", "json", "--signature-key-file", $signatureKey)
