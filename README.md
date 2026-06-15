@@ -265,6 +265,7 @@ python scripts/release_command_index.py --version 0.1.8a0 --date 2026-06-14
 python scripts/check_release_process.py --version 0.1.8a0 --date 2026-06-14
 python scripts/release_readiness_report.py --format markdown --output $env:TEMP\agentledger-release-readiness-report.md
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
+python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --dry-run
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --release-notes-output $env:TEMP\agentledger-0.1.8-alpha-release.md
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
@@ -327,6 +328,8 @@ source metadata JSON, fast readiness report, release readiness artifacts, and
 one local checklist summary under the chosen output directory. It also writes
 `release-rehearsal-manifest.json` with file sizes and SHA-256 hashes for the
 generated rehearsal outputs.
+Use `scripts/verify_release_rehearsal.py` to verify a saved rehearsal output
+folder from that manifest later without rerunning the rehearsal.
 Use `scripts/prepare_release.py` to move current Unreleased notes into a dated
 release section while updating `pyproject.toml` and `src/agentledger/__init__.py`
 together. Run it with `--dry-run` first. Add `--release-notes-output` to write
