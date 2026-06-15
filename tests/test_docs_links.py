@@ -80,6 +80,14 @@ def _looks_like_repo_file_reference(value: str) -> bool:
     return target.startswith(REPO_FILE_PREFIXES) and target.endswith(REPO_FILE_SUFFIXES)
 
 
+def _config_lines(text: str) -> list[str]:
+    return [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
 def test_markdown_links_point_to_existing_local_targets() -> None:
     missing = []
     for markdown_file in _markdown_files():
@@ -105,3 +113,16 @@ def test_code_spanned_repo_file_references_exist() -> None:
                 missing.append(f"{markdown_file.relative_to(ROOT)} -> `{target}`")
 
     assert not missing, "Missing documented repo file references:\n" + "\n".join(missing)
+
+
+def test_readme_public_alpha_config_matches_repository_config() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    config = (ROOT / ".agentledger.toml").read_text(encoding="utf-8")
+    match = re.search(
+        r"This repository includes a public-alpha example at `\.agentledger\.toml`:\n\n```toml\n(?P<config>.*?)\n```",
+        readme,
+        re.DOTALL,
+    )
+
+    assert match is not None, "README is missing the public-alpha .agentledger.toml example block"
+    assert _config_lines(match.group("config")) == _config_lines(config)

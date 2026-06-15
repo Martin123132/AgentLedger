@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a README/config consistency check for the repository alpha policy.
 - Fixed explicit `--out` commands so they still inherit the target repo's
   AgentLedger policy config.
 - Added direct `agentledger status` validation to the one-command alpha pass.

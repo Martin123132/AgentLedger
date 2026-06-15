@@ -133,8 +133,8 @@ tokometer = false
 zip = true
 check_require_tests = true
 check_dirty = "warn"
-check_max_changed_files = 20
-check_allow_warnings = false
+check_max_changed_files = 25
+check_allow_warnings = true
 ```
 
 `run`, `snapshot`, `open-latest`, `history`, and `status` read that file from the target
