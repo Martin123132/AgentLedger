@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ SCHEMAS = {
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
     "status": "agentledger.status.v1",
+    "alpha": "agentledger.alpha_summary.v1",
     "alpha_summary": "agentledger.alpha_summary.v1",
     "feedback": "agentledger.feedback.v1",
     "feedback_summary": "agentledger.feedback_summary.v1",
@@ -152,6 +154,8 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
     capsys.readouterr()
     alpha_summary = tmp_path / "alpha-summary.json"
     _write_alpha_summary(alpha_summary, second)
+    alpha_out = tmp_path / "alpha-ledger"
+    alpha_command_summary = tmp_path / "alpha-command-summary.json"
 
     return {
         "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
@@ -159,6 +163,24 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "status": _run_json(capsys, ["status", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
+        "alpha": _run_json(
+            capsys,
+            [
+                "alpha",
+                "--format",
+                "json",
+                "--repo",
+                str(repo),
+                "--out",
+                str(alpha_out),
+                "--json-output",
+                str(alpha_command_summary),
+                "--",
+                sys.executable,
+                "-c",
+                "print('contract alpha')",
+            ],
+        ),
         "alpha_summary": _run_json(capsys, ["alpha-summary", "--format", "json", str(alpha_summary)]),
         "feedback": _run_json(
             capsys,
@@ -263,6 +285,28 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "next_actions",
             "errors",
             "status_exit_code",
+        },
+        "alpha": {
+            "schema_version",
+            "ok",
+            "summary_file",
+            "started_at",
+            "ended_at",
+            "repo",
+            "out",
+            "latest_run",
+            "bundle",
+            "agentledger_version",
+            "python_version",
+            "git_version",
+            "doctor",
+            "status",
+            "status_summary",
+            "status_exit_code",
+            "report_paths",
+            "feedback",
+            "next_actions",
+            "errors",
         },
         "alpha_summary": {
             "schema_version",
@@ -443,6 +487,24 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
         },
     )
     assert status["next_actions"]
+
+    alpha = json_payloads["alpha"]
+    assert alpha["ok"] is True
+    assert alpha["status"] in {"pass", "warn"}
+    _assert_keys(alpha["report_paths"], {"markdown", "json", "html", "zip"})
+    _assert_keys(
+        alpha["feedback"],
+        {
+            "total_entries",
+            "returned_entries",
+            "runs_with_feedback",
+            "latest_run_entries",
+            "categories",
+            "severities",
+            "errors",
+        },
+    )
+    assert alpha["next_actions"]
 
     alpha_summary = json_payloads["alpha_summary"]
     assert alpha_summary["ok"] is True

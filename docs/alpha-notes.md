@@ -24,7 +24,7 @@ Date: 2026-06-11
 - Older `doctor` output reported `partial` when optional integrations were missing, which was accurate but looked worrying to a first alpha tester.
 - `pip` upgrade notices add noise during install and install-check runs.
 - `git init` prints the default-branch hint during smoke tests, which makes the smoke output longer than the useful AgentLedger output.
-- Earlier README drafts included internal sync notes that could confuse public testers; the public quick-start flow now points at `scripts/alpha.ps1`.
+- Earlier README drafts included internal sync notes that could confuse public testers; the public quick-start flow now points at `agentledger alpha`, with `scripts/alpha.ps1` kept as the Windows extended pass.
 
 ## Exact setup friction
 

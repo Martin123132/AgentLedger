@@ -10,9 +10,9 @@ AgentLedger is source-available for non-commercial use. See `LICENSE` and
 You need:
 
 - access to this repository
-- Windows PowerShell
 - Python 3.12 or newer
 - Git installed locally
+- Windows PowerShell only if you use the extended script
 
 If PowerShell cannot find `git`, the alpha script will try common Windows Git locations, including GitHub Desktop.
 
@@ -21,16 +21,22 @@ If PowerShell cannot find `git`, the alpha script will try common Windows Git lo
 From the repository root:
 
 ```powershell
+python -m agentledger alpha --repo . --out .agentledger
+```
+
+Windows users can also run the extended script:
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 ```
 
-The script runs:
+The Python command runs:
 
-- install verification
 - local readiness check
-- smoke verification
 - a captured `python -m pytest` run
 - latest/history/inspect/verify checks
+
+The PowerShell script additionally runs install and smoke verification.
 
 At the end, it prints a short summary headed:
 
@@ -42,7 +48,7 @@ Send back this summary:
 
 Send back:
 
-- the final summary printed by `scripts/alpha.ps1`
+- the final summary printed by `agentledger alpha` or `scripts/alpha.ps1`
 - notes from `docs/alpha-feedback-template.md`
 - optional local `agentledger feedback --out .agentledger --note "..."` entries
 - optional local `agentledger feedback-summary --out .agentledger` output

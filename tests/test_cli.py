@@ -856,6 +856,91 @@ def test_status_missing_latest_json(tmp_path: Path, capsys) -> None:
     assert payload["status_exit_code"] == 2
 
 
+def test_alpha_command_runs_core_flow_and_writes_summary(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    summary_file = tmp_path / "alpha-summary.json"
+
+    assert (
+        cli.main(
+            [
+                "alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--json-output",
+                str(summary_file),
+                "--format",
+                "json",
+                "--",
+                sys.executable,
+                "-c",
+                "print('alpha cli ok')",
+            ]
+        )
+        == 0
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    saved = json.loads(summary_file.read_text(encoding="utf-8"))
+    assert saved == payload
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is True
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert payload["repo"] == str(repo.resolve())
+    assert payload["out"] == str(out.resolve())
+    assert Path(payload["latest_run"]).exists()
+    assert Path(payload["bundle"]).exists()
+    assert Path(payload["report_paths"]["markdown"]).exists()
+    assert Path(payload["report_paths"]["json"]).exists()
+    assert Path(payload["report_paths"]["html"]).exists()
+    assert payload["status"] in {"pass", "warn"}
+    assert payload["status_exit_code"] == 0
+    assert payload["errors"] == []
+    assert payload["next_actions"]
+
+    assert cli.main(["alpha-summary", "--format", "json", str(summary_file)]) == 0
+    summary_payload = _parse_json_output(capsys.readouterr().out)
+    assert summary_payload == payload
+
+
+def test_alpha_command_reports_failed_capture(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--format",
+                "json",
+                "--",
+                sys.executable,
+                "-c",
+                "raise SystemExit(7)",
+            ]
+        )
+        == 2
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    summary_file = out / "alpha-summary.json"
+    assert json.loads(summary_file.read_text(encoding="utf-8")) == payload
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is False
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert "Captured command exited 7." in payload["errors"]
+    assert payload["status"] == "block"
+    assert payload["status_exit_code"] == 2
+    assert Path(payload["latest_run"]).exists()
+    assert Path(payload["bundle"]).exists()
+
+
 def test_alpha_summary_reads_direct_path(tmp_path: Path, capsys) -> None:
     summary_file = tmp_path / "alpha-summary.json"
     payload = _alpha_summary_payload(summary_file)
