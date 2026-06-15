@@ -325,6 +325,24 @@ Stable fields:
 - `release_metadata`: embedded `agentledger.release_metadata_check.v1` payload
 - `steps`: release readiness steps with status, seconds, and optional error
 
+### `scripts/release_artifact_doctor.py --format json`
+
+Schema: `agentledger.release_artifact_doctor.v1`
+
+Use this before final notes, post-release checks, or lower-level evidence packet
+generation to confirm required release artifacts exist, have the expected
+schema, match the requested version, and are safe to use.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`: `ready` or `blocked`
+- `version`
+- `release_label`
+- `stage`: `final-notes`, `post-release`, or `evidence-packet`
+- `checks`: artifact and validation checks with name, status, detail, and optional path
+- `next_actions`: deduplicated operator actions for blocked checks
+
 ### `scripts/check_github_release.py --format json`
 
 Schema: `agentledger.github_release_check.v1`

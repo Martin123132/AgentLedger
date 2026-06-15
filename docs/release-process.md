@@ -152,9 +152,15 @@ with real links or commit identifiers:
 Then validate the final notes file:
 
 ```powershell
+python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage final-notes --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md
 python scripts/finalize_release_notes.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --check-publish-ready
 ```
+
+`scripts/release_artifact_doctor.py --stage final-notes` checks that the
+release-check JSON and rendered summary exist, match the release version, and
+are suitable for final release notes before `scripts/finalize_release_notes.py`
+runs.
 
 `scripts/finalize_release_notes.py` builds the publish-ready GitHub release body
 from `CHANGELOG.md`, clean release-check JSON, the rendered release-check
@@ -173,9 +179,17 @@ After publishing:
 ```powershell
 git status --short --branch
 gh release view v0.1.8-alpha --repo Martin123132/AgentLedger
+python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage post-release --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/post_release_check.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --output-dir $env:TEMP\agentledger-post-release-0.1.8-alpha
 python scripts/release_notes.py --version 0.1.8a0 --check
 ```
+
+`scripts/release_artifact_doctor.py --stage post-release` checks that the
+release-check artifacts and final release notes exist and are publish-ready
+before `scripts/post_release_check.py` calls GitHub and builds handoff files. Use
+`--stage evidence-packet` before the lower-level
+`scripts/release_evidence_packet.py` command when validating an existing
+`agentledger-github-release-check.json`.
 
 `scripts/post_release_check.py` runs `scripts/check_github_release.py` logic,
 writes `agentledger-github-release-check.json` and
@@ -196,6 +210,9 @@ Confirm:
 
 - The release is marked as a prerelease.
 - The release body includes validation links.
+- `scripts/release_artifact_doctor.py` reports
+  `agentledger.release_artifact_doctor.v1` with `ok=true` before final release
+  notes and post-release commands.
 - `scripts/post_release_check.py` reports `agentledger.post_release_check.v1`
   with `ok=true`, writes the GitHub release check artifacts, and builds the
   evidence packet.
