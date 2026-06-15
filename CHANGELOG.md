@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a local release dry-run script and private-alpha release checklist for
+  verifying built-wheel install, smoke, and `pack-alpha` before tagging.
 - Added `agentledger pack-alpha` to generate and validate share-safe alpha
   handoff packets.
 - Added share-safe local path redaction for `agentledger alpha-handoff`.
