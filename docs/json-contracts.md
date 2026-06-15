@@ -410,6 +410,32 @@ Stable fields:
 - `handling`: storage and do-not-commit guidance; the manifest records that it
   excludes itself from the hash list
 
+### `scripts/verify_release_rehearsal.py --format json`
+
+Schema: `agentledger.release_rehearsal_manifest_verify.v1`
+
+Use this to verify a saved release rehearsal output directory from its
+`release-rehearsal-manifest.json` file without rerunning the rehearsal. By
+default it checks files next to the manifest, so a rehearsal folder can be moved
+as a unit; pass `--output-dir` to verify a different artifact directory.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`: `ready` or `failed`
+- `checked_at`
+- `manifest_json`
+- `output_dir`
+- `manifest_schema_version`
+- `package_version`
+- `release_version`
+- `release_date`
+- `branch`
+- `head`
+- `artifact_count`
+- `verified_artifacts`
+- `errors`
+
 ### `scripts/release-check.ps1 -JsonOutput <path>`
 
 Schema: `agentledger.release_check.v1`

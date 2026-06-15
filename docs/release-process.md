@@ -46,6 +46,7 @@ repo:
 
 ```powershell
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
+python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
 ```
 
 Then run the release prep dry run:
@@ -76,6 +77,8 @@ Expected result:
   using `agentledger.release_rehearsal_manifest.v1`, with file sizes, SHA-256
   hashes, and handling notes for every generated rehearsal output except the
   manifest itself.
+- `scripts/verify_release_rehearsal.py` reports
+  `agentledger.release_rehearsal_manifest_verify.v1` with `ok=true`.
 - The draft release notes file is outside the repo, usually under `$env:TEMP`.
 
 Do not commit generated release note files, evidence folders, zip bundles, or
