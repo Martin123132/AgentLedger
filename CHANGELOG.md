@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a GitHub release artifact checker for post-release validation of tags,
+  prerelease status, publish-ready release notes, and compact JSON/Markdown summaries.
 - Added a guarded final-release-notes helper that builds publish-ready GitHub
   prerelease notes from clean release-check evidence and real CI run links.
 - Added a release-check Markdown summary renderer and wired the manual Release
