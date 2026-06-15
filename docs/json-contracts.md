@@ -277,19 +277,21 @@ Stable fields:
 - `test_framework`: old/new detected framework
 - `privacy_mode`: old/new privacy mode
 
-## Scripts
+## Script Summaries
 
-### `scripts/alpha.ps1 -JsonOutput <path>`
+### `agentledger alpha-summary --format json [summary-file]`
 
 Schema: `agentledger.alpha_summary.v1`
 
-Use this to capture the one-command alpha pass result without scraping terminal
-output. When `-JsonOutput` is omitted, `scripts/alpha.ps1` writes the same
-summary to `.agentledger/alpha-summary.json`.
+Use this to inspect the one-command alpha pass result without scraping terminal
+output. `scripts/alpha.ps1` writes the same schema to
+`.agentledger/alpha-summary.json` by default, or to `-JsonOutput <path>` when a
+different handoff path is requested.
 
 Stable fields:
 
 - `ok`: boolean
+- `summary_file`: resolved summary JSON path
 - `started_at`
 - `ended_at`
 - `repo`: resolved AgentLedger checkout path
@@ -306,6 +308,7 @@ Stable fields:
 - `report_paths`: `markdown`, `json`, `html`, and optional `zip`
 - `feedback`: latest feedback counts
 - `next_actions`: human-readable next action list
+- `errors`: machine-readable alpha pass errors
 
 ## Evidence Handling
 

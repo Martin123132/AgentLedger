@@ -63,6 +63,48 @@ def _rule_by_id(payload: dict, rule_id: str) -> dict:
     raise AssertionError(f"Missing rule: {rule_id}")
 
 
+def _alpha_summary_payload(path: Path) -> dict:
+    latest_run = path.parent / "2026-06-15T000000Z0000-alpha"
+    latest_run.mkdir(parents=True, exist_ok=True)
+    bundle = latest_run.with_suffix(".zip")
+    bundle.write_bytes(b"placeholder")
+    return {
+        "schema_version": "agentledger.alpha_summary.v1",
+        "ok": True,
+        "summary_file": str(path),
+        "started_at": "2026-06-15T00:00:00+00:00",
+        "ended_at": "2026-06-15T00:01:00+00:00",
+        "repo": str(path.parent / "repo"),
+        "out": str(path.parent),
+        "latest_run": str(latest_run),
+        "bundle": str(bundle),
+        "agentledger_version": "agentledger 0.1.8a0",
+        "python_version": "Python 3.13.13",
+        "git_version": "git version 2.54.0.windows.1",
+        "doctor": "AgentLedger doctor: ready (required checks passed)",
+        "status": "warn",
+        "status_summary": "2 warnings; review before accepting.",
+        "status_exit_code": 0,
+        "report_paths": {
+            "markdown": str(latest_run / "agentledger-report.md"),
+            "json": str(latest_run / "agentledger-report.json"),
+            "html": str(latest_run / "agentledger-report.html"),
+            "zip": str(bundle),
+        },
+        "feedback": {
+            "total_entries": 1,
+            "returned_entries": 1,
+            "runs_with_feedback": 1,
+            "latest_run_entries": 1,
+            "categories": {"docs": 1},
+            "severities": {"low": 1},
+            "errors": [],
+        },
+        "next_actions": ["Read the Markdown report before sharing evidence."],
+        "errors": [],
+    }
+
+
 def make_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -812,6 +854,73 @@ def test_status_missing_latest_json(tmp_path: Path, capsys) -> None:
     assert "No latest run pointer found:" in payload["errors"][0]
     assert "Run a capture first:" in payload["errors"][1]
     assert payload["status_exit_code"] == 2
+
+
+def test_alpha_summary_reads_direct_path(tmp_path: Path, capsys) -> None:
+    summary_file = tmp_path / "alpha-summary.json"
+    payload = _alpha_summary_payload(summary_file)
+    summary_file.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    assert cli.main(["alpha-summary", str(summary_file)]) == 0
+
+    output = capsys.readouterr().out
+    assert "AgentLedger alpha summary: warn" in output
+    assert "Summary: 2 warnings; review before accepting." in output
+    assert f"Summary file: {summary_file.resolve()}" in output
+    assert f"Latest run: {payload['latest_run']}" in output
+    assert f"Bundle: {payload['bundle']}" in output
+    assert "Feedback: 1 total entries across 1 runs; latest run has 1" in output
+    assert "- Read the Markdown report before sharing evidence." in output
+
+
+def test_alpha_summary_json_output(tmp_path: Path, capsys) -> None:
+    summary_file = tmp_path / "alpha-summary.json"
+    payload = _alpha_summary_payload(summary_file)
+    summary_file.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    assert cli.main(["alpha-summary", "--format", "json", str(summary_file)]) == 0
+
+    result = _parse_json_output(capsys.readouterr().out)
+    assert result["schema_version"] == "agentledger.alpha_summary.v1"
+    assert result["summary_file"] == str(summary_file)
+    assert result["status"] == "warn"
+    assert result["feedback"]["total_entries"] == 1
+
+
+def test_alpha_summary_defaults_to_output_directory(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "ledger"
+    out.mkdir()
+    summary_file = out / "alpha-summary.json"
+    summary_file.write_text(json.dumps(_alpha_summary_payload(summary_file)) + "\n", encoding="utf-8")
+
+    assert cli.main(["alpha-summary", "--out", str(out)]) == 0
+
+    output = capsys.readouterr().out
+    assert f"Summary file: {summary_file.resolve()}" in output
+
+
+def test_alpha_summary_reports_missing_file(tmp_path: Path, capsys) -> None:
+    missing = tmp_path / "missing-alpha-summary.json"
+
+    assert cli.main(["alpha-summary", "--format", "json", str(missing)]) == 2
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is False
+    assert payload["summary_file"] == str(missing.resolve())
+    assert "Alpha summary file not found:" in payload["errors"][0]
+
+
+def test_alpha_summary_rejects_invalid_schema(tmp_path: Path, capsys) -> None:
+    summary_file = tmp_path / "alpha-summary.json"
+    payload = _alpha_summary_payload(summary_file)
+    payload["schema_version"] = "agentledger.old_alpha_summary.v1"
+    summary_file.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    assert cli.main(["alpha-summary", str(summary_file)]) == 2
+
+    output = capsys.readouterr().out
+    assert "Expected schema_version agentledger.alpha_summary.v1" in output
 
 
 def test_feedback_records_and_lists_latest_run(tmp_path: Path, capsys) -> None:

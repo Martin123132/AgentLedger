@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger alpha-summary` to inspect and validate one-command alpha
+  summary JSON.
 - Added machine-readable JSON summary output to the one-command alpha pass.
 - Added a README/config consistency check for the repository alpha policy.
 - Fixed explicit `--out` commands so they still inherit the target repo's

@@ -50,6 +50,13 @@ Expected result:
 - `.agentledger/alpha-summary.json` records the same alpha pass for tools or
   agent handoffs
 
+Inspect the saved summary:
+
+```powershell
+python -m agentledger alpha-summary --out .agentledger
+python -m agentledger alpha-summary --out .agentledger --format json
+```
+
 ## Smoke test
 
 Run:
