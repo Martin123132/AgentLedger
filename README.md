@@ -346,6 +346,10 @@ agentledger doctor --repo C:\path\to\repo
 agentledger doctor --json
 ```
 
+Doctor prints a `Hint:` line for missing required setup and optional
+integrations, so blocked alpha testers can usually fix the next step without
+reading the full guide.
+
 Check the installed CLI version:
 
 ```powershell

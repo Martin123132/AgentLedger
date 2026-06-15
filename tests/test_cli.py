@@ -565,6 +565,8 @@ def test_doctor_returns_status() -> None:
     assert "required_ok" in report
     assert "optional" in report
     assert report["checks"]
+    assert all("hint" in check for check in report["checks"])
+    assert all(check["hint"] == "No action needed." for check in report["checks"] if check["ok"])
 
 
 def test_doctor_reports_missing_repo_without_raising(tmp_path: Path) -> None:
@@ -576,6 +578,7 @@ def test_doctor_reports_missing_repo_without_raising(tmp_path: Path) -> None:
     assert target_repo["ok"] is False
     assert target_repo["required"] is True
     assert target_repo["detail"]
+    assert target_repo["hint"] == "Run from a git checkout or pass --repo <path> to an existing git repo."
 
 
 def test_doctor_formats_missing_optional_as_ready() -> None:
@@ -600,6 +603,7 @@ def test_doctor_formats_missing_optional_as_ready() -> None:
                 "ok": False,
                 "detail": "No module named repomori",
                 "required": False,
+                "hint": "Optional: install RepoMori, or keep using --no-repomori / repomori = false.",
             },
             {
                 "name": "npx",
@@ -616,6 +620,7 @@ def test_doctor_formats_missing_optional_as_ready() -> None:
     assert "Optional integrations: 1/2 configured" in output
     assert "- git: ok (required)" in output
     assert "- repomori: not configured (optional)" in output
+    assert "Hint: Optional: install RepoMori" in output
     assert "- npx: available (optional)" in output
 
 

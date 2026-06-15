@@ -441,7 +441,7 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     doctor = json_payloads["doctor"]
     _assert_keys(doctor["optional"], {"configured", "total", "missing"})
     assert doctor["checks"]
-    _assert_keys(doctor["checks"][0], {"name", "ok", "detail", "required"})
+    _assert_keys(doctor["checks"][0], {"name", "ok", "detail", "required", "hint"})
 
     open_latest = json_payloads["open_latest"]
     assert open_latest["ok"] is True
