@@ -277,6 +277,36 @@ Stable fields:
 - `test_framework`: old/new detected framework
 - `privacy_mode`: old/new privacy mode
 
+## Scripts
+
+### `scripts/alpha.ps1 -JsonOutput <path>`
+
+Schema: `agentledger.alpha_summary.v1`
+
+Use this to capture the one-command alpha pass result without scraping terminal
+output. When `-JsonOutput` is omitted, `scripts/alpha.ps1` writes the same
+summary to `.agentledger/alpha-summary.json`.
+
+Stable fields:
+
+- `ok`: boolean
+- `started_at`
+- `ended_at`
+- `repo`: resolved AgentLedger checkout path
+- `out`: resolved AgentLedger output directory used by the alpha pass
+- `latest_run`: resolved latest captured run directory
+- `bundle`: latest captured run zip bundle path
+- `agentledger_version`
+- `python_version`
+- `git_version`
+- `doctor`: first-line doctor readiness summary
+- `status`: latest run policy status
+- `status_summary`: embedded status/check summary
+- `status_exit_code`
+- `report_paths`: `markdown`, `json`, `html`, and optional `zip`
+- `feedback`: latest feedback counts
+- `next_actions`: human-readable next action list
+
 ## Evidence Handling
 
 JSON output may contain local paths and command summaries. Do not commit or

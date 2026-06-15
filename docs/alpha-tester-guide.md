@@ -47,6 +47,8 @@ Expected result:
 - `status` summarizes the latest captured run
 - latest/history/inspect/check/verify commands all succeed
 - the script prints a short summary to send back
+- `.agentledger/alpha-summary.json` records the same alpha pass for tools or
+  agent handoffs
 
 ## Smoke test
 
