@@ -1019,7 +1019,10 @@ def test_alpha_command_reports_non_git_repo_without_traceback(tmp_path: Path, ca
     assert payload["report_paths"] == {}
     assert payload["summary_file"] == str(summary_file.resolve())
     assert any("Required doctor check failed: target_git_repo" in error for error in payload["errors"])
-    assert payload["next_actions"] == ["Fix required doctor checks, then run agentledger alpha again."]
+    assert payload["next_actions"] == [
+        "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
+        "After fixing required setup, run agentledger alpha again.",
+    ]
 
 
 def test_alpha_command_reports_missing_repo_without_traceback(tmp_path: Path, capsys) -> None:
@@ -1038,6 +1041,10 @@ def test_alpha_command_reports_missing_repo_without_traceback(tmp_path: Path, ca
     assert payload["latest_run"] is None
     assert payload["summary_file"] == str(summary_file.resolve())
     assert any("Required doctor check failed: target_git_repo" in error for error in payload["errors"])
+    assert payload["next_actions"] == [
+        "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
+        "After fixing required setup, run agentledger alpha again.",
+    ]
 
 
 def test_alpha_command_config_error_writes_summary_with_out(tmp_path: Path, capsys) -> None:
