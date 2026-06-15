@@ -160,6 +160,7 @@ python -m pip install -e ".[dev]"
 agentledger --version
 python -m pytest
 python -m agentledger alpha --repo . --out .agentledger --json-output $env:TEMP\agentledger-alpha-cli-summary.json --format json
+python scripts/check_release_metadata.py
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
@@ -260,8 +261,11 @@ python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentle
 ```
 
 That script checks version consistency, git hygiene, tracked evidence guardrails,
-wheel build metadata, pytest, install verification, and the Windows smoke flow,
-including the latest status command.
+source release metadata, wheel build metadata, pytest, install verification,
+and the Windows smoke flow, including the latest status command.
+Use `scripts/check_release_metadata.py` directly when you only need the
+cross-platform source metadata check for version, license, README, and changelog
+alignment.
 Use `-RequireCleanGit` before tagging or publishing a release candidate.
 Use `-JsonOutput <path>` to write a machine-readable
 `agentledger.release_check.v1` summary for CI or agent handoffs. Keep that file
