@@ -90,6 +90,8 @@ def test_release_process_documents_required_release_gates() -> None:
         "python scripts/release_check_summary.py",
         "agentledger-release-check-summary.md",
         "python scripts/release_artifact_doctor.py",
+        "--stage rehearsal",
+        "--rehearsal-manifest",
         "--stage final-notes",
         "--stage post-release",
         "--stage evidence-packet",

@@ -97,6 +97,10 @@ def build_release_command_index(
                 ),
                 f"python scripts/verify_release_rehearsal.py {artifacts['release_rehearsal_manifest']}",
                 (
+                    f"python scripts/release_artifact_doctor.py --version {package_version} "
+                    f"--stage rehearsal --rehearsal-manifest {artifacts['release_rehearsal_manifest']}"
+                ),
+                (
                     f"python scripts/prepare_release.py --version {package_version} "
                     f"--date {release_date} --release-notes-output {artifacts['draft_release_notes']} --dry-run"
                 ),

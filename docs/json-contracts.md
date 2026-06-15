@@ -465,9 +465,10 @@ Stable fields:
 
 Schema: `agentledger.release_artifact_doctor.v1`
 
-Use this before final notes, post-release checks, or lower-level evidence packet
-generation to confirm required release artifacts exist, have the expected
-schema, match the requested version, and are safe to use.
+Use this before release rehearsal handoff, final notes, post-release checks, or
+lower-level evidence packet generation to confirm required release artifacts
+exist, have the expected schema, match the requested version, and are safe to
+use.
 
 Stable fields:
 
@@ -475,7 +476,7 @@ Stable fields:
 - `status`: `ready` or `blocked`
 - `version`
 - `release_label`
-- `stage`: `final-notes`, `post-release`, or `evidence-packet`
+- `stage`: `rehearsal`, `final-notes`, `post-release`, or `evidence-packet`
 - `checks`: artifact and validation checks with name, status, detail, and optional path
 - `next_actions`: deduplicated operator actions for blocked checks
 

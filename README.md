@@ -170,6 +170,9 @@ python -m agentledger alpha-summary --format json $env:TEMP\agentledger-alpha-su
 python scripts/release_command_index.py --version 0.1.8a0 --date 2026-06-14 --format markdown --output $env:TEMP\agentledger-release-command-index.md
 python scripts/check_release_process.py
 python scripts/release_readiness_report.py --format markdown --output $env:TEMP\agentledger-release-readiness-report.md
+python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
+python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
+python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage rehearsal --rehearsal-manifest $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
@@ -306,9 +309,10 @@ Use `scripts/finalize_release_notes.py` after PR, master, Release Readiness, and
 tag CI have real GitHub Actions URLs. It refuses dirty release-check JSON,
 missing metadata summaries, mismatched versions, placeholder TODO validation,
 and non-AgentLedger Actions URLs before writing publish-ready release notes.
-Use `scripts/release_artifact_doctor.py` before final notes, post-release, or
-evidence-packet commands to confirm required artifact paths exist and are valid,
-and to get concrete next actions when something is missing.
+Use `scripts/release_artifact_doctor.py` before release rehearsal handoff,
+final notes, post-release, or evidence-packet commands to confirm required
+artifact paths exist and are valid, and to get concrete next actions when
+something is missing.
 Use `scripts/check_github_release.py` after publishing to verify the GitHub
 release tag, prerelease/draft status, release URL, publish-ready body, and
 published timestamp. It can call `gh release view` directly or validate saved

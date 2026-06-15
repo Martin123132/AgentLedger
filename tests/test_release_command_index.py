@@ -51,6 +51,7 @@ def test_build_release_command_index_lists_ordered_release_flow() -> None:
     for fragment in [
         "python scripts/rehearse_release.py --version 0.1.8a0",
         "python scripts/verify_release_rehearsal.py $env:TEMP\\agentledger-release-rehearsal-0.1.8-alpha\\release-rehearsal-manifest.json",
+        "python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage rehearsal --rehearsal-manifest $env:TEMP\\agentledger-release-rehearsal-0.1.8-alpha\\release-rehearsal-manifest.json",
         "python scripts/release_readiness_report.py --format markdown",
         "python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage final-notes",
         "gh workflow run \"Release Readiness\"",
