@@ -74,6 +74,7 @@ COMPARE_SCHEMA = "agentledger.compare.v1"
 ALPHA_HANDOFF_SCHEMA = "agentledger.alpha_handoff.v1"
 ALPHA_HANDOFF_MARKDOWN = "agentledger-alpha-handoff.md"
 ALPHA_HANDOFF_JSON = "agentledger-alpha-handoff.json"
+PACK_ALPHA_SCHEMA = "agentledger.pack_alpha.v1"
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
 )
@@ -217,6 +218,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Redact local absolute paths from the written handoff packet.",
     )
     alpha_handoff.add_argument("--format", choices=["text", "json"], default="text", help="Command output format.")
+
+    pack_alpha = sub.add_parser("pack-alpha", help="Write and validate a share-safe alpha handoff packet.")
+    pack_alpha.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
+    pack_alpha.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    pack_alpha.add_argument("--out", default=None, help="Evidence output directory.")
+    pack_alpha.add_argument("--output-dir", required=True, help="Directory to write the share-safe handoff packet.")
+    pack_alpha.add_argument("--feedback-limit", type=int, default=20, help="Maximum feedback entries to include.")
+    pack_alpha.add_argument("--history-limit", type=int, default=5, help="Recent runs to include for review context.")
+    pack_alpha.add_argument("--strict", action="store_true", help="Return nonzero when the latest status has warnings.")
+    pack_alpha.add_argument("--format", choices=["text", "json"], default="text", help="Command output format.")
 
     feedback = sub.add_parser("feedback", help="Record or list alpha feedback for a run.")
     feedback.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
@@ -3485,6 +3496,169 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
     return 0 if ok else 2
 
 
+def _parse_json_object_from_output(output: str) -> dict | None:
+    start = output.find("{")
+    end = output.rfind("}")
+    if start < 0 or end < start:
+        return None
+    try:
+        payload = json.loads(output[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _path_variants_for_validation(path: Path) -> set[str]:
+    variants = {str(path), str(path).replace("\\", "/")}
+    try:
+        resolved = path.resolve()
+        variants.add(str(resolved))
+        variants.add(str(resolved).replace("\\", "/"))
+    except OSError:
+        pass
+    return {variant for variant in variants if variant}
+
+
+def _pack_alpha_validation(
+    *,
+    markdown_path: Path,
+    json_path: Path,
+    local_paths: dict[str, Path],
+) -> dict:
+    errors: list[str] = []
+    contents: list[str] = []
+    checked_files = {"markdown": str(markdown_path), "json": str(json_path)}
+    for label, path in checked_files.items():
+        file_path = Path(path)
+        if not file_path.exists():
+            errors.append(f"Missing generated {label} packet: {file_path}")
+            continue
+        try:
+            contents.append(file_path.read_text(encoding="utf-8-sig"))
+        except OSError as exc:
+            errors.append(f"Unable to read generated {label} packet {file_path}: {exc}")
+
+    combined = "\n".join(contents)
+    for label, path in local_paths.items():
+        for variant in sorted(_path_variants_for_validation(path), key=len, reverse=True):
+            if variant in combined:
+                errors.append(f"Packet leaks local {label} path: {variant}")
+                break
+
+    for match in sorted(set(_WINDOWS_ABSOLUTE_PATH_RE.findall(combined))):
+        errors.append(f"Packet contains local absolute path: {match}")
+    for match in sorted(set(_POSIX_LOCAL_PATH_RE.findall(combined))):
+        errors.append(f"Packet contains local absolute path: {match}")
+
+    return {
+        "ok": not errors,
+        "checked_files": checked_files,
+        "checks": [
+            "generated Markdown packet exists",
+            "generated JSON packet exists",
+            "known local roots are absent",
+            "Windows absolute paths are absent",
+            "common local POSIX paths are absent",
+        ],
+        "errors": errors,
+    }
+
+
+def _pack_alpha_next_actions(handoff_payload: dict | None, validation: dict, handoff_exit_code: int) -> list[str]:
+    actions: list[str] = []
+    if not validation.get("ok"):
+        actions.append("Fix packet validation errors before sharing the alpha packet.")
+    if handoff_exit_code != 0:
+        actions.append("Review handoff errors or rerun without --strict when warnings are acceptable.")
+    if isinstance(handoff_payload, dict) and handoff_payload.get("status") == "warn":
+        actions.append("Review warning rules before sending the packet.")
+    actions.append("Send only the listed Markdown and JSON packet files; do not attach raw .agentledger evidence.")
+    deduped: list[str] = []
+    for action in actions:
+        if action not in deduped:
+            deduped.append(action)
+    return deduped
+
+
+def _handle_pack_alpha(args: argparse.Namespace) -> int:
+    repo = Path(args.repo or ".").resolve()
+    output_dir = Path(args.output_dir).expanduser().resolve()
+    handoff_args = argparse.Namespace(
+        command_name="alpha-handoff",
+        repo=args.repo,
+        config=args.config,
+        out=args.out,
+        output_dir=args.output_dir,
+        feedback_limit=args.feedback_limit,
+        history_limit=args.history_limit,
+        strict=args.strict,
+        share_safe=True,
+        format="json",
+    )
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        handoff_exit_code = _handle_alpha_handoff(handoff_args)
+    handoff_output = buffer.getvalue()
+    handoff_payload = _parse_json_object_from_output(handoff_output)
+
+    markdown_path = output_dir / ALPHA_HANDOFF_MARKDOWN
+    json_path = output_dir / ALPHA_HANDOFF_JSON
+    local_paths = {
+        "repo": repo,
+        "handoff output": output_dir,
+    }
+    if args.out:
+        local_paths["evidence output"] = Path(args.out).expanduser().resolve()
+    validation = _pack_alpha_validation(
+        markdown_path=markdown_path,
+        json_path=json_path,
+        local_paths=local_paths,
+    )
+    handoff_errors = []
+    if isinstance(handoff_payload, dict):
+        handoff_errors = [str(error) for error in handoff_payload.get("errors") or []]
+    elif handoff_exit_code != 0:
+        handoff_errors = ["Unable to parse alpha-handoff JSON output."]
+    errors = handoff_errors + [str(error) for error in validation.get("errors") or []]
+    ok = handoff_exit_code == 0 and validation.get("ok") is True
+    files = {"markdown": str(markdown_path), "json": str(json_path)}
+    payload = {
+        "schema_version": PACK_ALPHA_SCHEMA,
+        "ok": ok,
+        "status": handoff_payload.get("status") if isinstance(handoff_payload, dict) else "unknown",
+        "summary": handoff_payload.get("summary") if isinstance(handoff_payload, dict) else "Alpha packet could not be generated.",
+        "generated_at": utc_now_iso(),
+        "agentledger_version": f"agentledger {__version__}",
+        "repo": str(repo),
+        "output_dir": str(output_dir),
+        "files": files,
+        "raw_evidence_copied": False,
+        "handoff_exit_code": handoff_exit_code,
+        "handoff": handoff_payload,
+        "validation": validation,
+        "next_actions": _pack_alpha_next_actions(handoff_payload, validation, handoff_exit_code),
+        "errors": errors,
+    }
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"AgentLedger alpha packet: {payload['status']}")
+        print(f"Summary: {payload['summary']}")
+        print(f"Markdown to share: {markdown_path}")
+        print(f"JSON to share: {json_path}")
+        print("Raw evidence copied: no")
+        print(f"Packet validation: {'pass' if validation.get('ok') else 'fail'}")
+        if errors:
+            print("Errors:")
+            for error in errors:
+                print(f"- {error}")
+        print("Next:")
+        for action in payload["next_actions"]:
+            print(f"- {action}")
+    return 0 if ok else 2
+
+
 def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandResult:
     started = utc_now_iso()
     try:
@@ -3663,6 +3837,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_alpha_summary(args)
     if args.command_name == "alpha-handoff":
         return _handle_alpha_handoff(args)
+    if args.command_name == "pack-alpha":
+        return _handle_pack_alpha(args)
     if args.command_name == "feedback":
         return _handle_feedback(args)
     if args.command_name == "feedback-summary":

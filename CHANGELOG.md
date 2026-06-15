@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger pack-alpha` to generate and validate share-safe alpha
+  handoff packets.
 - Added share-safe local path redaction for `agentledger alpha-handoff`.
 - Added `agentledger alpha-handoff` for reviewed Markdown/JSON alpha packets
   without copying raw evidence.
