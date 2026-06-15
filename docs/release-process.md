@@ -29,11 +29,14 @@ one ordered handoff:
 
 ```powershell
 python scripts/release_command_index.py --version 0.1.8a0 --date 2026-06-14 --format markdown --output $env:TEMP\agentledger-release-command-index.md
+python scripts/check_release_process.py --version 0.1.8a0 --date 2026-06-14
 ```
 
 The command index reports `agentledger.release_command_index.v1`, the expected
 artifact filenames, placeholder values that must be replaced, and the
-release-day command order.
+release-day command order. The release-process check reports
+`agentledger.release_process_check.v1` and confirms this checklist still covers
+every generated command, artifact path, placeholder, and do-not-commit reminder.
 
 ## 2. Prepare source files
 
@@ -103,6 +106,19 @@ PR body should include:
 - local `scripts/release-check.ps1 -RequireCleanGit` result
 - local release-check JSON summary path or status
 
+Useful local/GitHub commands:
+
+```powershell
+git status --short --branch --untracked-files=all
+git diff --stat
+gh pr create --draft --fill
+gh pr checks <pr-number> --watch --interval 10
+gh pr ready <pr-number>
+gh pr merge <pr-number> --merge --delete-branch
+git switch master
+git pull --ff-only origin master
+```
+
 Before merging:
 
 - PR CI must pass on Ubuntu and Windows.
@@ -143,6 +159,8 @@ git pull --ff-only origin master
 git status --short --branch
 git tag v0.1.8-alpha
 git push origin v0.1.8-alpha
+gh run list --repo Martin123132/AgentLedger --limit 5
+gh run watch <tag-run-id> --repo Martin123132/AgentLedger --interval 10 --exit-status
 ```
 
 Watch the tag CI run from GitHub Actions and add the tag workflow URL to the
@@ -166,6 +184,7 @@ Then validate the final notes file:
 python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage final-notes --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md
 python scripts/finalize_release_notes.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --check-publish-ready
+gh release create v0.1.8-alpha --repo Martin123132/AgentLedger --title v0.1.8-alpha --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --prerelease
 ```
 
 `scripts/release_artifact_doctor.py --stage final-notes` checks that the
@@ -214,6 +233,7 @@ debugging one artifact at a time:
 ```powershell
 python scripts/check_github_release.py --version 0.1.8a0 --format json --output $env:TEMP\agentledger-github-release-check.json
 python scripts/check_github_release.py --version 0.1.8a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
+python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage evidence-packet --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json
 python scripts/release_evidence_packet.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json --output $env:TEMP\agentledger-release-evidence.md --json-output $env:TEMP\agentledger-release-evidence.json
 ```
 
@@ -234,6 +254,7 @@ Confirm:
   validation status and artifact names, and refuses `.agentledger/`, zip
   bundles, and signing-key paths.
 - No local evidence bundles, signing keys, or temp release-note files were
-  committed.
+  committed. This includes `.agentledger/`, `*.zip`, `.agentledger-signing-key`,
+  signing keys, and temp release artifacts.
 - `CHANGELOG.md` is ready for the next `Unreleased` entries.
 

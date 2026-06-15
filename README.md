@@ -168,6 +168,7 @@ powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1 -JsonOutput $env:TEMP
 python -m agentledger alpha-summary --out .agentledger
 python -m agentledger alpha-summary --format json $env:TEMP\agentledger-alpha-summary.json
 python scripts/release_command_index.py --version 0.1.8a0 --date 2026-06-14 --format markdown --output $env:TEMP\agentledger-release-command-index.md
+python scripts/check_release_process.py
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
@@ -260,6 +261,7 @@ Alpha release readiness:
 
 ```powershell
 python scripts/release_command_index.py --version 0.1.8a0 --date 2026-06-14
+python scripts/check_release_process.py --version 0.1.8a0 --date 2026-06-14
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --dry-run
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --release-notes-output $env:TEMP\agentledger-0.1.8-alpha-release.md
@@ -283,6 +285,10 @@ outside the repo, for example under `$env:TEMP`.
 Use `scripts/release_command_index.py` at the start of a release to print the
 ordered command flow, artifact filenames, placeholders, and private-evidence
 handling reminders. It can also write JSON or Markdown for handoffs.
+Use `scripts/check_release_process.py` after generating or editing the command
+index to confirm `docs/release-process.md` still documents every generated
+command, artifact path, placeholder, and do-not-commit reminder. Its JSON output
+uses `agentledger.release_process_check.v1`.
 Use `scripts/release_check_summary.py` to render the release-check JSON as a
 short Markdown summary. The manual GitHub Release Readiness workflow also
 appends that Markdown to the job step summary.

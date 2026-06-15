@@ -299,6 +299,28 @@ Stable fields:
 - `do_not_commit`
 - `sections`: ordered release sections with purpose, commands, and notes
 
+### `scripts/check_release_process.py --format json`
+
+Schema: `agentledger.release_process_check.v1`
+
+Use this to verify `docs/release-process.md` matches the generated release
+command index before a release branch or handoff moves forward.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`: `ready` or `failed`
+- `version`
+- `release_label`
+- `release_date`
+- `repository`
+- `doc`
+- `index_schema_version`
+- `summary`: total, passed, and failed check counts
+- `checks`: ordered schema, artifact, placeholder, handling, and command checks
+- `errors`
+- `next_actions`
+
 ### `scripts/rehearse_release.py`
 
 Schema: `agentledger.release_rehearsal.v1`

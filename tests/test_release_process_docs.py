@@ -60,6 +60,8 @@ def test_release_process_documents_required_release_gates() -> None:
         "python scripts/release_command_index.py --version",
         "agentledger-release-command-index.md",
         "agentledger.release_command_index.v1",
+        "python scripts/check_release_process.py --version",
+        "agentledger.release_process_check.v1",
         "python scripts/rehearse_release.py --version",
         "agentledger-release-rehearsal",
         "python scripts/prepare_release.py --version",
