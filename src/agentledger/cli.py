@@ -172,9 +172,13 @@ def build_parser() -> argparse.ArgumentParser:
         default="summary",
         help="Evidence detail level for the captured verification command.",
     )
-    alpha.add_argument("--strict", action="store_true", help="Return nonzero for warning status.")
+    alpha.add_argument("--strict", action="store_true", help="Return nonzero when the latest status has warnings.")
     alpha.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
-    alpha.add_argument("task", nargs=argparse.REMAINDER, help="Command to capture after --. Defaults to pytest.")
+    alpha.add_argument(
+        "task",
+        nargs=argparse.REMAINDER,
+        help="Command to capture after --. Defaults to current Python -m pytest.",
+    )
 
     alpha_summary = sub.add_parser("alpha-summary", help="Inspect one-command alpha summary JSON.")
     alpha_summary.add_argument("summary_file", nargs="?", help="Path to alpha-summary.json. Defaults to <out>/alpha-summary.json.")

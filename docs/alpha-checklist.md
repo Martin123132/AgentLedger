@@ -33,6 +33,7 @@ Expected result:
 - `.agentledger/alpha-summary.json` is written for machine-readable handoffs,
   or `--json-output <path>` / `-JsonOutput <path>` writes that summary to a
   chosen location.
+- `--strict` is available when warning status should fail the alpha pass.
 - `python -m agentledger alpha-summary --out .agentledger` prints the same
   handoff summary with validated paths and next actions.
 - `.agentledger/` evidence is created locally and must not be committed or sent unless requested.
