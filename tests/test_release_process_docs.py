@@ -79,6 +79,7 @@ def test_release_process_documents_required_release_gates() -> None:
         "-JsonOutput",
         "agentledger-release-check.json",
         "agentledger.release_check.v1",
+        "release_process",
         "python scripts/release_check_summary.py",
         "agentledger-release-check-summary.md",
         "python scripts/release_artifact_doctor.py",

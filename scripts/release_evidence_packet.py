@@ -185,11 +185,13 @@ def build_release_evidence_packet(
     )
 
     metadata = _as_mapping(release_check_payload.get("release_metadata"), "release metadata")
+    process = _as_mapping(release_check_payload.get("release_process"), "release process")
     release_steps = _as_list(release_check_payload.get("steps"), "release-check steps")
     github_checks = _as_list(github_release_check_payload.get("checks"), "GitHub release check checks")
     release = _as_mapping(github_release_check_payload.get("release"), "GitHub release")
     steps_passed, steps_failed = _count_status(release_steps)
     metadata_passed, metadata_failed = release_check_summary.release_metadata_counts(metadata)
+    process_total, process_passed, process_failed = release_check_summary.release_process_counts(process)
     github_passed, github_failed = _count_status(github_checks)
 
     return {
@@ -213,6 +215,9 @@ def build_release_evidence_packet(
             "steps_failed": steps_failed,
             "metadata_checks_passed": metadata_passed,
             "metadata_checks_failed": metadata_failed,
+            "process_checks_total": process_total,
+            "process_checks_passed": process_passed,
+            "process_checks_failed": process_failed,
             "metadata_license": metadata.get("license"),
         },
         "github_release_check": {
@@ -265,6 +270,12 @@ def render_release_evidence_packet_markdown(packet: dict[str, Any]) -> str:
             "- Release metadata checks: "
             f"{release_check.get('metadata_checks_passed')} passed, "
             f"{release_check.get('metadata_checks_failed')} failed"
+        ),
+        (
+            "- Release process checks: "
+            f"{release_check.get('process_checks_passed')} passed, "
+            f"{release_check.get('process_checks_failed')} failed, "
+            f"{release_check.get('process_checks_total')} total"
         ),
         f"- License: {release_check.get('metadata_license')}",
         "",

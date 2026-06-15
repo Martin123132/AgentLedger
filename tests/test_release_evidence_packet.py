@@ -42,6 +42,7 @@ def release_check_payload(**overrides) -> dict:
             "project_version": "0.1.8a0",
             "package_version": "0.1.8a0",
             "release_label": "0.1.8-alpha",
+            "release_date": "2026-06-14",
             "license": "PolyForm Noncommercial License 1.0.0",
             "checks": [
                 {"name": "project name", "status": "passed", "detail": "agentledger"},
@@ -49,9 +50,25 @@ def release_check_payload(**overrides) -> dict:
             ],
             "errors": [],
         },
+        "release_process": {
+            "schema_version": "agentledger.release_process_check.v1",
+            "ok": True,
+            "status": "ready",
+            "version": "0.1.8a0",
+            "release_label": "0.1.8-alpha",
+            "release_date": "2026-06-14",
+            "repository": "Martin123132/AgentLedger",
+            "doc": "D:\\Projects\\AgentLedger\\docs\\release-process.md",
+            "index_schema_version": "agentledger.release_command_index.v1",
+            "summary": {"total": 64, "passed": 64, "failed": 0},
+            "checks": [],
+            "errors": [],
+            "next_actions": [],
+        },
         "steps": [
             {"name": "Check release versions", "status": "passed", "seconds": 0.2, "error": None},
             {"name": "Check release metadata", "status": "passed", "seconds": 0.1, "error": None},
+            {"name": "Check release process docs", "status": "passed", "seconds": 0.1, "error": None},
         ],
         "error": None,
     }
@@ -137,10 +154,12 @@ def test_build_release_evidence_packet_summarizes_validated_artifacts(tmp_path: 
     assert packet["schema_version"] == "agentledger.release_evidence_packet.v1"
     assert packet["private_evidence_included"] is False
     assert packet["release_check"]["metadata_checks_passed"] == 2
+    assert packet["release_check"]["process_checks_passed"] == 64
     assert packet["github_release_check"]["checks_failed"] == 0
     assert str(tmp_path) not in json.dumps(packet)
     assert "Added release evidence packet tooling" not in markdown
     assert markdown.startswith("# AgentLedger Release Evidence Packet\n")
+    assert "- Release process checks: 64 passed, 0 failed, 64 total" in markdown
     assert "https://github.com/Martin123132/AgentLedger/releases/tag/v0.1.8-alpha" in markdown
     assert "| release-notes | agentledger-0.1.8-alpha-release.md | validated summary only |" in markdown
 

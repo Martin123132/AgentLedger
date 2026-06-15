@@ -272,16 +272,19 @@ python scripts/release_notes.py --version 0.1.8-alpha --output $env:TEMP\agentle
 python scripts/release_notes.py --version 0.1.8a0 --notes-file $env:TEMP\agentledger-0.1.8-alpha-release.md --check-publish-ready
 ```
 
-That script checks version consistency, git hygiene, tracked evidence guardrails,
-source release metadata, wheel build metadata, pytest, install verification,
-and the Windows smoke flow, including the latest status command.
+That script checks version consistency, release-process documentation alignment,
+git hygiene, tracked evidence guardrails, source release metadata, wheel build
+metadata, pytest, install verification, and the Windows smoke flow, including
+the latest status command.
 Use `scripts/check_release_metadata.py` directly when you only need the
 cross-platform source metadata check for version, license, README, and changelog
 alignment.
 Use `-RequireCleanGit` before tagging or publishing a release candidate.
 Use `-JsonOutput <path>` to write a machine-readable
-`agentledger.release_check.v1` summary for CI or agent handoffs. Keep that file
-outside the repo, for example under `$env:TEMP`.
+`agentledger.release_check.v1` summary for CI or agent handoffs. The summary
+embeds both `agentledger.release_metadata_check.v1` and
+`agentledger.release_process_check.v1` payloads. Keep that file outside the
+repo, for example under `$env:TEMP`.
 Use `scripts/release_command_index.py` at the start of a release to print the
 ordered command flow, artifact filenames, placeholders, and private-evidence
 handling reminders. It can also write JSON or Markdown for handoffs.

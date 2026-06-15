@@ -30,12 +30,14 @@ def test_release_check_script_defines_json_summary_contract() -> None:
         "working_tree_dirty =",
         "wheel =",
         "release_metadata =",
+        "release_process =",
         "steps =",
         "error =",
     ]:
         assert field in text
 
     assert "scripts/check_release_metadata.py" in text
+    assert "scripts/check_release_process.py" in text
 
 
 def test_release_readiness_workflow_emits_json_summary() -> None:
@@ -57,4 +59,5 @@ def test_release_check_json_summary_is_documented() -> None:
         assert "agentledger-release-check.json" in text
         assert "agentledger.release_check.v1" in text
         assert "scripts/check_release_metadata.py" in text
+        assert "scripts/check_release_process.py" in text
         assert "scripts/release_check_summary.py" in text

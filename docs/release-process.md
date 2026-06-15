@@ -84,11 +84,12 @@ python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json
 
 `scripts/check_release_metadata.py` is the cross-platform source metadata gate
 for version, license, README, and changelog alignment. `scripts/release-check.ps1`
-also runs that check, then validates version consistency, changelog release notes
-source, git hygiene, isolated wheel metadata, tests, install check, and the
-Windows smoke flow, including the latest status command. `-JsonOutput` writes an
-`agentledger.release_check.v1` summary, including the
-`agentledger.release_metadata_check.v1` payload, that can be referenced from PR
+also runs that check, then validates version consistency, release-process
+documentation alignment, changelog release notes source, git hygiene, isolated
+wheel metadata, tests, install check, and the Windows smoke flow, including the
+latest status command. `-JsonOutput` writes an `agentledger.release_check.v1`
+summary, including the `agentledger.release_metadata_check.v1` and
+`agentledger.release_process_check.v1` payloads, that can be referenced from PR
 or release notes without parsing console output. `scripts/release_check_summary.py`
 renders that JSON into a short Markdown summary for review notes or handoffs.
 
@@ -147,6 +148,8 @@ Expected result:
 - The manual Release Readiness workflow passes on the merge commit.
 - The workflow logs include the release-check JSON summary.
 - The workflow step summary includes the rendered release-check Markdown summary.
+- The release-check summary includes release metadata and release-process check
+  counts.
 - The workflow URL is added to the GitHub release notes validation section.
 
 ## 6. Tag and verify

@@ -89,6 +89,7 @@ def test_release_metadata_check_passes_for_current_public_metadata(tmp_path: Pat
     assert result["project_version"] == "0.1.8a0"
     assert result["package_version"] == "0.1.8a0"
     assert result["release_label"] == "0.1.8-alpha"
+    assert result["release_date"] == "2026-06-14"
     assert result["errors"] == []
 
 
@@ -112,6 +113,22 @@ def test_release_metadata_check_reports_missing_current_changelog_section(tmp_pa
     assert any("0.1.8-alpha" in error for error in result["errors"])
 
 
+def test_release_metadata_check_reports_missing_current_release_date(tmp_path: Path) -> None:
+    write_release_repo(tmp_path)
+    changelog = (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(
+        changelog.replace("## 0.1.8-alpha - 2026-06-14", "## 0.1.8-alpha"),
+        encoding="utf-8",
+    )
+
+    result = check_release_metadata.check_release_metadata(tmp_path)
+
+    assert result["ok"] is False
+    assert result["release_date"] is None
+    assert any("current release date" in error for error in result["errors"])
+    assert not any("current release changelog" in error for error in result["errors"])
+
+
 def test_release_metadata_main_json_output(tmp_path: Path, capsys) -> None:
     write_release_repo(tmp_path)
 
@@ -123,3 +140,4 @@ def test_release_metadata_main_json_output(tmp_path: Path, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is True
     assert payload["release_label"] == "0.1.8-alpha"
+    assert payload["release_date"] == "2026-06-14"
