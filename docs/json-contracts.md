@@ -227,7 +227,7 @@ Stable fields:
 Schema: `agentledger.review.v1`
 
 Use this when an agent or reviewer needs policy status plus direct evidence
-paths and recent-run context.
+paths, recent-run context, and latest-vs-previous comparison.
 
 Stable fields:
 
@@ -239,12 +239,17 @@ Stable fields:
 - `paths`: `markdown`, `json`, `html`, and optional `zip`
 - `history`: recent run summaries from the selected output folder, including
   `out`, requested `limit`, `runs`, and non-blocking `errors`
+- `comparison`: latest-vs-previous comparison with `available`, `current_run`,
+  `previous_run`, embedded `agentledger.compare.v1` payload, and non-blocking
+  `errors`
 - `check`: embedded `agentledger.check.v1` payload
 - `review_exit_code`
 
 Each history run includes the same summary fields as
 `agentledger history --format json`, plus `current` to mark the reviewed run.
 Pass `--history-limit 0` to return an empty history list.
+When a previous run exists in the same output folder, `comparison.compare`
+matches the `agentledger compare --format json` shape.
 
 ### `agentledger inspect-bundle --format json <bundle.zip>`
 

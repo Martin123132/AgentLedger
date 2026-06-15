@@ -63,7 +63,7 @@ Expected result:
 - Discover machine-readable command contracts:
   - `python -m agentledger contracts`
   - `python -m agentledger contracts --format json`
-- Review the latest run with policy status and report paths:
+- Review the latest run with policy status, report paths, and previous-run comparison:
   - `python -m agentledger review --out .agentledger --allow-warnings`
   - `python -m agentledger review --format json --out .agentledger --allow-warnings`
   - `python -m agentledger review --out .agentledger --history-limit 5 --allow-warnings`

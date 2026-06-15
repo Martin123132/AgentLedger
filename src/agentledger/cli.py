@@ -69,6 +69,7 @@ ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
 SIGNING_KEY_SCHEMA = "agentledger.signing_key.v1"
 SIGN_BUNDLE_SCHEMA = "agentledger.sign_bundle.v1"
 INSPECT_BUNDLE_SCHEMA = "agentledger.inspect_bundle.v1"
+COMPARE_SCHEMA = "agentledger.compare.v1"
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
 )
@@ -365,6 +366,57 @@ def _find_bundle_member(names: list[str], target: str) -> str | None:
     return None
 
 
+def _compare_reports_payload(old_report: dict, new_report: dict) -> dict:
+    old_changed = changed_file_count(old_report)
+    new_changed = changed_file_count(new_report)
+    old_exit = command_exit_code(old_report)
+    new_exit = command_exit_code(new_report)
+    old_passed, old_warned = artifact_status_counts(
+        [artifact for artifact in old_report.get("artifacts", []) if isinstance(artifact, dict)]
+    )
+    new_passed, new_warned = artifact_status_counts(
+        [artifact for artifact in new_report.get("artifacts", []) if isinstance(artifact, dict)]
+    )
+    changed_delta = new_changed - old_changed
+    changed_delta_text = f"+{changed_delta}" if changed_delta > 0 else str(changed_delta)
+    old_tokometer = tokometer_summary(old_report)
+    new_tokometer = tokometer_summary(new_report)
+    return {
+        "schema_version": COMPARE_SCHEMA,
+        "changed_files": {
+            "old": old_changed,
+            "new": new_changed,
+            "delta": changed_delta,
+            "delta_text": changed_delta_text,
+        },
+        "exit_code": {
+            "old": old_exit,
+            "new": new_exit,
+            "trend": command_exit_trend(old_exit, new_exit),
+        },
+        "artifacts": {
+            "old": {"ok": old_passed, "warn": old_warned},
+            "new": {"ok": new_passed, "warn": new_warned},
+        },
+        "command": {
+            "old": report_command_text(old_report),
+            "new": report_command_text(new_report),
+        },
+        "tokometer": {
+            "old": old_tokometer,
+            "new": new_tokometer,
+        },
+        "test_framework": {
+            "old": command_test_framework(old_report),
+            "new": command_test_framework(new_report),
+        },
+        "privacy_mode": {
+            "old": str(old_report.get("privacy_mode") or "standard"),
+            "new": str(new_report.get("privacy_mode") or "standard"),
+        },
+    }
+
+
 def _handle_compare(args: argparse.Namespace) -> int:
     old_dir = Path(args.old_run_dir).resolve()
     new_dir = Path(args.new_run_dir).resolve()
@@ -375,81 +427,36 @@ def _handle_compare(args: argparse.Namespace) -> int:
         print(f"Unable to read report: {exc}")
         return 2
 
-    old_changed = changed_file_count(old_report)
-    new_changed = changed_file_count(new_report)
-    old_exit = command_exit_code(old_report)
-    new_exit = command_exit_code(new_report)
-    old_passed, old_warned = artifact_status_counts([artifact for artifact in old_report.get("artifacts", []) if isinstance(artifact, dict)])
-    new_passed, new_warned = artifact_status_counts([artifact for artifact in new_report.get("artifacts", []) if isinstance(artifact, dict)])
-    changed_delta = new_changed - old_changed
-    changed_delta_text = f"+{changed_delta}" if changed_delta > 0 else str(changed_delta)
-    trend = command_exit_trend(old_exit, new_exit)
-    old_tokometer = tokometer_summary(old_report)
-    new_tokometer = tokometer_summary(new_report)
-    old_privacy = str(old_report.get("privacy_mode") or "standard")
-    new_privacy = str(new_report.get("privacy_mode") or "standard")
+    payload = _compare_reports_payload(old_report, new_report)
 
     if getattr(args, "format", "text") == "json":
-        print(
-            json.dumps(
-                {
-                    "schema_version": "agentledger.compare.v1",
-                    "changed_files": {
-                        "old": old_changed,
-                        "new": new_changed,
-                        "delta": changed_delta,
-                        "delta_text": changed_delta_text,
-                    },
-                    "exit_code": {
-                        "old": old_exit,
-                        "new": new_exit,
-                        "trend": trend,
-                    },
-                    "artifacts": {
-                        "old": {"ok": old_passed, "warn": old_warned},
-                        "new": {"ok": new_passed, "warn": new_warned},
-                    },
-                    "command": {
-                        "old": report_command_text(old_report),
-                        "new": report_command_text(new_report),
-                    },
-                    "tokometer": {
-                        "old": old_tokometer,
-                        "new": new_tokometer,
-                    },
-                    "test_framework": {
-                        "old": command_test_framework(old_report),
-                        "new": command_test_framework(new_report),
-                    },
-                    "privacy_mode": {
-                        "old": old_privacy,
-                        "new": new_privacy,
-                    },
-                },
-                indent=2,
-            )
-        )
+        print(json.dumps(payload, indent=2))
         return 0
 
     print(f"Comparing reports:")
     print(f"Old: {old_dir}")
     print(f"New: {new_dir}")
-    print(f"Old command: {report_command_text(old_report)}")
-    print(f"New command: {report_command_text(new_report)}")
-    print(f"Changed files: {old_changed} -> {new_changed} ({changed_delta_text})")
+    print(f"Old command: {payload['command']['old']}")
+    print(f"New command: {payload['command']['new']}")
+    print(
+        "Changed files: "
+        f"{payload['changed_files']['old']} -> {payload['changed_files']['new']} "
+        f"({payload['changed_files']['delta_text']})"
+    )
     print(
         "Exit code: "
-        f"{old_exit if old_exit is not None else 'n/a'} -> {new_exit if new_exit is not None else 'n/a'} "
-        f"({trend})"
+        f"{payload['exit_code']['old'] if payload['exit_code']['old'] is not None else 'n/a'} -> "
+        f"{payload['exit_code']['new'] if payload['exit_code']['new'] is not None else 'n/a'} "
+        f"({payload['exit_code']['trend']})"
     )
     print(
-        f"Artifacts: {old_passed} ok/{old_warned} warn -> "
-        f"{new_passed} ok/{new_warned} warn"
+        f"Artifacts: {payload['artifacts']['old']['ok']} ok/{payload['artifacts']['old']['warn']} warn -> "
+        f"{payload['artifacts']['new']['ok']} ok/{payload['artifacts']['new']['warn']} warn"
     )
-    if old_tokometer or new_tokometer:
-        print(f"Tokometer: {old_tokometer or 'n/a'} -> {new_tokometer or 'n/a'}")
-    print(f"Test framework: {command_test_framework(old_report)} -> {command_test_framework(new_report)}")
-    print(f"Privacy mode: {old_privacy} -> {new_privacy}")
+    if payload["tokometer"]["old"] or payload["tokometer"]["new"]:
+        print(f"Tokometer: {payload['tokometer']['old'] or 'n/a'} -> {payload['tokometer']['new'] or 'n/a'}")
+    print(f"Test framework: {payload['test_framework']['old']} -> {payload['test_framework']['new']}")
+    print(f"Privacy mode: {payload['privacy_mode']['old']} -> {payload['privacy_mode']['new']}")
     return 0
 
 
@@ -1452,15 +1459,7 @@ def _handle_history(args: argparse.Namespace) -> int:
         print(f"Run a capture first: python -m agentledger run --out {out_root} -- <command>")
         return 2
 
-    run_dirs = sorted(
-        [
-            child
-            for child in out_root.iterdir()
-            if child.is_dir() and (child / "agentledger-report.json").exists()
-        ],
-        key=lambda path: path.name,
-        reverse=True,
-    )[: args.limit]
+    run_dirs = _report_run_dirs(out_root)[: args.limit]
 
     summaries = [_report_summary(run_dir) for run_dir in run_dirs]
 
@@ -2586,6 +2585,32 @@ def _review_paths(run_dir: Path) -> dict[str, str | None]:
     }
 
 
+def _report_run_dirs(out_root: Path) -> list[Path]:
+    def sort_key(path: Path) -> tuple[str, int, str]:
+        report_path = path / "agentledger-report.json"
+        started_at = ""
+        try:
+            report = load_report(path)
+            started_at = str(report.get("started_at") or "")
+        except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError):
+            pass
+        try:
+            mtime_ns = report_path.stat().st_mtime_ns
+        except OSError:
+            mtime_ns = 0
+        return started_at, mtime_ns, path.name
+
+    return sorted(
+        [
+            child
+            for child in out_root.iterdir()
+            if child.is_dir() and (child / "agentledger-report.json").exists()
+        ],
+        key=sort_key,
+        reverse=True,
+    )
+
+
 def _review_history(run_dir: Path, limit: int) -> dict:
     out_root = run_dir.parent
     payload = {
@@ -2600,15 +2625,7 @@ def _review_history(run_dir: Path, limit: int) -> dict:
         payload["errors"].append(f"Review history output directory not found: {out_root}")
         return payload
 
-    run_dirs = sorted(
-        [
-            child
-            for child in out_root.iterdir()
-            if child.is_dir() and (child / "agentledger-report.json").exists()
-        ],
-        key=lambda path: path.name,
-        reverse=True,
-    )[:limit]
+    run_dirs = _report_run_dirs(out_root)[:limit]
     current = run_dir.resolve()
     for history_dir in run_dirs:
         try:
@@ -2618,6 +2635,47 @@ def _review_history(run_dir: Path, limit: int) -> dict:
             continue
         summary["current"] = history_dir.resolve() == current
         payload["runs"].append(summary)
+    return payload
+
+
+def _review_previous_comparison(run_dir: Path) -> dict:
+    current = run_dir.resolve()
+    payload = {
+        "available": False,
+        "current_run": str(current),
+        "previous_run": None,
+        "compare": None,
+        "errors": [],
+    }
+    out_root = run_dir.parent
+    if not out_root.exists():
+        payload["errors"].append(f"Review comparison output directory not found: {out_root}")
+        return payload
+
+    run_dirs = _report_run_dirs(out_root)
+    current_index = None
+    for index, candidate in enumerate(run_dirs):
+        if candidate.resolve() == current:
+            current_index = index
+            break
+    if current_index is None:
+        payload["errors"].append(f"Reviewed run was not found in history output: {current}")
+        return payload
+    older_runs = run_dirs[current_index + 1 :]
+    if not older_runs:
+        return payload
+
+    previous_run = older_runs[0].resolve()
+    payload["previous_run"] = str(previous_run)
+    try:
+        old_report = load_report(previous_run)
+        new_report = load_report(current)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as exc:
+        payload["errors"].append(f"Unable to compare previous run {previous_run}: {exc}")
+        return payload
+
+    payload["available"] = True
+    payload["compare"] = _compare_reports_payload(old_report, new_report)
     return payload
 
 
@@ -2640,7 +2698,7 @@ def _load_review_run_dir(args: argparse.Namespace) -> Path | None:
     return latest_dir
 
 
-def _format_review(result: dict, paths: dict[str, str | None], history: dict) -> str:
+def _format_review(result: dict, paths: dict[str, str | None], history: dict, comparison: dict) -> str:
     lines = [
         f"AgentLedger review: {result['status']}",
         f"Summary: {result['summary']}",
@@ -2681,6 +2739,36 @@ def _format_review(result: dict, paths: dict[str, str | None], history: dict) ->
     if history_errors:
         lines.append("History warnings:")
         for error in history_errors:
+            lines.append(f"- {error}")
+
+    compare_payload = comparison.get("compare") if isinstance(comparison.get("compare"), dict) else None
+    if comparison.get("available") is True and compare_payload:
+        changed = compare_payload["changed_files"]
+        exit_code = compare_payload["exit_code"]
+        artifacts = compare_payload["artifacts"]
+        lines.append("Previous comparison:")
+        lines.append(f"Previous run: {comparison['previous_run']}")
+        lines.append(
+            f"Changed files: {changed['old']} -> {changed['new']} ({changed['delta_text']})"
+        )
+        lines.append(
+            "Exit code: "
+            f"{exit_code['old'] if exit_code['old'] is not None else 'n/a'} -> "
+            f"{exit_code['new'] if exit_code['new'] is not None else 'n/a'} "
+            f"({exit_code['trend']})"
+        )
+        lines.append(
+            f"Artifacts: {artifacts['old']['ok']} ok/{artifacts['old']['warn']} warn -> "
+            f"{artifacts['new']['ok']} ok/{artifacts['new']['warn']} warn"
+        )
+        lines.append(
+            f"Test framework: {compare_payload['test_framework']['old']} -> "
+            f"{compare_payload['test_framework']['new']}"
+        )
+    comparison_errors = comparison.get("errors") if isinstance(comparison.get("errors"), list) else []
+    if comparison_errors:
+        lines.append("Comparison warnings:")
+        for error in comparison_errors:
             lines.append(f"- {error}")
 
     if result["blocking_rules"]:
@@ -2725,6 +2813,7 @@ def _handle_review(args: argparse.Namespace) -> int:
     result = build_check(run_dir, policy)
     paths = _review_paths(run_dir)
     history = _review_history(run_dir, args.history_limit)
+    comparison = _review_previous_comparison(run_dir)
     exit_code = check_exit_code(result["status"], allow_warnings)
     if getattr(args, "format", "text") == "json":
         payload = {
@@ -2736,12 +2825,13 @@ def _handle_review(args: argparse.Namespace) -> int:
             "command_exit_code": result.get("exit_code"),
             "paths": paths,
             "history": history,
+            "comparison": comparison,
             "check": result,
             "review_exit_code": exit_code,
         }
         print(json.dumps(payload, indent=2))
     else:
-        print(_format_review(result, paths, history))
+        print(_format_review(result, paths, history, comparison))
     return exit_code
 
 
