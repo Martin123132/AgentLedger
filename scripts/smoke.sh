@@ -94,6 +94,8 @@ if counts["block"] != len(payload["blocking_rules"]):
     raise SystemExit("rule_counts.block does not match blocking_rules length")
 print(f"AgentLedger check JSON: {payload['status']} - {payload['summary']}")
 PY
+python -m agentledger inspect-bundle "${RUN}.zip"
+python -m agentledger inspect-bundle "${RUN}.zip" --format json
 python -m agentledger verify-bundle "${RUN}.zip"
 python -m agentledger verify-bundle "${RUN}.zip" --format json
 python -m agentledger signing-key --repo "$REPO" --key-file "$SIGNATURE_KEY" --format json

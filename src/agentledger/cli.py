@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import platform
@@ -13,8 +14,10 @@ from pathlib import Path
 
 from . import __version__
 from .bundle import (
+    BUNDLE_SIGNATURE_SCHEMA,
     BundleError,
     find_bundle_signature_member,
+    find_bundle_signature_members,
     sign_zip_bundle,
     validate_bundle_manifest,
     validate_bundle_signature,
@@ -65,6 +68,7 @@ ALPHA_SUMMARY_SCHEMA = "agentledger.alpha_summary.v1"
 ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
 SIGNING_KEY_SCHEMA = "agentledger.signing_key.v1"
 SIGN_BUNDLE_SCHEMA = "agentledger.sign_bundle.v1"
+INSPECT_BUNDLE_SCHEMA = "agentledger.inspect_bundle.v1"
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
 )
@@ -262,6 +266,10 @@ def build_parser() -> argparse.ArgumentParser:
     signing_key.add_argument("--repo", default=".", help="Target git repository for ignore/tracking checks.")
     signing_key.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
+    inspect_bundle = sub.add_parser("inspect-bundle", help="Summarize a zip evidence bundle without verifying a signing key.")
+    inspect_bundle.add_argument("bundle", help="Path to bundle zip file.")
+    inspect_bundle.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
     verify = sub.add_parser("verify-bundle", help="Validate a zip evidence bundle.")
     verify.add_argument("bundle", help="Path to bundle zip file.")
     verify.add_argument("--signature-key-file", default=None, help="Key file for HMAC-SHA256 bundle signature verification.")
@@ -447,6 +455,342 @@ def _bundle_manifest_summary(member: str | None, manifest: dict) -> dict[str, ob
         "file_count": manifest.get("file_count"),
         "run_id": manifest.get("run_id"),
     }
+
+
+def _bundle_signature_inspection(archive: ZipFile, names: list[str]) -> tuple[dict[str, object], list[str]]:
+    non_directory_names = [name for name in names if not name.endswith("/")]
+    signature_members = find_bundle_signature_members(non_directory_names)
+    summary: dict[str, object] = {
+        "member": None,
+        "status": "not_present",
+        "verified": False,
+        "schema_version": None,
+        "algorithm": None,
+        "signed_member": None,
+        "signed_sha256": None,
+    }
+    if not signature_members:
+        return summary, []
+    if len(signature_members) > 1:
+        return (
+            {
+                **summary,
+                "status": "multiple",
+                "members": sorted(signature_members),
+            },
+            [f"Multiple bundle signature files found: {', '.join(sorted(signature_members))}"],
+        )
+
+    signature_member = signature_members[0]
+    summary["member"] = signature_member
+    summary["status"] = "present_unverified"
+    try:
+        signature = json.loads(archive.read(signature_member).decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return {**summary, "status": "invalid"}, [f"Invalid JSON in {signature_member}"]
+    if not isinstance(signature, dict):
+        return {**summary, "status": "invalid"}, [f"Bundle signature payload is not a JSON object: {signature_member}"]
+
+    summary.update(
+        {
+            "schema_version": signature.get("schema_version"),
+            "algorithm": signature.get("algorithm"),
+            "signed_member": signature.get("signed_member"),
+            "signed_sha256": signature.get("signed_sha256"),
+        }
+    )
+    errors = []
+    if signature.get("schema_version") != BUNDLE_SIGNATURE_SCHEMA:
+        errors.append(f"Unexpected bundle signature schema: {signature.get('schema_version')}")
+    if signature.get("algorithm") != "hmac-sha256":
+        errors.append(f"Unexpected bundle signature algorithm: {signature.get('algorithm')}")
+    signed_member = signature.get("signed_member")
+    if not isinstance(signed_member, str) or not signed_member.strip():
+        errors.append("Bundle signature is missing signed_member.")
+    elif signed_member not in non_directory_names:
+        errors.append(f"Signed bundle member not found: {signed_member}")
+    signed_sha = signature.get("signed_sha256")
+    if not isinstance(signed_sha, str) or not signed_sha:
+        errors.append("Bundle signature is missing signed_sha256.")
+    elif isinstance(signed_member, str) and signed_member in non_directory_names:
+        expected_sha = hashlib.sha256(archive.read(signed_member)).hexdigest()
+        if signed_sha != expected_sha:
+            errors.append(f"Signed manifest digest mismatch for {signed_member}.")
+    raw_signature = signature.get("signature")
+    if not isinstance(raw_signature, str) or not raw_signature:
+        errors.append("Bundle signature is missing signature.")
+    if errors:
+        summary["status"] = "invalid"
+    return summary, errors
+
+
+def _bundle_review_summary(
+    report: dict | None,
+    *,
+    manifest_errors: list[str],
+    signature_errors: list[str],
+    missing_reports: list[str],
+    report_errors: list[str],
+) -> dict[str, object]:
+    blockers = [*manifest_errors, *missing_reports, *report_errors]
+    warnings = list(signature_errors)
+    if report is None:
+        return _bundle_review_payload(
+            report=None,
+            blockers=blockers or ["Missing or unreadable bundle report."],
+            warnings=warnings,
+        )
+
+    if report.get("schema_version") != "agentledger.report.v1":
+        blockers.append(f"Unexpected report schema: {report.get('schema_version')}")
+
+    command = report.get("command")
+    exit_code = command_exit_code(report)
+    if not isinstance(command, dict):
+        warnings.append("No command was captured; snapshot-only reports need human review.")
+    elif exit_code == 0:
+        pass
+    elif exit_code is None:
+        blockers.append("Captured command is missing an exit code.")
+    else:
+        blockers.append(f"Captured command failed with exit code {exit_code}.")
+
+    if isinstance(command, dict):
+        if command.get("test_detected") is not True:
+            warnings.append("Command was not recognized as a test or verification command.")
+    else:
+        warnings.append("No command was captured, so test evidence could not be detected.")
+
+    changed = changed_file_count(report)
+    if changed:
+        suffix = "file" if changed == 1 else "files"
+        warnings.append(f"Repository had {changed} changed {suffix} after the run.")
+
+    report_warnings = [str(item).strip() for item in report.get("warnings") or [] if str(item).strip()]
+    if report_warnings:
+        suffix = "warning" if len(report_warnings) == 1 else "warnings"
+        warnings.append(f"Report contains {len(report_warnings)} {suffix}.")
+
+    artifacts = [artifact for artifact in report.get("artifacts") or [] if isinstance(artifact, dict)]
+    failed_artifacts = [artifact for artifact in artifacts if not artifact.get("ok")]
+    blocking_artifacts = [
+        artifact
+        for artifact in failed_artifacts
+        if artifact.get("name") == "jester_diff" and artifact.get("exit_code") is not None
+    ]
+    if blocking_artifacts:
+        names = ", ".join(str(artifact.get("name") or "unnamed") for artifact in blocking_artifacts)
+        blockers.append(f"Blocking artifact failures: {names}.")
+    elif failed_artifacts:
+        names = ", ".join(str(artifact.get("name") or "unnamed") for artifact in failed_artifacts)
+        warnings.append(f"Non-blocking artifact warnings: {names}.")
+
+    return _bundle_review_payload(report=report, blockers=blockers, warnings=warnings)
+
+
+def _bundle_review_payload(report: dict | None, blockers: list[str], warnings: list[str]) -> dict[str, object]:
+    status = "block" if blockers else "warn" if warnings else "pass"
+    if status == "block":
+        suffix = "blocker" if len(blockers) == 1 else "blockers"
+        summary = f"{len(blockers)} {suffix}; do not accept until resolved."
+    elif status == "warn":
+        suffix = "warning" if len(warnings) == 1 else "warnings"
+        summary = f"{len(warnings)} {suffix}; review before accepting."
+    else:
+        summary = "Bundle report looks ready for human review."
+
+    artifacts = []
+    if report is not None:
+        artifacts = [artifact for artifact in report.get("artifacts") or [] if isinstance(artifact, dict)]
+    passed, warned = artifact_status_counts(artifacts)
+    return {
+        "status": status,
+        "ok": status == "pass",
+        "summary": summary,
+        "blockers": blockers,
+        "warnings": warnings,
+        "run_id": report.get("run_id") if report is not None else None,
+        "command": report_command_text(report) if report is not None else None,
+        "exit_code": command_exit_code(report) if report is not None else None,
+        "changed_files": changed_file_count(report) if report is not None else None,
+        "test_framework": command_test_framework(report) if report is not None else None,
+        "privacy_mode": str(report.get("privacy_mode") or "standard") if report is not None else None,
+        "artifacts": {"ok": passed, "warn": warned},
+    }
+
+
+def _inspect_bundle_next_actions(review: dict[str, object], signature: dict[str, object]) -> list[str]:
+    actions = ["Run agentledger verify-bundle on the bundle before sharing or archiving it."]
+    if signature.get("status") == "present_unverified":
+        actions.append("Pass --signature-key-file to verify-bundle if you have the shared signing key.")
+    elif signature.get("status") in {"invalid", "multiple"}:
+        actions.append("Investigate signature metadata before trusting the bundle.")
+    elif signature.get("status") == "not_present":
+        actions.append("Treat unsigned bundles as local evidence unless a reviewer explicitly accepts them.")
+
+    if review.get("status") == "block":
+        actions.append("Do not accept the bundle until blockers are fixed and a new bundle is produced.")
+    elif review.get("status") == "warn":
+        actions.append("Read the Markdown or HTML report and review warnings before accepting the work.")
+    else:
+        actions.append("Read the Markdown or HTML report before accepting the work.")
+    actions.append("Do not commit .agentledger folders, zip bundles, signing keys, or sensitive evidence.")
+    return actions
+
+
+def _handle_inspect_bundle(args: argparse.Namespace) -> int:
+    zip_path = Path(args.bundle).resolve()
+    output_format = getattr(args, "format", "text")
+
+    def emit(payload: dict[str, object], exit_code: int) -> int:
+        if output_format == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            _print_inspect_bundle(payload)
+        return exit_code
+
+    if not zip_path.exists():
+        review = _bundle_review_summary(
+            None,
+            manifest_errors=[],
+            signature_errors=[],
+            missing_reports=[],
+            report_errors=[f"Bundle not found: {zip_path}"],
+        )
+        payload = {
+            "schema_version": INSPECT_BUNDLE_SCHEMA,
+            "ok": False,
+            "bundle": str(zip_path),
+            "readable": False,
+            "manifest": _bundle_manifest_summary(None, {}),
+            "signature": {"member": None, "status": "not_present", "verified": False},
+            "reports": {"json": None, "markdown": None, "html": None, "missing": []},
+            "review": review,
+            "errors": review["blockers"],
+            "next_actions": _inspect_bundle_next_actions(review, {"status": "not_present"}),
+        }
+        return emit(payload, 2)
+
+    try:
+        with ZipFile(zip_path, "r") as archive:
+            members = archive.namelist()
+            manifest_member, manifest, manifest_errors = validate_bundle_manifest(archive)
+            signature_payload, signature_errors = _bundle_signature_inspection(archive, members)
+            report_member = _find_bundle_member(members, "agentledger-report.json")
+            markdown_member = _find_bundle_member(members, "agentledger-report.md")
+            html_member = _find_bundle_member(members, "agentledger-report.html")
+            missing_reports = []
+            if report_member is None:
+                missing_reports.append("Missing JSON report in bundle.")
+            if markdown_member is None:
+                missing_reports.append("Missing markdown report in bundle.")
+            if html_member is None:
+                missing_reports.append("Missing HTML report in bundle.")
+
+            report_errors = []
+            report_payload = None
+            if report_member is not None:
+                try:
+                    report_payload = json.loads(archive.read(report_member).decode("utf-8"))
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                    report_errors.append(f"Invalid JSON in {report_member}")
+                else:
+                    if not isinstance(report_payload, dict):
+                        report_errors.append(f"Bundle report payload is not a JSON object: {report_member}")
+                        report_payload = None
+    except (OSError, BadZipFile):
+        review = _bundle_review_summary(
+            None,
+            manifest_errors=[],
+            signature_errors=[],
+            missing_reports=[],
+            report_errors=[f"Unable to open zip file: {zip_path}"],
+        )
+        payload = {
+            "schema_version": INSPECT_BUNDLE_SCHEMA,
+            "ok": False,
+            "bundle": str(zip_path),
+            "readable": False,
+            "manifest": _bundle_manifest_summary(None, {}),
+            "signature": {"member": None, "status": "not_present", "verified": False},
+            "reports": {"json": None, "markdown": None, "html": None, "missing": []},
+            "review": review,
+            "errors": review["blockers"],
+            "next_actions": _inspect_bundle_next_actions(review, {"status": "not_present"}),
+        }
+        return emit(payload, 2)
+
+    manifest_payload = _bundle_manifest_summary(manifest_member, manifest)
+    manifest_payload["valid"] = not manifest_errors
+    manifest_payload["errors"] = manifest_errors
+    review = _bundle_review_summary(
+        report_payload,
+        manifest_errors=manifest_errors,
+        signature_errors=signature_errors,
+        missing_reports=missing_reports,
+        report_errors=report_errors,
+    )
+    reports = {
+        "json": report_member,
+        "markdown": markdown_member,
+        "html": html_member,
+        "missing": missing_reports,
+    }
+    payload = {
+        "schema_version": INSPECT_BUNDLE_SCHEMA,
+        "ok": review["ok"],
+        "bundle": str(zip_path),
+        "readable": True,
+        "manifest": manifest_payload,
+        "signature": signature_payload,
+        "reports": reports,
+        "review": review,
+        "errors": review["blockers"],
+        "next_actions": _inspect_bundle_next_actions(review, signature_payload),
+    }
+    return emit(payload, 2 if report_payload is None else 0)
+
+
+def _print_inspect_bundle(payload: dict[str, object]) -> None:
+    review = payload["review"] if isinstance(payload.get("review"), dict) else {}
+    manifest = payload["manifest"] if isinstance(payload.get("manifest"), dict) else {}
+    signature = payload["signature"] if isinstance(payload.get("signature"), dict) else {}
+    reports = payload["reports"] if isinstance(payload.get("reports"), dict) else {}
+    print(f"AgentLedger bundle inspection: {review.get('status', 'block')}")
+    print(f"Summary: {review.get('summary', 'Bundle could not be inspected.')}")
+    print(f"Bundle: {payload.get('bundle')}")
+    print(f"Readable: {'yes' if payload.get('readable') else 'no'}")
+    print(f"Run ID: {review.get('run_id') or manifest.get('run_id') or 'n/a'}")
+    print(f"Manifest: {manifest.get('member') or 'missing'}")
+    print(f"Files listed: {manifest.get('file_count') if manifest.get('file_count') is not None else 'n/a'}")
+    print(f"Signature: {signature.get('status') or 'not_present'}")
+    if signature.get("member"):
+        print(f"Signature member: {signature['member']}")
+    print(f"JSON report: {reports.get('json') or 'missing'}")
+    print(f"Markdown report: {reports.get('markdown') or 'missing'}")
+    print(f"HTML report: {reports.get('html') or 'missing'}")
+    if review.get("command") is not None:
+        print(f"Command: {review['command']}")
+        print(f"Exit code: {review['exit_code'] if review.get('exit_code') is not None else 'n/a'}")
+        print(f"Changed files: {review.get('changed_files')}")
+        print(f"Test framework: {review.get('test_framework')}")
+        print(f"Privacy mode: {review.get('privacy_mode')}")
+        artifacts = review.get("artifacts") if isinstance(review.get("artifacts"), dict) else {}
+        print(f"Artifacts: {artifacts.get('ok', 0)} ok, {artifacts.get('warn', 0)} warn")
+    blockers = review.get("blockers") if isinstance(review.get("blockers"), list) else []
+    warnings = review.get("warnings") if isinstance(review.get("warnings"), list) else []
+    if blockers:
+        print("Blockers:")
+        for blocker in blockers:
+            print(f"- {blocker}")
+    if warnings:
+        print("Warnings:")
+        for warning in warnings:
+            print(f"- {warning}")
+    next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
+    print("Next:")
+    for action in next_actions:
+        print(f"- {action}")
 
 
 def _handle_verify_bundle(args: argparse.Namespace) -> int:
@@ -2531,6 +2875,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_init_config(args)
     if args.command_name == "signing-key":
         return _handle_signing_key(args)
+    if args.command_name == "inspect-bundle":
+        return _handle_inspect_bundle(args)
     if args.command_name == "verify-bundle":
         return _handle_verify_bundle(args)
     if args.command_name == "sign-bundle":

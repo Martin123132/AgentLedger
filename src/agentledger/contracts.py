@@ -262,6 +262,23 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
         "exit_codes": {"0": "bundle signed", "2": "bundle missing, invalid, key missing, or signing failed"},
     },
     {
+        "command": "inspect-bundle --format json <bundle.zip>",
+        "schema_version": "agentledger.inspect_bundle.v1",
+        "purpose": "Summarize a portable evidence bundle before full verification.",
+        "stable_fields": [
+            "ok",
+            "bundle",
+            "readable",
+            "manifest",
+            "signature",
+            "reports",
+            "review",
+            "errors",
+            "next_actions",
+        ],
+        "exit_codes": {"0": "bundle inspected", "2": "bundle missing, unreadable, or report unavailable"},
+    },
+    {
         "command": "verify-bundle --format json <bundle.zip>",
         "schema_version": "agentledger.verify_bundle.v1",
         "purpose": "Validate a portable evidence bundle.",

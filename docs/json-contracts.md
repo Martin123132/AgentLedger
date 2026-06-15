@@ -240,6 +240,36 @@ Stable fields:
 - `check`: embedded `agentledger.check.v1` payload
 - `review_exit_code`
 
+### `agentledger inspect-bundle --format json <bundle.zip>`
+
+Schema: `agentledger.inspect_bundle.v1`
+
+Use this to triage portable evidence bundles without a signing key before full
+verification or sharing. The command parses report metadata, manifest status,
+signature metadata, and a lightweight review status. It never prints raw HMAC
+signature values.
+
+Stable fields:
+
+- `ok`: boolean; true only when the inspection review status is `pass`
+- `bundle`: resolved zip path
+- `readable`: whether the zip could be opened
+- `manifest`: bundle manifest member, schema, digest algorithm, file count, run
+  id, validity, and manifest errors
+- `signature`: signature member, `status`, verification flag, schema,
+  algorithm, signed manifest member, and signed manifest digest; the raw HMAC
+  value is intentionally omitted
+- `reports`: zip members for JSON, Markdown, and HTML reports, plus missing
+  report notices
+- `review`: `status`, `summary`, blockers, warnings, command, exit code,
+  changed files, test framework, privacy mode, and artifact counts
+- `errors`: blocking issue list
+- `next_actions`: concrete follow-up steps
+
+Signature status values are `not_present`, `present_unverified`, `invalid`, or
+`multiple`. Use `verify-bundle --signature-key-file` to verify an HMAC
+signature.
+
 ### `agentledger verify-bundle --format json <bundle.zip>`
 
 Schema: `agentledger.verify_bundle.v1`
