@@ -218,7 +218,8 @@ default, checks latest status/history/report/bundle evidence, and writes a
 machine-readable `agentledger.alpha_summary.v1` summary to
 `.agentledger/alpha-summary.json` by default. Pass a command after `--` to
 capture something other than the current Python interpreter running `-m pytest`,
-and use `--json-output <path>` to write the summary outside the repo.
+and use `--json-output <path>` to write the summary outside the repo. Use
+`--strict` when warning status should fail the alpha pass.
 
 Windows extended alpha pass:
 
