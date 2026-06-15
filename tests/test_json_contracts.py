@@ -25,6 +25,7 @@ SCHEMAS = {
     "inspect_report": "agentledger.inspect_report.v1",
     "check": "agentledger.check.v1",
     "review": "agentledger.review.v1",
+    "sign_bundle": "agentledger.sign_bundle.v1",
     "verify_bundle": "agentledger.verify_bundle.v1",
     "compare": "agentledger.compare.v1",
 }
@@ -156,6 +157,8 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
     _write_alpha_summary(alpha_summary, second)
     alpha_out = tmp_path / "alpha-ledger"
     alpha_command_summary = tmp_path / "alpha-command-summary.json"
+    signature_key = tmp_path / "agentledger-signing-key.txt"
+    signature_key.write_text("contract-test-signing-key\n", encoding="utf-8")
 
     return {
         "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
@@ -221,6 +224,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "check": _run_json(capsys, ["check", "--format", "json", "--allow-warnings", str(second)]),
         "review": _run_json(capsys, ["review", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
         "verify_bundle": _run_json(capsys, ["verify-bundle", "--format", "json", f"{second}.zip"]),
+        "sign_bundle": _run_json(capsys, ["sign-bundle", "--format", "json", f"{second}.zip", "--key-file", str(signature_key)]),
         "compare": _run_json(capsys, ["compare", "--format", "json", str(first), str(second)]),
     }
 
@@ -403,6 +407,14 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "paths",
             "check",
             "review_exit_code",
+        },
+        "sign_bundle": {
+            "schema_version",
+            "ok",
+            "bundle",
+            "signed_bundle",
+            "signature",
+            "errors",
         },
         "verify_bundle": {
             "schema_version",
@@ -589,6 +601,18 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     review = json_payloads["review"]
     _assert_keys(review["paths"], {"markdown", "json", "html", "zip"})
     assert review["check"]["schema_version"] == SCHEMAS["check"]
+
+    sign_bundle = json_payloads["sign_bundle"]
+    assert sign_bundle["ok"] is True
+    assert sign_bundle["bundle"] == sign_bundle["signed_bundle"]
+    _assert_keys(
+        sign_bundle["signature"],
+        {"member", "schema_version", "algorithm", "signed_member", "signed_sha256"},
+    )
+    assert sign_bundle["signature"]["schema_version"] == "agentledger.bundle.signature.v1"
+    assert sign_bundle["signature"]["algorithm"] == "hmac-sha256"
+    assert "signature" not in sign_bundle["signature"]
+    assert sign_bundle["errors"] == []
 
     verify_bundle = json_payloads["verify_bundle"]
     assert verify_bundle["ok"] is True

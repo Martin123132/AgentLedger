@@ -227,6 +227,19 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
         },
     },
     {
+        "command": "sign-bundle --format json <bundle.zip> --key-file <key>",
+        "schema_version": "agentledger.sign_bundle.v1",
+        "purpose": "Add or replace a shared-key HMAC signature on a portable evidence bundle.",
+        "stable_fields": [
+            "ok",
+            "bundle",
+            "signed_bundle",
+            "signature",
+            "errors",
+        ],
+        "exit_codes": {"0": "bundle signed", "2": "bundle missing, invalid, key missing, or signing failed"},
+    },
+    {
         "command": "verify-bundle --format json <bundle.zip>",
         "schema_version": "agentledger.verify_bundle.v1",
         "purpose": "Validate a portable evidence bundle.",

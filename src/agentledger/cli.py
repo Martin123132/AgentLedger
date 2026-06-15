@@ -63,6 +63,7 @@ DEFAULT_PRIVACY_MODE = "standard"
 STATUS_SCHEMA = "agentledger.status.v1"
 ALPHA_SUMMARY_SCHEMA = "agentledger.alpha_summary.v1"
 ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
+SIGN_BUNDLE_SCHEMA = "agentledger.sign_bundle.v1"
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
 )
@@ -269,6 +270,7 @@ def build_parser() -> argparse.ArgumentParser:
     sign.add_argument("bundle", help="Path to bundle zip file.")
     sign.add_argument("--key-file", required=True, help="Text file containing the shared signing key.")
     sign.add_argument("--output", default=None, help="Optional output zip path. Defaults to updating the bundle in place.")
+    sign.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     return parser
 
@@ -585,16 +587,57 @@ def _handle_verify_bundle(args: argparse.Namespace) -> int:
 
 
 def _handle_sign_bundle(args: argparse.Namespace) -> int:
+    bundle_path = Path(args.bundle).resolve()
+    output_format = getattr(args, "format", "text")
+
+    def fail(message: str) -> int:
+        if output_format == "json":
+            print(
+                json.dumps(
+                    {
+                        "schema_version": SIGN_BUNDLE_SCHEMA,
+                        "ok": False,
+                        "bundle": str(bundle_path),
+                        "signed_bundle": str(Path(args.output).resolve()) if args.output else str(bundle_path),
+                        "signature": None,
+                        "errors": [message],
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(f"Unable to sign bundle: {message}")
+        return 2
+
     try:
         key = _read_signature_key(Path(args.key_file))
         output = Path(args.output).resolve() if args.output else None
-        signed_path, signature_member, signature = sign_zip_bundle(Path(args.bundle), key, output)
+        signed_path, signature_member, signature = sign_zip_bundle(bundle_path, key, output)
     except BundleError as exc:
-        print(f"Unable to sign bundle: {exc}")
-        return 2
+        return fail(str(exc))
     except OSError as exc:
-        print(f"Unable to sign bundle: {exc}")
-        return 2
+        return fail(str(exc))
+    if output_format == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": SIGN_BUNDLE_SCHEMA,
+                    "ok": True,
+                    "bundle": str(bundle_path),
+                    "signed_bundle": str(signed_path),
+                    "signature": {
+                        "member": signature_member,
+                        "schema_version": signature.get("schema_version"),
+                        "algorithm": signature.get("algorithm"),
+                        "signed_member": signature.get("signed_member"),
+                        "signed_sha256": signature.get("signed_sha256"),
+                    },
+                    "errors": [],
+                },
+                indent=2,
+            )
+        )
+        return 0
     print(f"Signed bundle: {signed_path}")
     print(f"Signature: {signature_member}")
     print(f"Signed manifest: {signature['signed_member']}")

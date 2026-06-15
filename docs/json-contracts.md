@@ -262,6 +262,22 @@ Stable fields:
 Signature status values are `not_present`, `present_unverified`, `verified`, or
 `invalid`.
 
+### `agentledger sign-bundle --format json <bundle.zip> --key-file <key>`
+
+Schema: `agentledger.sign_bundle.v1`
+
+Use this to add or replace a shared-key HMAC-SHA256 signature on a portable
+evidence bundle while returning machine-readable signing metadata.
+
+Stable fields:
+
+- `ok`: boolean
+- `bundle`: input bundle path
+- `signed_bundle`: output bundle path
+- `signature`: signature member, schema, algorithm, signed manifest member, and
+  signed manifest SHA-256 digest; the raw HMAC value is intentionally omitted
+- `errors`: human-readable error list
+
 ### `agentledger compare --format json <old-run> <new-run>`
 
 Schema: `agentledger.compare.v1`

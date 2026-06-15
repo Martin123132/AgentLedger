@@ -93,6 +93,7 @@ Expected result:
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --format json`
 - Optional shared-key signature check:
   - `python -m agentledger sign-bundle .agentledger\<run-id>.zip --key-file .agentledger-signing-key`
+  - `python -m agentledger sign-bundle .agentledger\<run-id>.zip --key-file .agentledger-signing-key --format json`
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --signature-key-file .agentledger-signing-key --require-signature`
   - `python -m agentledger verify-bundle .agentledger\<run-id>.zip --format json --signature-key-file .agentledger-signing-key --require-signature`
 - Compare two runs:
