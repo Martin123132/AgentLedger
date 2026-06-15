@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a release-check Markdown summary renderer and wired the manual Release
+  Readiness workflow to append it to the GitHub Actions step summary.
 - Added a cross-platform release metadata check for version, license, changelog,
   and README consistency, and wired it into release readiness.
 - Reduced duplicate GitHub Actions runs by limiting branch push CI to `master`

@@ -169,6 +169,7 @@ python -m agentledger alpha-summary --out .agentledger
 python -m agentledger alpha-summary --format json $env:TEMP\agentledger-alpha-summary.json
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
+python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
 ```
 
 ```bash
@@ -270,6 +271,9 @@ Use `-RequireCleanGit` before tagging or publishing a release candidate.
 Use `-JsonOutput <path>` to write a machine-readable
 `agentledger.release_check.v1` summary for CI or agent handoffs. Keep that file
 outside the repo, for example under `$env:TEMP`.
+Use `scripts/release_check_summary.py` to render the release-check JSON as a
+short Markdown summary. The manual GitHub Release Readiness workflow also
+appends that Markdown to the job step summary.
 Use `scripts/rehearse_release.py` before release prep to dry-run the target
 version, draft release notes outside the repo, run release readiness, and write
 one local checklist summary.

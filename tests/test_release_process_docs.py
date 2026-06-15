@@ -74,6 +74,8 @@ def test_release_process_documents_required_release_gates() -> None:
         "-JsonOutput",
         "agentledger-release-check.json",
         "agentledger.release_check.v1",
+        "python scripts/release_check_summary.py",
+        "agentledger-release-check-summary.md",
         'gh workflow run "Release Readiness"',
         "gh run watch <run-id>",
         "git tag v",

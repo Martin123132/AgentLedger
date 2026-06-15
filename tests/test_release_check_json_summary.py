@@ -42,8 +42,11 @@ def test_release_readiness_workflow_emits_json_summary() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert "agentledger-release-check.json" in text
+    assert "agentledger-release-check-summary.md" in text
     assert '"-JsonOutput", $summaryPath' in text
     assert "Get-Content -Raw -LiteralPath $summaryPath" in text
+    assert "python scripts/release_check_summary.py $summaryPath --output $markdownSummaryPath" in text
+    assert "$env:GITHUB_STEP_SUMMARY" in text
     assert "exit $exitCode" in text
 
 
@@ -54,3 +57,4 @@ def test_release_check_json_summary_is_documented() -> None:
         assert "agentledger-release-check.json" in text
         assert "agentledger.release_check.v1" in text
         assert "scripts/check_release_metadata.py" in text
+        assert "scripts/release_check_summary.py" in text
