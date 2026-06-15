@@ -72,6 +72,10 @@ Expected result:
 - The rehearsal output directory contains `release-command-index.md`,
   `release-command-index.json`, `release-metadata.json`, and, from a git
   checkout, `release-readiness-report.md` and `release-readiness-report.json`.
+- The rehearsal output directory contains `release-rehearsal-manifest.json`
+  using `agentledger.release_rehearsal_manifest.v1`, with file sizes, SHA-256
+  hashes, and handling notes for every generated rehearsal output except the
+  manifest itself.
 - The draft release notes file is outside the repo, usually under `$env:TEMP`.
 
 Do not commit generated release note files, evidence folders, zip bundles, or

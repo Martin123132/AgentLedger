@@ -380,7 +380,35 @@ Stable fields:
 - `release_check_log`
 - `summary_json`
 - `summary_markdown`
+- `manifest_json`
 - `steps`: release rehearsal steps with `name`, `status`, and `detail`
+
+### `release-rehearsal-manifest.json`
+
+Schema: `agentledger.release_rehearsal_manifest.v1`
+
+Written by `scripts/rehearse_release.py` into the selected rehearsal output
+directory. Use this to audit the generated local rehearsal files without
+opening each one by hand.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`
+- `generated_at`
+- `repo`
+- `branch`
+- `head`
+- `package_version`
+- `release_version`
+- `release_date`
+- `output_dir`
+- `manifest_json`
+- `artifact_count`
+- `artifacts`: generated rehearsal files with `kind`, relative `file`, `bytes`,
+  `sha256`, and `handling`
+- `handling`: storage and do-not-commit guidance; the manifest records that it
+  excludes itself from the hash list
 
 ### `scripts/release-check.ps1 -JsonOutput <path>`
 
