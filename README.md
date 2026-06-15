@@ -170,10 +170,12 @@ python -m agentledger alpha-summary --format json $env:TEMP\agentledger-alpha-su
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
+python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage final-notes --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md
 python scripts/finalize_release_notes.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/check_github_release.py --version 0.1.8a0 --format json --output $env:TEMP\agentledger-github-release-check.json
 python scripts/check_github_release.py --version 0.1.8a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
 python scripts/release_evidence_packet.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json --output $env:TEMP\agentledger-release-evidence.md --json-output $env:TEMP\agentledger-release-evidence.json
+python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage post-release --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/post_release_check.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --output-dir $env:TEMP\agentledger-post-release-0.1.8-alpha
 ```
 
@@ -283,6 +285,9 @@ Use `scripts/finalize_release_notes.py` after PR, master, Release Readiness, and
 tag CI have real GitHub Actions URLs. It refuses dirty release-check JSON,
 missing metadata summaries, mismatched versions, placeholder TODO validation,
 and non-AgentLedger Actions URLs before writing publish-ready release notes.
+Use `scripts/release_artifact_doctor.py` before final notes, post-release, or
+evidence-packet commands to confirm required artifact paths exist and are valid,
+and to get concrete next actions when something is missing.
 Use `scripts/check_github_release.py` after publishing to verify the GitHub
 release tag, prerelease/draft status, release URL, publish-ready body, and
 published timestamp. It can call `gh release view` directly or validate saved

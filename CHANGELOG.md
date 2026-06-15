@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a release artifact doctor for checking final-notes, post-release, and
+  evidence-packet inputs before running release handoff commands.
 - Added a post-release check wrapper that runs GitHub release validation and
   public-safe evidence packet generation under one output directory.
 - Updated release rehearsal output to include the rendered release-check
