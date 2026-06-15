@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hardened `agentledger alpha` summary write failures so invalid summary paths
+  return a normal alpha summary instead of a traceback.
 - Hardened `agentledger alpha` config errors so they return a full alpha
   summary and write it when `--out` or `--json-output` is available.
 - Hardened `agentledger alpha` so missing or non-git target repos return a

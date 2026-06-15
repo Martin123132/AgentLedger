@@ -63,6 +63,9 @@ DEFAULT_PRIVACY_MODE = "standard"
 STATUS_SCHEMA = "agentledger.status.v1"
 ALPHA_SUMMARY_SCHEMA = "agentledger.alpha_summary.v1"
 ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
+ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
+    "Choose a writable alpha summary path, then run agentledger alpha again."
+)
 ALPHA_SUMMARY_REQUIRED_FIELDS = {
     "schema_version",
     "ok",
@@ -1178,6 +1181,36 @@ def _write_alpha_summary(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _try_write_alpha_summary(path: Path | None, payload: dict) -> list[str]:
+    if path is None:
+        return []
+    try:
+        _write_alpha_summary(path, payload)
+    except OSError as exc:
+        return [f"Unable to write alpha summary {path}: {exc}"]
+    return []
+
+
+def _apply_alpha_summary_write_errors(
+    payload: dict,
+    errors: list[str],
+    next_actions: list[str],
+    write_errors: list[str],
+) -> bool:
+    if not write_errors:
+        return False
+    for error in write_errors:
+        if error not in errors:
+            errors.append(error)
+    if ALPHA_SUMMARY_WRITE_NEXT_ACTION not in next_actions:
+        next_actions.append(ALPHA_SUMMARY_WRITE_NEXT_ACTION)
+    payload["ok"] = False
+    payload["status_exit_code"] = 2
+    payload["errors"] = errors
+    payload["next_actions"] = next_actions
+    return True
+
+
 def _alpha_error_paths(args: argparse.Namespace) -> tuple[Path | None, Path | None]:
     if getattr(args, "out", None) is not None:
         out_root = Path(args.out).expanduser().resolve()
@@ -1258,7 +1291,12 @@ def _alpha_config_error(args: argparse.Namespace, repo: Path, started_at: str, m
         next_actions=["Fix the config error, then run agentledger alpha again."],
     )
     if summary_path is not None:
-        _write_alpha_summary(summary_path, payload)
+        _apply_alpha_summary_write_errors(
+            payload,
+            errors,
+            payload["next_actions"],
+            _try_write_alpha_summary(summary_path, payload),
+        )
     if quiet:
         print(json.dumps(payload, indent=2))
     else:
@@ -1309,7 +1347,12 @@ def _handle_alpha(args: argparse.Namespace) -> int:
             errors=errors,
             next_actions=["Fix required doctor checks, then run agentledger alpha again."],
         )
-        _write_alpha_summary(summary_path, payload)
+        _apply_alpha_summary_write_errors(
+            payload,
+            errors,
+            payload["next_actions"],
+            _try_write_alpha_summary(summary_path, payload),
+        )
         if quiet:
             print(json.dumps(payload, indent=2))
         else:
@@ -1468,7 +1511,13 @@ def _handle_alpha(args: argparse.Namespace) -> int:
         next_actions=next_actions,
         errors=errors,
     )
-    _write_alpha_summary(summary_path, payload)
+    if _apply_alpha_summary_write_errors(
+        payload,
+        errors,
+        next_actions,
+        _try_write_alpha_summary(summary_path, payload),
+    ):
+        ok = False
 
     if quiet:
         print(json.dumps(payload, indent=2))

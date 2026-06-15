@@ -916,6 +916,48 @@ def test_alpha_command_runs_core_flow_and_writes_summary(tmp_path: Path, capsys)
     assert summary_payload == payload
 
 
+def test_alpha_command_reports_unwritable_json_output_without_traceback(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    summary_file = tmp_path / "summary-dir"
+    summary_file.mkdir()
+
+    assert (
+        cli.main(
+            [
+                "alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--json-output",
+                str(summary_file),
+                "--format",
+                "json",
+                "--",
+                sys.executable,
+                "-c",
+                "print('alpha cli ok')",
+            ]
+        )
+        == 2
+    )
+
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert "Traceback" not in output
+    assert summary_file.is_dir()
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is False
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert payload["out"] == str(out.resolve())
+    assert Path(payload["latest_run"]).exists()
+    assert Path(payload["bundle"]).exists()
+    assert any("Unable to write alpha summary" in error for error in payload["errors"])
+    assert payload["status_exit_code"] == 2
+    assert "Choose a writable alpha summary path" in payload["next_actions"][-1]
+
+
 def test_alpha_command_reports_failed_capture(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
@@ -1049,6 +1091,47 @@ def test_alpha_command_config_error_honors_json_output(tmp_path: Path, capsys) -
     assert payload["summary_file"] == str(summary_file.resolve())
     assert payload["out"] == str(Path(".agentledger").resolve())
     assert "Config error:" in payload["errors"][0]
+
+
+def test_alpha_command_config_error_reports_unwritable_summary_without_traceback(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    config = tmp_path / "bad-agentledger.toml"
+    summary_file = tmp_path / "config-error-summary-dir"
+    config.write_text("unknown = true\n", encoding="utf-8")
+    summary_file.mkdir()
+
+    assert (
+        cli.main(
+            [
+                "alpha",
+                "--repo",
+                str(repo),
+                "--config",
+                str(config),
+                "--out",
+                str(out),
+                "--json-output",
+                str(summary_file),
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    assert "Traceback" not in output
+    assert summary_file.is_dir()
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is False
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert payload["out"] == str(out.resolve())
+    assert "Config error:" in payload["errors"][0]
+    assert any("Unable to write alpha summary" in error for error in payload["errors"])
+    assert payload["status_exit_code"] == 2
+    assert "Choose a writable alpha summary path" in payload["next_actions"][-1]
 
 
 def test_alpha_command_config_error_without_output_hint_is_full_json(tmp_path: Path, capsys) -> None:
