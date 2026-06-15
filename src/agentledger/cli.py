@@ -235,6 +235,12 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--out", default=None, help="Evidence output directory.")
     review.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
     review.add_argument(
+        "--history-limit",
+        type=int,
+        default=3,
+        help="Recent runs to include for context. Use 0 to hide history.",
+    )
+    review.add_argument(
         "--allow-warnings",
         action="store_true",
         help="Return success for pass or warn statuses; block statuses still return 2.",
@@ -2580,6 +2586,41 @@ def _review_paths(run_dir: Path) -> dict[str, str | None]:
     }
 
 
+def _review_history(run_dir: Path, limit: int) -> dict:
+    out_root = run_dir.parent
+    payload = {
+        "out": str(out_root),
+        "limit": limit,
+        "runs": [],
+        "errors": [],
+    }
+    if limit <= 0:
+        return payload
+    if not out_root.exists():
+        payload["errors"].append(f"Review history output directory not found: {out_root}")
+        return payload
+
+    run_dirs = sorted(
+        [
+            child
+            for child in out_root.iterdir()
+            if child.is_dir() and (child / "agentledger-report.json").exists()
+        ],
+        key=lambda path: path.name,
+        reverse=True,
+    )[:limit]
+    current = run_dir.resolve()
+    for history_dir in run_dirs:
+        try:
+            summary = _report_summary(history_dir)
+        except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as exc:
+            payload["errors"].append(f"Unable to read history report in {history_dir}: {exc}")
+            continue
+        summary["current"] = history_dir.resolve() == current
+        payload["runs"].append(summary)
+    return payload
+
+
 def _load_review_run_dir(args: argparse.Namespace) -> Path | None:
     if args.run_dir:
         return Path(args.run_dir).resolve()
@@ -2599,7 +2640,7 @@ def _load_review_run_dir(args: argparse.Namespace) -> Path | None:
     return latest_dir
 
 
-def _format_review(result: dict, paths: dict[str, str | None]) -> str:
+def _format_review(result: dict, paths: dict[str, str | None], history: dict) -> str:
     lines = [
         f"AgentLedger review: {result['status']}",
         f"Summary: {result['summary']}",
@@ -2625,6 +2666,22 @@ def _format_review(result: dict, paths: dict[str, str | None]) -> str:
     )
     if paths["zip"]:
         lines.append(f"Zip bundle: {paths['zip']}")
+
+    history_runs = history.get("runs") if isinstance(history.get("runs"), list) else []
+    if history_runs:
+        lines.append("Recent runs:")
+        for item in history_runs:
+            marker = "*" if item.get("current") is True else "-"
+            exit_code = item["exit_code"] if item.get("exit_code") is not None else "n/a"
+            lines.append(
+                f"{marker} {item['run_id']} | exit={exit_code} | changed={item['changed_files']} | "
+                f"test={item['test_framework']} | command={item['command']}"
+            )
+    history_errors = history.get("errors") if isinstance(history.get("errors"), list) else []
+    if history_errors:
+        lines.append("History warnings:")
+        for error in history_errors:
+            lines.append(f"- {error}")
 
     if result["blocking_rules"]:
         lines.append("Blockers:")
@@ -2652,6 +2709,9 @@ def _format_review(result: dict, paths: dict[str, str | None]) -> str:
 
 
 def _handle_review(args: argparse.Namespace) -> int:
+    if args.history_limit < 0:
+        print("--history-limit must be zero or greater.")
+        return 2
     run_dir = _load_review_run_dir(args)
     if run_dir is None:
         return 2
@@ -2664,6 +2724,7 @@ def _handle_review(args: argparse.Namespace) -> int:
     allow_warnings = _allow_warnings_from_config(args, config)
     result = build_check(run_dir, policy)
     paths = _review_paths(run_dir)
+    history = _review_history(run_dir, args.history_limit)
     exit_code = check_exit_code(result["status"], allow_warnings)
     if getattr(args, "format", "text") == "json":
         payload = {
@@ -2674,12 +2735,13 @@ def _handle_review(args: argparse.Namespace) -> int:
             "run_dir": result["run_dir"],
             "command_exit_code": result.get("exit_code"),
             "paths": paths,
+            "history": history,
             "check": result,
             "review_exit_code": exit_code,
         }
         print(json.dumps(payload, indent=2))
     else:
-        print(_format_review(result, paths))
+        print(_format_review(result, paths, history))
     return exit_code
 
 

@@ -474,11 +474,14 @@ Review the latest run with report paths and policy status in one command:
 agentledger review --out .agentledger --allow-warnings
 agentledger review .agentledger\2026-06-11T120000Z-abc12345
 agentledger review --format json --out .agentledger --allow-warnings
+agentledger review --out .agentledger --history-limit 5 --allow-warnings
 ```
 
 `review` uses the same pass/warn/block policy and exit codes as `check`, then
 adds the Markdown/JSON/HTML report paths, zip bundle path when present, warning
-or blocking rule summaries, and a short next-action hint.
+or blocking rule summaries, recent run context, and a short next-action hint.
+It shows the three most recent runs by default; pass `--history-limit 0` to
+hide that context.
 
 Show the latest run status, evidence paths, feedback counts, and next action:
 
@@ -570,6 +573,7 @@ The normal local review loop is:
 ```powershell
 agentledger run --repo . --out .agentledger --no-repomori --no-jester --no-tokometer -- python -c "print('agentledger smoke')"
 agentledger review --out .agentledger --allow-warnings
+agentledger review --out .agentledger --history-limit 5 --allow-warnings
 agentledger status --out .agentledger --allow-warnings
 agentledger open-latest --out .agentledger
 agentledger open-latest --out .agentledger --format json
@@ -592,6 +596,7 @@ folder and privacy mode:
 ```powershell
 agentledger run --repo . -- python -m pytest
 agentledger review --repo . --allow-warnings
+agentledger review --repo . --history-limit 5 --allow-warnings
 agentledger status --repo . --allow-warnings
 agentledger open-latest --repo .
 agentledger history --repo .

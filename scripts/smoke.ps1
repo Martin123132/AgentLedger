@@ -121,7 +121,7 @@ try {
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)
     Invoke-AgentLedger @("check", "--allow-warnings", $run)
     Invoke-AgentLedger @("review", "--out", $out, "--allow-warnings")
-    Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings")
+    Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings", "--history-limit", "1")
     Invoke-AgentLedgerJsonCheck -Run $run -OutputPath $checkJson
     Invoke-AgentLedger @("inspect-bundle", "${run}.zip")
     Invoke-AgentLedger @("inspect-bundle", "${run}.zip", "--format", "json")

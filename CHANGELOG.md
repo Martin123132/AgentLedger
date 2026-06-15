@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added recent-run context to `agentledger review`, including JSON history
+  fields and a `--history-limit` control.
 - Added `agentledger inspect-bundle` bundle triage output for manifest,
   signature, report, and review-status summaries.
 - Added `agentledger signing-key` preflight checks for shared signing-key files
