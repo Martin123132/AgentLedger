@@ -266,6 +266,7 @@ python -m agentledger alpha-summary --out .agentledger --format json
 python -m agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe
+python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
 ```
 
 `alpha-handoff` writes `agentledger-alpha-handoff.md` and
@@ -274,6 +275,8 @@ latest review, status, feedback summary, and optional alpha summary, but copies
 no raw `.agentledger` run folders, transcript files, diffs, zip bundles, or
 signing keys. Add `--share-safe` or `--redact-local-paths` to replace local
 absolute paths with stable markers before sharing the packet.
+`pack-alpha` runs the share-safe handoff flow, validates the generated packet
+files for local absolute path leaks, and prints the two files to send.
 
 Alpha release readiness:
 
@@ -573,6 +576,7 @@ agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-fe
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.json --output-format json --format json
 agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe
+agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
 ```
 
 `feedback` writes `alpha-feedback.jsonl` inside the selected run folder. It
@@ -588,6 +592,9 @@ review, status, feedback summary, and optional alpha summary without copying raw
 evidence files. Use `--share-safe` before sharing outside your own machine so
 local absolute paths are replaced with `[repo]`, `[agentledger-output]`,
 `[latest-run]`, and `[handoff-output]` markers.
+`pack-alpha` is the one-command sharing path: it writes a share-safe packet,
+validates the written Markdown/JSON for local path leaks, then prints the two
+packet files to send.
 
 The normal local review loop is:
 
@@ -603,7 +610,7 @@ agentledger history --out .agentledger
 agentledger feedback --out .agentledger --note "First confusing thing: ..."
 agentledger feedback-summary --out .agentledger
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
-agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff --share-safe
+agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger check --allow-warnings $run
@@ -627,7 +634,7 @@ agentledger history --repo .
 agentledger feedback --repo . --note "First confusing thing: ..."
 agentledger feedback-summary --repo .
 agentledger feedback-export --repo . --output $env:TEMP\agentledger-feedback.md
-agentledger alpha-handoff --repo . --output-dir $env:TEMP\agentledger-alpha-handoff --share-safe
+agentledger pack-alpha --repo . --output-dir $env:TEMP\agentledger-alpha-packet
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger check $run
 ```

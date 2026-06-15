@@ -88,6 +88,7 @@ Expected result:
   - `python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md`
   - `python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff`
   - `python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe`
+  - `python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet`
 - Inspect a specific run report:
   - `python -m agentledger inspect-report .agentledger\<run-id>`
 - Check a specific run report:
@@ -132,6 +133,8 @@ Expected result:
   and are meant to be shared.
 - Use `alpha-handoff --share-safe` before sharing a packet outside your own
   machine so local absolute paths are replaced with stable markers.
+- Prefer `pack-alpha` for the final packet because it validates the generated
+  files before telling you what to send.
 - Do not commit `.agentledger-signing-key` or any shared signing key.
 - Do not commit temporary `Temp/agentledger-smoke-*` folders.
 - Keep only source/config/docs files in git history.

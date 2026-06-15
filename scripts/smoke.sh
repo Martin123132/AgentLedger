@@ -17,6 +17,7 @@ REVIEW_EXPORT_JSON="$ROOT/agentledger-review.json"
 ALPHA_HANDOFF_DIR="$ROOT/agentledger-alpha-handoff"
 ALPHA_HANDOFF_JSON_DIR="$ROOT/agentledger-alpha-handoff-json"
 ALPHA_HANDOFF_SHARE_SAFE_DIR="$ROOT/agentledger-alpha-handoff-share-safe"
+PACK_ALPHA_DIR="$ROOT/agentledger-alpha-packet"
 
 mkdir -p "$REPO"
 mkdir -p "$OUT"
@@ -56,6 +57,7 @@ python -m agentledger feedback-export --format json --out "$OUT" --output "$FEED
 python -m agentledger alpha-handoff --out "$OUT" --output-dir "$ALPHA_HANDOFF_DIR"
 python -m agentledger alpha-handoff --format json --out "$OUT" --output-dir "$ALPHA_HANDOFF_JSON_DIR"
 python -m agentledger alpha-handoff --format json --out "$OUT" --output-dir "$ALPHA_HANDOFF_SHARE_SAFE_DIR" --share-safe
+python -m agentledger pack-alpha --format json --out "$OUT" --output-dir "$PACK_ALPHA_DIR"
 
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"

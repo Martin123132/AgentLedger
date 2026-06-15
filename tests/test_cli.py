@@ -1415,6 +1415,142 @@ def test_alpha_handoff_share_safe_redacts_local_paths(tmp_path: Path, capsys) ->
         assert raw not in combined
 
 
+def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "feedback",
+                "--out",
+                str(out),
+                "--note",
+                "Please do not leak C:\\Users\\ollet\\alpha.txt or D:\\Temp\\handoff.log.",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    output_dir = tmp_path / "pack-alpha"
+    assert (
+        cli.main(
+            [
+                "pack-alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--output-dir",
+                str(output_dir),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    markdown_path = output_dir / "agentledger-alpha-handoff.md"
+    json_path = output_dir / "agentledger-alpha-handoff.json"
+    packet_json = json_path.read_text(encoding="utf-8")
+    packet_markdown = markdown_path.read_text(encoding="utf-8")
+    packet_text = "\n".join([packet_json, packet_markdown])
+
+    assert payload["schema_version"] == "agentledger.pack_alpha.v1"
+    assert payload["ok"] is True
+    assert payload["status"] == "warn"
+    assert payload["files"] == {"markdown": str(markdown_path), "json": str(json_path)}
+    assert payload["raw_evidence_copied"] is False
+    assert payload["handoff_exit_code"] == 0
+    assert payload["validation"]["ok"] is True
+    assert payload["validation"]["errors"] == []
+    assert payload["handoff"]["schema_version"] == "agentledger.alpha_handoff.v1"
+    assert payload["handoff"]["share_safe"] is True
+    assert payload["handoff"]["handling"]["local_paths_redacted"] is True
+    assert json.loads(packet_json) == payload["handoff"]
+    assert "[latest-run]" in packet_markdown
+    assert "[redacted-local-path]" in packet_text
+
+    for path in (repo, out, latest_dir, output_dir):
+        raw = str(path.resolve())
+        assert raw not in packet_text
+        assert raw.replace("\\", "/") not in packet_text
+    for raw in ("C:\\Users", "C:/Users", "D:\\Temp", "D:/Temp", "C:\\\\Users", "D:\\\\Temp"):
+        assert raw not in packet_text
+
+
+def test_pack_alpha_fails_when_packet_validation_finds_local_path(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_repo(tmp_path)
+    output_dir = tmp_path / "pack-alpha"
+
+    def fake_handoff(args) -> int:
+        output = Path(args.output_dir)
+        output.mkdir(parents=True)
+        leaked_path = str(repo.resolve())
+        (output / "agentledger-alpha-handoff.md").write_text(f"# Leak\n\n{leaked_path}\n", encoding="utf-8")
+        packet = {
+            "schema_version": "agentledger.alpha_handoff.v1",
+            "ok": True,
+            "status": "pass",
+            "summary": "Fake handoff.",
+            "share_safe": True,
+            "errors": [],
+        }
+        (output / "agentledger-alpha-handoff.json").write_text(json.dumps(packet), encoding="utf-8")
+        print(json.dumps(packet))
+        return 0
+
+    monkeypatch.setattr(cli, "_handle_alpha_handoff", fake_handoff)
+
+    assert (
+        cli.main(
+            [
+                "pack-alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(tmp_path / "ledger"),
+                "--output-dir",
+                str(output_dir),
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.pack_alpha.v1"
+    assert payload["ok"] is False
+    assert payload["handoff_exit_code"] == 0
+    assert payload["validation"]["ok"] is False
+    assert any("Packet leaks local repo path" in error for error in payload["validation"]["errors"])
+
+
 def test_alpha_handoff_strict_returns_nonzero_for_warning_status(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

@@ -177,6 +177,37 @@ stable markers such as `[repo]`, `[agentledger-output]`, `[latest-run]`, and
 because feedback notes and command summaries can still contain project context,
 even though raw evidence is not copied.
 
+### `agentledger pack-alpha --format json --output-dir <dir>`
+
+Schema: `agentledger.pack_alpha.v1`
+
+Use this to create the share-safe alpha handoff packet and validate the written
+Markdown/JSON before sharing. It wraps `alpha-handoff --share-safe`, checks the
+generated packet files for local absolute path leaks, and reports exactly which
+two files should be sent.
+
+Stable fields:
+
+- `ok`: boolean, true when the share-safe handoff was written and validation
+  passed
+- `status`: latest pass/warn/block status from the handoff
+- `summary`
+- `generated_at`
+- `agentledger_version`
+- `repo`: local repository path used to generate the packet
+- `output_dir`: local directory containing the packet files
+- `files`: generated `markdown` and `json` packet files to share
+- `raw_evidence_copied`: always false
+- `handoff_exit_code`: exit code from the wrapped alpha handoff command
+- `handoff`: embedded `agentledger.alpha_handoff.v1` share-safe payload
+- `validation`: file existence and local absolute path leak checks
+- `next_actions`
+- `errors`
+
+The `pack-alpha` command output is a local operator summary and may contain
+local output paths so the operator can find the files. The generated handoff
+packet files are the share-safe artifacts intended for review.
+
 ### `agentledger feedback-summary --format json`
 
 Schema: `agentledger.feedback_summary.v1`
