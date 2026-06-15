@@ -129,6 +129,8 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "latest_run",
             "output_dir",
             "files",
+            "share_safe",
+            "redactions",
             "review",
             "status_payload",
             "feedback_summary",

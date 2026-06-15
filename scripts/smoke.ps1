@@ -76,6 +76,7 @@ $reviewExportMarkdown = Join-Path $root "agentledger-review.md"
 $reviewExportJson = Join-Path $root "agentledger-review.json"
 $alphaHandoffDir = Join-Path $root "agentledger-alpha-handoff"
 $alphaHandoffJsonDir = Join-Path $root "agentledger-alpha-handoff-json"
+$alphaHandoffShareSafeDir = Join-Path $root "agentledger-alpha-handoff-share-safe"
 $signatureKey = Join-Path $root "agentledger-signing-key.txt"
 
 try {
@@ -122,6 +123,7 @@ try {
     Invoke-AgentLedger @("feedback-export", "--format", "json", "--out", $out, "--output", $feedbackExportJson, "--output-format", "json")
     Invoke-AgentLedger @("alpha-handoff", "--out", $out, "--output-dir", $alphaHandoffDir)
     Invoke-AgentLedger @("alpha-handoff", "--format", "json", "--out", $out, "--output-dir", $alphaHandoffJsonDir)
+    Invoke-AgentLedger @("alpha-handoff", "--format", "json", "--out", $out, "--output-dir", $alphaHandoffShareSafeDir, "--share-safe")
 
     $run = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)

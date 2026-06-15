@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added share-safe local path redaction for `agentledger alpha-handoff`.
 - Added `agentledger alpha-handoff` for reviewed Markdown/JSON alpha packets
   without copying raw evidence.
 - Added Markdown/file output for `agentledger review` handoffs.

@@ -1312,7 +1312,10 @@ def test_alpha_handoff_writes_reviewed_packet(tmp_path: Path, capsys) -> None:
     assert payload["feedback_summary"]["schema_version"] == "agentledger.feedback_summary.v1"
     assert payload["feedback_summary"]["total_entries"] == 1
     assert payload["alpha_summary"]["available"] is False
+    assert payload["share_safe"] is False
+    assert payload["redactions"]["local_paths"] is False
     assert payload["handling"]["raw_evidence_copied"] is False
+    assert payload["handling"]["local_paths_redacted"] is False
     assert payload["handling"]["copied_files"] == []
     assert payload["errors"] == []
 
@@ -1321,6 +1324,95 @@ def test_alpha_handoff_writes_reviewed_packet(tmp_path: Path, capsys) -> None:
     assert "Handoff packet should mention feedback." in markdown
     assert "Raw evidence copied: no" in markdown
     assert str(latest_dir / "agentledger-report.md") in markdown
+
+
+def test_alpha_handoff_share_safe_redacts_local_paths(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "feedback",
+                "--out",
+                str(out),
+                "--note",
+                "Tester saw C:\\Users\\ollet\\secret.txt and D:\\Temp\\alpha.log.",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    output_dir = tmp_path / "handoff"
+    assert (
+        cli.main(
+            [
+                "alpha-handoff",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--output-dir",
+                str(output_dir),
+                "--share-safe",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+    stdout = capsys.readouterr().out
+    payload = _parse_json_output(stdout)
+    markdown_path = output_dir / "agentledger-alpha-handoff.md"
+    json_path = output_dir / "agentledger-alpha-handoff.json"
+    json_text = json_path.read_text(encoding="utf-8")
+    markdown = markdown_path.read_text(encoding="utf-8")
+    combined = "\n".join([stdout, json_text, markdown, json.dumps(payload, sort_keys=True)])
+
+    assert payload["share_safe"] is True
+    assert payload["redactions"]["local_paths"] is True
+    assert payload["handling"]["local_paths_redacted"] is True
+    assert payload["repo"] == "[repo]"
+    assert payload["out"] == "[agentledger-output]"
+    assert payload["latest_run"] == "[latest-run]"
+    assert payload["output_dir"] == "[handoff-output]"
+    assert payload["files"]["markdown"].startswith("[handoff-output]")
+    assert payload["review"]["paths"]["markdown"].startswith("[latest-run]")
+    assert "[redacted-local-path]" in combined
+    assert "[repo]" in markdown
+    assert "[latest-run]" in markdown
+    assert json.loads(json_text) == payload
+
+    for path in (tmp_path, repo, out, latest_dir, output_dir):
+        raw = str(path.resolve())
+        assert raw not in combined
+        assert raw.replace("\\", "/") not in combined
+    for raw in ("C:\\Users", "C:/Users", "D:\\Temp", "D:/Temp", "C:\\\\Users", "D:\\\\Temp"):
+        assert raw not in combined
 
 
 def test_alpha_handoff_strict_returns_nonzero_for_warning_status(tmp_path: Path, capsys) -> None:
