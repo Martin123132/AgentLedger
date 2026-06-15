@@ -1178,6 +1178,17 @@ def _write_alpha_summary(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _alpha_error_paths(args: argparse.Namespace) -> tuple[Path | None, Path | None]:
+    if getattr(args, "out", None) is not None:
+        out_root = Path(args.out).expanduser().resolve()
+        if getattr(args, "json_output", None):
+            return Path(args.json_output).expanduser().resolve(), out_root
+        return (out_root / ALPHA_SUMMARY_FILENAME).resolve(), out_root
+    if getattr(args, "json_output", None):
+        return Path(args.json_output).expanduser().resolve(), Path(DEFAULT_OUT).resolve()
+    return None, None
+
+
 def _alpha_required_setup_errors(doctor_report: dict) -> list[str]:
     errors = []
     for check in doctor_report.get("checks") or []:
@@ -1192,10 +1203,10 @@ def _alpha_required_setup_errors(doctor_report: dict) -> list[str]:
 def _alpha_payload(
     *,
     ok: bool,
-    summary_path: Path,
+    summary_path: Path | None,
     started_at: str,
     repo: Path,
-    out_root: Path,
+    out_root: Path | None,
     doctor_summary: str,
     status: str,
     status_summary: str,
@@ -1209,11 +1220,11 @@ def _alpha_payload(
     return {
         "schema_version": ALPHA_SUMMARY_SCHEMA,
         "ok": ok,
-        "summary_file": str(summary_path),
+        "summary_file": str(summary_path) if summary_path is not None else None,
         "started_at": started_at,
         "ended_at": utc_now_iso(),
         "repo": str(repo),
-        "out": str(out_root),
+        "out": str(out_root) if out_root is not None else None,
         "latest_run": str(latest_dir) if latest_dir is not None else None,
         "bundle": str(latest_dir.with_suffix(".zip")) if latest_dir is not None else None,
         "agentledger_version": f"agentledger {__version__}",
@@ -1230,6 +1241,35 @@ def _alpha_payload(
     }
 
 
+def _alpha_config_error(args: argparse.Namespace, repo: Path, started_at: str, message: str, quiet: bool) -> int:
+    summary_path, out_root = _alpha_error_paths(args)
+    errors = [message]
+    payload = _alpha_payload(
+        ok=False,
+        summary_path=summary_path,
+        started_at=started_at,
+        repo=repo,
+        out_root=out_root,
+        doctor_summary="AgentLedger doctor: not run (config error)",
+        status="block",
+        status_summary="Config error blocked alpha before setup checks.",
+        status_exit_code=2,
+        errors=errors,
+        next_actions=["Fix the config error, then run agentledger alpha again."],
+    )
+    if summary_path is not None:
+        _write_alpha_summary(summary_path, payload)
+    if quiet:
+        print(json.dumps(payload, indent=2))
+    else:
+        if summary_path is None:
+            print(message)
+        else:
+            print("== Alpha blocked ==")
+            print(_format_alpha_summary(summary_path, payload))
+    return 2
+
+
 def _handle_alpha(args: argparse.Namespace) -> int:
     output_format = getattr(args, "format", "text")
     quiet = output_format == "json"
@@ -1240,22 +1280,7 @@ def _handle_alpha(args: argparse.Namespace) -> int:
     try:
         config = _load_output_config(args, repo)
     except ConfigError as exc:
-        message = f"Config error: {exc}"
-        if quiet:
-            print(
-                json.dumps(
-                    {
-                        "schema_version": ALPHA_SUMMARY_SCHEMA,
-                        "ok": False,
-                        "summary_file": None,
-                        "errors": [message],
-                    },
-                    indent=2,
-                )
-            )
-        else:
-            print(message)
-        return 2
+        return _alpha_config_error(args, repo, started_at, f"Config error: {exc}", quiet)
 
     out_root = _resolve_out_root(args, repo, config)
     summary_path = _alpha_summary_path(args, out_root)

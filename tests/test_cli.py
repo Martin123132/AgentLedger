@@ -993,6 +993,81 @@ def test_alpha_command_reports_missing_repo_without_traceback(tmp_path: Path, ca
     assert any("Required doctor check failed: target_git_repo" in error for error in payload["errors"])
 
 
+def test_alpha_command_config_error_writes_summary_with_out(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    config = tmp_path / "bad-agentledger.toml"
+    config.write_text("unknown = true\n", encoding="utf-8")
+
+    assert cli.main(["alpha", "--repo", str(repo), "--config", str(config), "--out", str(out), "--format", "json"]) == 2
+
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+    summary_file = out / "alpha-summary.json"
+    assert json.loads(summary_file.read_text(encoding="utf-8")) == payload
+    assert "Traceback" not in output
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is False
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert payload["out"] == str(out.resolve())
+    assert payload["latest_run"] is None
+    assert payload["doctor"] == "AgentLedger doctor: not run (config error)"
+    assert payload["status"] == "block"
+    assert payload["status_summary"] == "Config error blocked alpha before setup checks."
+    assert payload["status_exit_code"] == 2
+    assert payload["report_paths"] == {}
+    assert payload["next_actions"] == ["Fix the config error, then run agentledger alpha again."]
+    assert "Config error:" in payload["errors"][0]
+
+
+def test_alpha_command_config_error_honors_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    config = tmp_path / "bad-agentledger.toml"
+    summary_file = tmp_path / "config-error-summary.json"
+    config.write_text("unknown = true\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "alpha",
+                "--repo",
+                str(repo),
+                "--config",
+                str(config),
+                "--json-output",
+                str(summary_file),
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert json.loads(summary_file.read_text(encoding="utf-8")) == payload
+    assert payload["ok"] is False
+    assert payload["summary_file"] == str(summary_file.resolve())
+    assert payload["out"] == str(Path(".agentledger").resolve())
+    assert "Config error:" in payload["errors"][0]
+
+
+def test_alpha_command_config_error_without_output_hint_is_full_json(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    config = tmp_path / "bad-agentledger.toml"
+    config.write_text("unknown = true\n", encoding="utf-8")
+
+    assert cli.main(["alpha", "--repo", str(repo), "--config", str(config), "--format", "json"]) == 2
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.alpha_summary.v1"
+    assert payload["ok"] is False
+    assert payload["summary_file"] is None
+    assert payload["out"] is None
+    assert payload["doctor"] == "AgentLedger doctor: not run (config error)"
+    assert payload["status"] == "block"
+    assert payload["errors"]
+
+
 def test_alpha_summary_reads_direct_path(tmp_path: Path, capsys) -> None:
     summary_file = tmp_path / "alpha-summary.json"
     payload = _alpha_summary_payload(summary_file)

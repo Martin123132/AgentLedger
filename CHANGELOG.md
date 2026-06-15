@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hardened `agentledger alpha` config errors so they return a full alpha
+  summary and write it when `--out` or `--json-output` is available.
 - Hardened `agentledger alpha` so missing or non-git target repos return a
   normal alpha summary instead of traceback-style failures.
 - Added `agentledger alpha` as a cross-platform core alpha pass that writes the
