@@ -173,6 +173,7 @@ python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json
 python scripts/finalize_release_notes.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.8-alpha-release.md
 python scripts/check_github_release.py --version 0.1.8a0 --format json --output $env:TEMP\agentledger-github-release-check.json
 python scripts/check_github_release.py --version 0.1.8a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
+python scripts/release_evidence_packet.py --version 0.1.8a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.8-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json --output $env:TEMP\agentledger-release-evidence.md --json-output $env:TEMP\agentledger-release-evidence.json
 ```
 
 ```bash
@@ -285,6 +286,11 @@ Use `scripts/check_github_release.py` after publishing to verify the GitHub
 release tag, prerelease/draft status, release URL, publish-ready body, and
 published timestamp. It can call `gh release view` directly or validate saved
 release JSON with `--release-json`.
+Use `scripts/release_evidence_packet.py` after the GitHub release check to build
+a public-safe `agentledger.release_evidence_packet.v1` handoff summary from the
+validated release-check JSON, rendered summary, final release notes, and GitHub
+release check JSON. It records validation status and artifact names only; it
+refuses `.agentledger/`, zip bundles, and signing-key paths.
 Use `scripts/rehearse_release.py` before release prep to dry-run the target
 version, draft release notes outside the repo, run release readiness, and write
 one local checklist summary.
