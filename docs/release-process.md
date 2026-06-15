@@ -61,15 +61,19 @@ signing keys.
 ## 3. Validate before PR
 
 ```powershell
+python scripts/check_release_metadata.py
 python scripts/release_notes.py --version 0.1.8a0 --check
 python -m pytest
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 ```
 
-`scripts/release-check.ps1` validates version consistency, changelog release
-notes source, git hygiene, isolated wheel metadata, tests, install check, and
-the Windows smoke flow, including the latest status command. `-JsonOutput`
-writes an `agentledger.release_check.v1` summary that can be referenced from PR
+`scripts/check_release_metadata.py` is the cross-platform source metadata gate
+for version, license, README, and changelog alignment. `scripts/release-check.ps1`
+also runs that check, then validates version consistency, changelog release notes
+source, git hygiene, isolated wheel metadata, tests, install check, and the
+Windows smoke flow, including the latest status command. `-JsonOutput` writes an
+`agentledger.release_check.v1` summary, including the
+`agentledger.release_metadata_check.v1` payload, that can be referenced from PR
 or release notes without parsing console output.
 
 If `-RequireCleanGit` fails because release prep changes are uncommitted, commit

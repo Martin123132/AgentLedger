@@ -20,6 +20,7 @@ $script:packageVersion = $null
 $script:branch = $null
 $script:head = $null
 $script:wheelPath = $null
+$script:metadataCheck = $null
 
 function Invoke-Step {
     param(
@@ -235,6 +236,7 @@ function Write-JsonSummary {
         skip_editable_install = [bool] $SkipEditableInstall
         working_tree_dirty = [bool] $script:workingTreeDirty
         wheel = $wheelName
+        release_metadata = $script:metadataCheck
         steps = $stepPayload
         error = Get-ReleaseCheckErrorMessage
     }
@@ -272,6 +274,23 @@ try {
         }
 
         Write-Host "Version: $($script:projectVersion)"
+    }
+
+    Invoke-Step "Check release metadata" {
+        $metadataJson = (& python "scripts/check_release_metadata.py" "--format" "json") -join "`n"
+        if ($metadataJson) {
+            $script:metadataCheck = $metadataJson | ConvertFrom-Json
+        }
+        if ($LASTEXITCODE -ne 0) {
+            if ($metadataJson) {
+                Write-Host $metadataJson
+            }
+            throw "scripts/check_release_metadata.py failed with code $LASTEXITCODE"
+        }
+        if (-not $script:metadataCheck.ok) {
+            throw "scripts/check_release_metadata.py reported failed metadata"
+        }
+        Write-Host "Metadata: $($script:metadataCheck.project_name) $($script:metadataCheck.project_version) ($($script:metadataCheck.release_label))"
     }
 
     Invoke-Step "Check release notes source" {

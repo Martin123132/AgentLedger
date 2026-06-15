@@ -62,6 +62,7 @@ def test_release_process_documents_required_release_gates() -> None:
         "python scripts/prepare_release.py --version",
         "--release-notes-output",
         "--dry-run",
+        "python scripts/check_release_metadata.py",
         "python scripts/release_notes.py --version",
         "--notes-file",
         "--check-publish-ready",

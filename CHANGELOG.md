@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a cross-platform release metadata check for version, license, changelog,
+  and README consistency, and wired it into release readiness.
 - Reduced duplicate GitHub Actions runs by limiting branch push CI to `master`
   and release tags while keeping PR CI active.
 - Added blocked-doctor alpha summaries with repair hints to `scripts/alpha.ps1`.
