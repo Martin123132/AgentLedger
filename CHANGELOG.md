@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentledger alpha-handoff` for reviewed Markdown/JSON alpha packets
+  without copying raw evidence.
 - Added Markdown/file output for `agentledger review` handoffs.
 - Added latest-vs-previous comparison details to `agentledger review`.
 - Added recent-run context to `agentledger review`, including JSON history

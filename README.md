@@ -108,6 +108,7 @@ python -m agentledger feedback --out .agentledger --note "First confusing thing:
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
+python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --allow-warnings $run
@@ -263,7 +264,14 @@ Inspect that summary without opening JSON by hand:
 python -m agentledger alpha-summary --out .agentledger
 python -m agentledger alpha-summary --out .agentledger --format json
 python -m agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json
+python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 ```
+
+`alpha-handoff` writes `agentledger-alpha-handoff.md` and
+`agentledger-alpha-handoff.json` into the chosen output directory. It embeds the
+latest review, status, feedback summary, and optional alpha summary, but copies
+no raw `.agentledger` run folders, transcript files, diffs, zip bundles, or
+signing keys.
 
 Alpha release readiness:
 
@@ -561,6 +569,7 @@ agentledger feedback-summary --out .agentledger
 agentledger feedback-summary --out .agentledger --category docs --format json
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.json --output-format json --format json
+agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 ```
 
 `feedback` writes `alpha-feedback.jsonl` inside the selected run folder. It
@@ -571,6 +580,9 @@ so tester friction can be reviewed without opening each run directory.
 `feedback-export` writes a reviewed Markdown or JSON export that omits local
 run directories and feedback file paths. Review the exported notes before
 sharing because redaction is best-effort.
+`alpha-handoff` writes a compact Markdown/JSON packet that combines latest
+review, status, feedback summary, and optional alpha summary without copying raw
+evidence files.
 
 The normal local review loop is:
 
@@ -586,6 +598,7 @@ agentledger history --out .agentledger
 agentledger feedback --out .agentledger --note "First confusing thing: ..."
 agentledger feedback-summary --out .agentledger
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
+agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger check --allow-warnings $run
@@ -609,6 +622,7 @@ agentledger history --repo .
 agentledger feedback --repo . --note "First confusing thing: ..."
 agentledger feedback-summary --repo .
 agentledger feedback-export --repo . --output $env:TEMP\agentledger-feedback.md
+agentledger alpha-handoff --repo . --output-dir $env:TEMP\agentledger-alpha-handoff
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger check $run
 ```

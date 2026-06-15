@@ -1230,6 +1230,182 @@ def test_alpha_summary_rejects_invalid_schema(tmp_path: Path, capsys) -> None:
     assert "Expected schema_version agentledger.alpha_summary.v1" in output
 
 
+def test_alpha_handoff_writes_reviewed_packet(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "feedback",
+                "--out",
+                str(out),
+                "--category",
+                "friction",
+                "--severity",
+                "low",
+                "--note",
+                "Handoff packet should mention feedback.",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    output_dir = tmp_path / "handoff"
+    assert (
+        cli.main(
+            [
+                "alpha-handoff",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--output-dir",
+                str(output_dir),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    markdown_path = output_dir / "agentledger-alpha-handoff.md"
+    json_path = output_dir / "agentledger-alpha-handoff.json"
+    assert json.loads(json_path.read_text(encoding="utf-8")) == payload
+    assert set(output_dir.iterdir()) == {markdown_path, json_path}
+    assert payload["schema_version"] == "agentledger.alpha_handoff.v1"
+    assert payload["ok"] is True
+    assert payload["status"] == "warn"
+    assert payload["repo"] == str(repo.resolve())
+    assert payload["out"] == str(out.resolve())
+    assert payload["latest_run"] == str(latest_dir)
+    assert payload["files"] == {
+        "markdown": str(markdown_path),
+        "json": str(json_path),
+    }
+    assert payload["review"]["schema_version"] == "agentledger.review.v1"
+    assert payload["status_payload"]["schema_version"] == "agentledger.status.v1"
+    assert payload["feedback_summary"]["schema_version"] == "agentledger.feedback_summary.v1"
+    assert payload["feedback_summary"]["total_entries"] == 1
+    assert payload["alpha_summary"]["available"] is False
+    assert payload["handling"]["raw_evidence_copied"] is False
+    assert payload["handling"]["copied_files"] == []
+    assert payload["errors"] == []
+
+    markdown = markdown_path.read_text(encoding="utf-8")
+    assert "# AgentLedger Alpha Handoff" in markdown
+    assert "Handoff packet should mention feedback." in markdown
+    assert "Raw evidence copied: no" in markdown
+    assert str(latest_dir / "agentledger-report.md") in markdown
+
+
+def test_alpha_handoff_strict_returns_nonzero_for_warning_status(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    output_dir = tmp_path / "strict-handoff"
+    assert (
+        cli.main(
+            [
+                "alpha-handoff",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--output-dir",
+                str(output_dir),
+                "--strict",
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.alpha_handoff.v1"
+    assert payload["ok"] is False
+    assert payload["status"] == "warn"
+    assert payload["status_payload"]["status_exit_code"] == 1
+    assert payload["review"]["review_exit_code"] == 1
+    assert any("Resolve warnings" in action for action in payload["next_actions"])
+    assert (output_dir / "agentledger-alpha-handoff.md").exists()
+    assert (output_dir / "agentledger-alpha-handoff.json").exists()
+
+
+def test_alpha_handoff_missing_latest_json(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "ledger"
+    out.mkdir()
+    output_dir = tmp_path / "handoff"
+
+    assert (
+        cli.main(
+            [
+                "alpha-handoff",
+                "--out",
+                str(out),
+                "--output-dir",
+                str(output_dir),
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.alpha_handoff.v1"
+    assert payload["ok"] is False
+    assert payload["files"] == {}
+    assert "No latest run pointer found:" in payload["errors"][0]
+    assert not output_dir.exists()
+
+
 def test_feedback_records_and_lists_latest_run(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

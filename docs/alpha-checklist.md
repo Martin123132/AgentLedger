@@ -86,6 +86,7 @@ Expected result:
   - `python -m agentledger feedback --out .agentledger --list`
   - `python -m agentledger feedback-summary --out .agentledger`
   - `python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md`
+  - `python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff`
 - Inspect a specific run report:
   - `python -m agentledger inspect-report .agentledger\<run-id>`
 - Check a specific run report:
@@ -126,6 +127,8 @@ Expected result:
   for reviewed feedback evidence.
 - Do not commit feedback exports unless they have been reviewed and are meant
   to be shared.
+- Do not commit alpha handoff packet folders unless they have been reviewed
+  and are meant to be shared.
 - Do not commit `.agentledger-signing-key` or any shared signing key.
 - Do not commit temporary `Temp/agentledger-smoke-*` folders.
 - Keep only source/config/docs files in git history.

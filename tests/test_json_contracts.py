@@ -19,6 +19,7 @@ SCHEMAS = {
     "status": "agentledger.status.v1",
     "alpha": "agentledger.alpha_summary.v1",
     "alpha_summary": "agentledger.alpha_summary.v1",
+    "alpha_handoff": "agentledger.alpha_handoff.v1",
     "feedback": "agentledger.feedback.v1",
     "feedback_summary": "agentledger.feedback_summary.v1",
     "feedback_export": "agentledger.feedback_export_result.v1",
@@ -187,6 +188,20 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
             ],
         ),
         "alpha_summary": _run_json(capsys, ["alpha-summary", "--format", "json", str(alpha_summary)]),
+        "alpha_handoff": _run_json(
+            capsys,
+            [
+                "alpha-handoff",
+                "--format",
+                "json",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--output-dir",
+                str(tmp_path / "alpha-handoff"),
+            ],
+        ),
         "feedback": _run_json(
             capsys,
             [
@@ -335,6 +350,26 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "status_exit_code",
             "report_paths",
             "feedback",
+            "next_actions",
+            "errors",
+        },
+        "alpha_handoff": {
+            "schema_version",
+            "ok",
+            "status",
+            "summary",
+            "generated_at",
+            "agentledger_version",
+            "repo",
+            "out",
+            "latest_run",
+            "output_dir",
+            "files",
+            "review",
+            "status_payload",
+            "feedback_summary",
+            "alpha_summary",
+            "handling",
             "next_actions",
             "errors",
         },
@@ -571,6 +606,22 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
         },
     )
     assert alpha_summary["next_actions"]
+
+    alpha_handoff = json_payloads["alpha_handoff"]
+    assert alpha_handoff["ok"] is True
+    assert alpha_handoff["status"] in {"pass", "warn"}
+    _assert_keys(alpha_handoff["files"], {"markdown", "json"})
+    _assert_keys(
+        alpha_handoff["handling"],
+        {"raw_evidence_copied", "copied_files", "omits", "do_not_commit"},
+    )
+    assert alpha_handoff["handling"]["raw_evidence_copied"] is False
+    assert alpha_handoff["handling"]["copied_files"] == []
+    assert alpha_handoff["review"]["schema_version"] == SCHEMAS["review"]
+    assert alpha_handoff["status_payload"]["schema_version"] == SCHEMAS["status"]
+    assert alpha_handoff["feedback_summary"]["schema_version"] == SCHEMAS["feedback_summary"]
+    _assert_keys(alpha_handoff["alpha_summary"], {"available", "summary_file", "payload", "errors"})
+    assert alpha_handoff["next_actions"]
 
     feedback = json_payloads["feedback"]
     assert feedback["ok"] is True

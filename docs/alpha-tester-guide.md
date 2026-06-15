@@ -100,6 +100,7 @@ python -m agentledger feedback --out .agentledger --note "First confusing thing:
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
+python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --repo . $run
@@ -119,6 +120,7 @@ Expected result:
 - `feedback` records local notes in the latest run folder and lists them back
 - `feedback-summary` rolls local notes up across run folders
 - `feedback-export` writes a reviewed Markdown or JSON feedback handoff without local evidence paths
+- `alpha-handoff` writes a compact Markdown/JSON handoff packet without copying raw evidence
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `inspect-bundle` summarizes manifest, signature presence, reports, command outcome, and pass/warn/block review status without needing a signing key
@@ -144,7 +146,7 @@ Each run includes:
 - a sibling `.zip` bundle with `agentledger-bundle-manifest.json`
 
 Do not commit `.agentledger/`, zip bundles, signing keys, logs, screenshots, or sensitive evidence.
-Only share feedback exports after reviewing their notes.
+Only share feedback exports or alpha handoff packets after reviewing their notes.
 
 ## Feedback focus
 

@@ -161,12 +161,14 @@ def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -
 def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFixture[str]) -> None:
     alpha_help = _help_output(capsys, "alpha")
     alpha_summary_help = _help_output(capsys, "alpha-summary")
+    alpha_handoff_help = _help_output(capsys, "alpha-handoff")
     normalized_alpha_help = " ".join(alpha_help.split())
     normalized_alpha_summary_help = " ".join(alpha_summary_help.split())
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     checklist = (ROOT / "docs" / "alpha-checklist.md").read_text(encoding="utf-8")
+    tester_guide = (ROOT / "docs" / "alpha-tester-guide.md").read_text(encoding="utf-8")
     contracts = (ROOT / "docs" / "json-contracts.md").read_text(encoding="utf-8")
-    docs_text = "\n".join([readme, checklist, contracts])
+    docs_text = "\n".join([readme, checklist, tester_guide, contracts])
 
     for option in ["--json-output", "--privacy-mode", "--strict", "--format"]:
         assert option in alpha_help
@@ -175,6 +177,15 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     assert "--out OUT" in alpha_summary_help
     assert "Defaults to <out>/alpha" in normalized_alpha_summary_help
     assert "summary.json" in normalized_alpha_summary_help
+    assert "--output-dir OUTPUT_DIR" in alpha_handoff_help
+    assert "--strict" in alpha_handoff_help
 
-    for documented in ["--json-output <path>", "--strict", "alpha --format json", "alpha-summary --out .agentledger"]:
+    for documented in [
+        "--json-output <path>",
+        "--strict",
+        "alpha --format json",
+        "alpha-summary --out .agentledger",
+        "alpha-handoff --out .agentledger",
+        "agentledger.alpha_handoff.v1",
+    ]:
         assert documented in docs_text
