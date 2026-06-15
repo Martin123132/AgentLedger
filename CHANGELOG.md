@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a guarded final-release-notes helper that builds publish-ready GitHub
+  prerelease notes from clean release-check evidence and real CI run links.
 - Added a release-check Markdown summary renderer and wired the manual Release
   Readiness workflow to append it to the GitHub Actions step summary.
 - Added a cross-platform release metadata check for version, license, changelog,
