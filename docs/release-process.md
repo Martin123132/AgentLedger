@@ -76,6 +76,7 @@ signing keys.
 
 ```powershell
 python scripts/check_release_metadata.py
+python scripts/release_readiness_report.py --format markdown --output $env:TEMP\agentledger-release-readiness-report.md
 python scripts/release_notes.py --version 0.1.8a0 --check
 python -m pytest
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
@@ -92,6 +93,10 @@ summary, including the `agentledger.release_metadata_check.v1` and
 `agentledger.release_process_check.v1` payloads, that can be referenced from PR
 or release notes without parsing console output. `scripts/release_check_summary.py`
 renders that JSON into a short Markdown summary for review notes or handoffs.
+Use `scripts/release_readiness_report.py` for a fast preflight of metadata,
+release-process alignment, release notes source, and git hygiene before running
+the heavier wheel, pytest, install, and smoke checks. The report JSON uses
+`agentledger.release_readiness_report.v1`.
 
 If `-RequireCleanGit` fails because release prep changes are uncommitted, commit
 the intended source changes and rerun the command from that clean branch.
