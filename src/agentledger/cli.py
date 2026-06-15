@@ -1233,6 +1233,19 @@ def _alpha_required_setup_errors(doctor_report: dict) -> list[str]:
     return errors
 
 
+def _alpha_required_setup_next_actions(doctor_report: dict) -> list[str]:
+    actions = []
+    for check in doctor_report.get("checks") or []:
+        if not isinstance(check, dict) or check.get("ok") is True or check.get("required") is not True:
+            continue
+        name = check.get("name") or "unknown"
+        hint = str(check.get("hint") or "").strip()
+        if hint and hint != "No action needed.":
+            actions.append(f"Fix {name}: {hint}")
+    actions.append("After fixing required setup, run agentledger alpha again.")
+    return actions
+
+
 def _alpha_payload(
     *,
     ok: bool,
@@ -1345,7 +1358,7 @@ def _handle_alpha(args: argparse.Namespace) -> int:
             status_summary="Required setup is blocked; fix doctor errors before running alpha again.",
             status_exit_code=2,
             errors=errors,
-            next_actions=["Fix required doctor checks, then run agentledger alpha again."],
+            next_actions=_alpha_required_setup_next_actions(doctor_report),
         )
         _apply_alpha_summary_write_errors(
             payload,

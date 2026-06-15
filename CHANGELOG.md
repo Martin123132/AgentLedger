@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added doctor repair hints to blocked `agentledger alpha` summary next actions.
 - Added actionable `hint` text to `agentledger doctor` setup checks.
 - Hardened `scripts/alpha.ps1` summary write failures so invalid `-JsonOutput`
   paths report a clear error and exit 2 instead of stopping mid-output.
