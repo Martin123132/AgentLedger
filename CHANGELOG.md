@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a release command index generator for the ordered release-day command
+  flow, artifact filenames, placeholders, and handoff formats.
 - Added a release artifact doctor for checking final-notes, post-release, and
   evidence-packet inputs before running release handoff commands.
 - Added a post-release check wrapper that runs GitHub release validation and

@@ -24,6 +24,17 @@ Expected result:
 - The working tree is clean before release prep starts.
 - `python -m pytest` passes.
 
+Generate an operator command index for the exact version and date when you want
+one ordered handoff:
+
+```powershell
+python scripts/release_command_index.py --version 0.1.8a0 --date 2026-06-14 --format markdown --output $env:TEMP\agentledger-release-command-index.md
+```
+
+The command index reports `agentledger.release_command_index.v1`, the expected
+artifact filenames, placeholder values that must be replaced, and the
+release-day command order.
+
 ## 2. Prepare source files
 
 Run a local rehearsal first. It writes draft release notes and summaries outside
