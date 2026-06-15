@@ -137,6 +137,41 @@ Stable fields:
 Each feedback entry includes `schema_version`, `id`, `created_at`, `run_id`,
 `run_dir`, `category`, `severity`, `source`, `note`, and `redacted`.
 
+### `agentledger alpha-handoff --format json --output-dir <dir>`
+
+Schema: `agentledger.alpha_handoff.v1`
+
+Use this after a capture or alpha run to write a compact reviewed handoff
+packet without copying raw `.agentledger` folders, transcript files, diff
+files, zip evidence bundles, or signing keys.
+
+Stable fields:
+
+- `ok`: boolean, true when the packet was written and the latest status is
+  acceptable for the selected strictness
+- `status`: latest pass/warn/block status
+- `summary`: latest review summary
+- `generated_at`
+- `agentledger_version`
+- `repo`
+- `out`
+- `latest_run`
+- `output_dir`
+- `files`: written `markdown` and `json` packet paths
+- `review`: embedded `agentledger.review.v1` payload
+- `status_payload`: embedded `agentledger.status.v1` payload
+- `feedback_summary`: embedded `agentledger.feedback_summary.v1` payload
+- `alpha_summary`: optional loaded `agentledger.alpha_summary.v1` payload plus
+  availability and validation errors
+- `handling`: proof that no raw evidence files were copied, plus do-not-commit
+  handling notes
+- `next_actions`
+- `errors`
+
+Use `--strict` when warning status should make the command exit nonzero.
+Review the packet before sharing because it contains local evidence paths and
+feedback notes, even though it does not copy raw evidence.
+
 ### `agentledger feedback-summary --format json`
 
 Schema: `agentledger.feedback_summary.v1`

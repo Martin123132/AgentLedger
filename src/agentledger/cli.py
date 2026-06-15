@@ -70,6 +70,9 @@ SIGNING_KEY_SCHEMA = "agentledger.signing_key.v1"
 SIGN_BUNDLE_SCHEMA = "agentledger.sign_bundle.v1"
 INSPECT_BUNDLE_SCHEMA = "agentledger.inspect_bundle.v1"
 COMPARE_SCHEMA = "agentledger.compare.v1"
+ALPHA_HANDOFF_SCHEMA = "agentledger.alpha_handoff.v1"
+ALPHA_HANDOFF_MARKDOWN = "agentledger-alpha-handoff.md"
+ALPHA_HANDOFF_JSON = "agentledger-alpha-handoff.json"
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
 )
@@ -196,6 +199,16 @@ def build_parser() -> argparse.ArgumentParser:
     alpha_summary.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
     alpha_summary.add_argument("--out", default=None, help="Evidence output directory.")
     alpha_summary.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    alpha_handoff = sub.add_parser("alpha-handoff", help="Write a reviewed alpha handoff packet.")
+    alpha_handoff.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
+    alpha_handoff.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    alpha_handoff.add_argument("--out", default=None, help="Evidence output directory.")
+    alpha_handoff.add_argument("--output-dir", required=True, help="Directory to write the handoff Markdown and JSON files.")
+    alpha_handoff.add_argument("--feedback-limit", type=int, default=20, help="Maximum feedback entries to include.")
+    alpha_handoff.add_argument("--history-limit", type=int, default=5, help="Recent runs to include for review context.")
+    alpha_handoff.add_argument("--strict", action="store_true", help="Return nonzero when the latest status has warnings.")
+    alpha_handoff.add_argument("--format", choices=["text", "json"], default="text", help="Command output format.")
 
     feedback = sub.add_parser("feedback", help="Record or list alpha feedback for a run.")
     feedback.add_argument("run_dir", nargs="?", help="Path to run directory. Defaults to latest run.")
@@ -1616,6 +1629,47 @@ def _status_error(
     return 2
 
 
+def _build_status_payload_for_latest(
+    *,
+    repo: Path,
+    out_root: Path,
+    latest_dir: Path,
+    config: AgentLedgerConfig,
+    feedback_limit: int,
+    allow_warnings: bool,
+) -> dict:
+    paths = _latest_paths(latest_dir)
+    missing_reports = _missing_report_paths(latest_dir)
+    check = build_check(latest_dir, _check_policy_from_config(config))
+    feedback_errors: list[str] = []
+    try:
+        feedback_summary = summarize_feedback(out_root=out_root, limit=feedback_limit)
+        feedback = _status_feedback(feedback_summary, latest_dir)
+        feedback_errors = feedback["errors"]
+    except FeedbackError as exc:
+        feedback_errors = [str(exc)]
+        feedback = _empty_status_feedback(feedback_errors)
+
+    status = str(check.get("status") or "unknown")
+    errors = missing_reports + feedback_errors
+    status_exit_code = 2 if errors else check_exit_code(status, allow_warnings)
+    next_actions = _status_next_actions(status, feedback, errors)
+    return _status_payload(
+        ok=check.get("ok") is True and not errors,
+        status=status,
+        repo=repo,
+        out_root=out_root,
+        latest_dir=latest_dir,
+        paths=paths,
+        missing_reports=missing_reports,
+        check=check,
+        feedback=feedback,
+        next_actions=next_actions,
+        errors=errors,
+        status_exit_code=status_exit_code,
+    )
+
+
 def _handle_status(args: argparse.Namespace) -> int:
     repo = Path(args.repo or ".").resolve()
     try:
@@ -1630,36 +1684,21 @@ def _handle_status(args: argparse.Namespace) -> int:
     if latest_dir is None:
         return _status_error(args, repo, errors, out_root)
 
-    paths = _latest_paths(latest_dir)
-    missing_reports = _missing_report_paths(latest_dir)
-    check = build_check(latest_dir, _check_policy_from_config(config))
-    feedback_errors: list[str] = []
-    try:
-        feedback_summary = summarize_feedback(out_root=out_root, limit=args.feedback_limit)
-        feedback = _status_feedback(feedback_summary, latest_dir)
-        feedback_errors = feedback["errors"]
-    except FeedbackError as exc:
-        feedback_errors = [str(exc)]
-        feedback = _empty_status_feedback(feedback_errors)
-
-    status = str(check.get("status") or "unknown")
-    errors = missing_reports + feedback_errors
-    status_exit_code = 2 if errors else check_exit_code(status, _allow_warnings_from_config(args, config))
-    next_actions = _status_next_actions(status, feedback, errors)
-    payload = _status_payload(
-        ok=check.get("ok") is True and not errors,
-        status=status,
+    payload = _build_status_payload_for_latest(
         repo=repo,
         out_root=out_root,
         latest_dir=latest_dir,
-        paths=paths,
-        missing_reports=missing_reports,
-        check=check,
-        feedback=feedback,
-        next_actions=next_actions,
-        errors=errors,
-        status_exit_code=status_exit_code,
+        config=config,
+        feedback_limit=args.feedback_limit,
+        allow_warnings=_allow_warnings_from_config(args, config),
     )
+    paths = payload["paths"]
+    check = payload["check"]
+    feedback = payload["feedback"]
+    status = payload["status"]
+    errors = payload["errors"]
+    next_actions = payload["next_actions"]
+    status_exit_code = int(payload["status_exit_code"])
 
     if getattr(args, "format", "text") == "json":
         print(json.dumps(payload, indent=2))
@@ -2923,6 +2962,35 @@ def _write_rendered_output(path: Path, rendered: str) -> None:
     path.write_text(rendered.rstrip("\n") + "\n", encoding="utf-8")
 
 
+def _build_review_payload(
+    *,
+    run_dir: Path,
+    config: AgentLedgerConfig,
+    history_limit: int,
+    allow_warnings: bool,
+    output_path: Path | None = None,
+) -> dict:
+    result = build_check(run_dir, _check_policy_from_config(config))
+    paths = _review_paths(run_dir)
+    history = _review_history(run_dir, history_limit)
+    comparison = _review_previous_comparison(run_dir)
+    exit_code = check_exit_code(result["status"], allow_warnings)
+    return {
+        "schema_version": "agentledger.review.v1",
+        "status": result["status"],
+        "ok": result["ok"],
+        "summary": result["summary"],
+        "run_dir": result["run_dir"],
+        "command_exit_code": result.get("exit_code"),
+        "paths": paths,
+        "history": history,
+        "comparison": comparison,
+        "check": result,
+        "output": str(output_path) if output_path is not None else None,
+        "review_exit_code": exit_code,
+    }
+
+
 def _handle_review(args: argparse.Namespace) -> int:
     if args.history_limit < 0:
         print("--history-limit must be zero or greater.")
@@ -2935,30 +3003,22 @@ def _handle_review(args: argparse.Namespace) -> int:
     except ConfigError as exc:
         print(f"Config error: {exc}")
         return 2
-    policy = _check_policy_from_config(config)
     allow_warnings = _allow_warnings_from_config(args, config)
-    result = build_check(run_dir, policy)
-    paths = _review_paths(run_dir)
-    history = _review_history(run_dir, args.history_limit)
-    comparison = _review_previous_comparison(run_dir)
-    exit_code = check_exit_code(result["status"], allow_warnings)
     output_path = Path(args.output).expanduser().resolve() if getattr(args, "output", None) else None
+    payload = _build_review_payload(
+        run_dir=run_dir,
+        config=config,
+        history_limit=args.history_limit,
+        allow_warnings=allow_warnings,
+        output_path=output_path,
+    )
+    result = payload["check"]
+    paths = payload["paths"]
+    history = payload["history"]
+    comparison = payload["comparison"]
+    exit_code = int(payload["review_exit_code"])
     output_format = getattr(args, "format", "text")
     if output_format == "json":
-        payload = {
-            "schema_version": "agentledger.review.v1",
-            "status": result["status"],
-            "ok": result["ok"],
-            "summary": result["summary"],
-            "run_dir": result["run_dir"],
-            "command_exit_code": result.get("exit_code"),
-            "paths": paths,
-            "history": history,
-            "comparison": comparison,
-            "check": result,
-            "output": str(output_path) if output_path is not None else None,
-            "review_exit_code": exit_code,
-        }
         rendered = json.dumps(payload, indent=2)
     elif output_format == "markdown":
         rendered = _format_review_markdown(result, paths, history, comparison)
@@ -2972,6 +3032,340 @@ def _handle_review(args: argparse.Namespace) -> int:
             return 2
     print(rendered)
     return exit_code
+
+
+def _alpha_handoff_error(
+    args: argparse.Namespace,
+    *,
+    repo: Path | None,
+    output_dir: Path | None,
+    errors: list[str],
+    out_root: Path | None = None,
+) -> int:
+    if getattr(args, "format", "text") == "json":
+        payload = {
+            "schema_version": ALPHA_HANDOFF_SCHEMA,
+            "ok": False,
+            "status": "unknown",
+            "summary": "Alpha handoff could not be written.",
+            "generated_at": utc_now_iso(),
+            "agentledger_version": f"agentledger {__version__}",
+            "repo": str(repo) if repo is not None else None,
+            "out": str(out_root) if out_root is not None else None,
+            "latest_run": None,
+            "output_dir": str(output_dir) if output_dir is not None else None,
+            "files": {},
+            "review": None,
+            "status_payload": None,
+            "feedback_summary": None,
+            "alpha_summary": None,
+            "handling": _alpha_handoff_handling(),
+            "next_actions": ["Fix the reported handoff errors, then run agentledger alpha-handoff again."],
+            "errors": errors,
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        for message in errors:
+            print(message)
+    return 2
+
+
+def _alpha_handoff_handling() -> dict[str, object]:
+    return {
+        "raw_evidence_copied": False,
+        "copied_files": [],
+        "omits": [
+            ".agentledger run folders",
+            "zip evidence bundles",
+            "command transcript files",
+            "diff files",
+            "signing keys",
+        ],
+        "do_not_commit": [
+            ".agentledger/",
+            "*.zip",
+            "signing keys",
+            "unreviewed handoff packets",
+        ],
+    }
+
+
+def _alpha_summary_for_handoff(out_root: Path) -> dict:
+    summary_path = (out_root / ALPHA_SUMMARY_FILENAME).resolve()
+    if not summary_path.exists():
+        return {
+            "available": False,
+            "summary_file": str(summary_path),
+            "payload": None,
+            "errors": [],
+        }
+    payload, load_errors = _load_alpha_summary(summary_path)
+    validation_errors = _validate_alpha_summary(payload) if payload is not None else []
+    errors = load_errors + validation_errors
+    return {
+        "available": not errors,
+        "summary_file": str(summary_path),
+        "payload": payload if not errors else None,
+        "errors": errors,
+    }
+
+
+def _alpha_handoff_next_actions(status_payload: dict, feedback_summary: dict, strict: bool) -> list[str]:
+    actions = [str(action) for action in status_payload.get("next_actions") or []]
+    if int(feedback_summary.get("total_entries") or 0) > 0:
+        actions.append("Review feedback entries before sharing the handoff packet.")
+    if strict and status_payload.get("status") == "warn":
+        actions.append("Resolve warnings or rerun alpha-handoff without --strict for a warning-tolerant handoff.")
+    actions.append("Share only the handoff Markdown/JSON after review; do not attach raw .agentledger evidence unless requested.")
+    deduped: list[str] = []
+    for action in actions:
+        if action not in deduped:
+            deduped.append(action)
+    return deduped
+
+
+def _format_alpha_handoff_markdown(payload: dict) -> str:
+    review = payload.get("review") if isinstance(payload.get("review"), dict) else {}
+    status_payload = payload.get("status_payload") if isinstance(payload.get("status_payload"), dict) else {}
+    feedback = payload.get("feedback_summary") if isinstance(payload.get("feedback_summary"), dict) else {}
+    alpha_summary = payload.get("alpha_summary") if isinstance(payload.get("alpha_summary"), dict) else {}
+    paths = review.get("paths") if isinstance(review.get("paths"), dict) else {}
+    comparison = review.get("comparison") if isinstance(review.get("comparison"), dict) else {}
+    next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
+    errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+
+    lines = [
+        "# AgentLedger Alpha Handoff",
+        "",
+        f"- Status: {payload.get('status') or 'unknown'}",
+        f"- Summary: {payload.get('summary') or 'No summary.'}",
+        f"- Generated: {payload.get('generated_at')}",
+        f"- Repo: {_markdown_inline(payload.get('repo') or 'n/a')}",
+        f"- Evidence output: {_markdown_inline(payload.get('out') or 'n/a')}",
+        f"- Latest run: {_markdown_inline(payload.get('latest_run') or 'n/a')}",
+        "",
+        "## Packet Files",
+        "",
+    ]
+    files = payload.get("files") if isinstance(payload.get("files"), dict) else {}
+    for label in ("markdown", "json"):
+        if files.get(label):
+            lines.append(f"- {label}: {_markdown_inline(files[label])}")
+
+    lines.extend(
+        [
+            "",
+            "## Review",
+            "",
+            f"- Review status: {review.get('status') or 'unknown'}",
+            f"- Review exit code: {review.get('review_exit_code') if review.get('review_exit_code') is not None else 'n/a'}",
+        ]
+    )
+    if paths:
+        lines.extend(
+            [
+                f"- Markdown report: {_markdown_inline(paths.get('markdown') or 'n/a')}",
+                f"- JSON report: {_markdown_inline(paths.get('json') or 'n/a')}",
+                f"- HTML report: {_markdown_inline(paths.get('html') or 'n/a')}",
+            ]
+        )
+        if paths.get("zip"):
+            lines.append(f"- Zip bundle: {_markdown_inline(paths['zip'])}")
+    if comparison.get("available") is True and isinstance(comparison.get("compare"), dict):
+        compare_payload = comparison["compare"]
+        changed = compare_payload.get("changed_files") if isinstance(compare_payload.get("changed_files"), dict) else {}
+        lines.extend(
+            [
+                "",
+                "## Previous Comparison",
+                "",
+                f"- Previous run: {_markdown_inline(comparison.get('previous_run') or 'n/a')}",
+                f"- Changed files: {changed.get('old', 'n/a')} -> {changed.get('new', 'n/a')} ({changed.get('delta_text', 'n/a')})",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Status",
+            "",
+            f"- Status command exit code: {status_payload.get('status_exit_code') if status_payload.get('status_exit_code') is not None else 'n/a'}",
+        ]
+    )
+    status_feedback = status_payload.get("feedback") if isinstance(status_payload.get("feedback"), dict) else {}
+    lines.append(
+        f"- Latest feedback count: {status_feedback.get('latest_run_entries', 0)} "
+        f"of {status_feedback.get('total_entries', 0)} total entries"
+    )
+
+    lines.extend(
+        [
+            "",
+            "## Feedback",
+            "",
+            (
+                f"- Entries: {feedback.get('returned_entries', 0)} shown / "
+                f"{feedback.get('total_entries', 0)} total across {feedback.get('runs_with_feedback', 0)} runs"
+            ),
+        ]
+    )
+    entries = feedback.get("entries") if isinstance(feedback.get("entries"), list) else []
+    if entries:
+        lines.append("- Recent feedback:")
+        for entry in entries:
+            lines.append(f"  - {_format_feedback_summary_entry(entry).removeprefix('- ')}")
+    else:
+        lines.append("- Recent feedback: none")
+
+    lines.extend(
+        [
+            "",
+            "## Alpha Summary",
+            "",
+            f"- Available: {'yes' if alpha_summary.get('available') else 'no'}",
+            f"- Summary file: {_markdown_inline(alpha_summary.get('summary_file') or 'n/a')}",
+        ]
+    )
+    if alpha_summary.get("errors"):
+        lines.append("- Alpha summary errors:")
+        for error in alpha_summary["errors"]:
+            lines.append(f"  - {error}")
+
+    lines.extend(["", "## Handling", ""])
+    handling = payload.get("handling") if isinstance(payload.get("handling"), dict) else {}
+    lines.append(f"- Raw evidence copied: {'yes' if handling.get('raw_evidence_copied') else 'no'}")
+    for item in handling.get("omits") or []:
+        lines.append(f"- Omits: {item}")
+
+    if next_actions:
+        lines.extend(["", "## Next", ""])
+        for action in next_actions:
+            lines.append(f"- {action}")
+    if errors:
+        lines.extend(["", "## Errors", ""])
+        for error in errors:
+            lines.append(f"- {error}")
+    return "\n".join(lines)
+
+
+def _handle_alpha_handoff(args: argparse.Namespace) -> int:
+    repo = Path(args.repo or ".").resolve()
+    output_dir = Path(args.output_dir).expanduser().resolve()
+    if args.feedback_limit <= 0:
+        return _alpha_handoff_error(args, repo=repo, output_dir=output_dir, errors=["--feedback-limit must be greater than zero."])
+    if args.history_limit < 0:
+        return _alpha_handoff_error(args, repo=repo, output_dir=output_dir, errors=["--history-limit must be zero or greater."])
+    if output_dir.exists() and not output_dir.is_dir():
+        return _alpha_handoff_error(args, repo=repo, output_dir=output_dir, errors=[f"Output path is not a directory: {output_dir}"])
+
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return _alpha_handoff_error(args, repo=repo, output_dir=output_dir, errors=[f"Config error: {exc}"])
+    out_root = _resolve_out_root(args, repo, config)
+    latest_dir, latest_errors = _resolve_latest_run_dir(out_root)
+    if latest_dir is None:
+        return _alpha_handoff_error(args, repo=repo, output_dir=output_dir, out_root=out_root, errors=latest_errors)
+
+    allow_warnings = not args.strict
+    status_payload = _build_status_payload_for_latest(
+        repo=repo,
+        out_root=out_root,
+        latest_dir=latest_dir,
+        config=config,
+        feedback_limit=args.feedback_limit,
+        allow_warnings=allow_warnings,
+    )
+    review_payload = _build_review_payload(
+        run_dir=latest_dir,
+        config=config,
+        history_limit=args.history_limit,
+        allow_warnings=allow_warnings,
+    )
+    try:
+        feedback_summary = summarize_feedback(out_root=out_root, limit=args.feedback_limit)
+    except FeedbackError as exc:
+        feedback_summary = {
+            "schema_version": FEEDBACK_SUMMARY_SCHEMA,
+            "ok": False,
+            "out": str(out_root),
+            "filters": {"category": None, "severity": None, "limit": args.feedback_limit},
+            "total_entries": 0,
+            "returned_entries": 0,
+            "run_count": 0,
+            "runs_with_feedback": 0,
+            "categories": {},
+            "severities": {},
+            "runs": [],
+            "entries": [],
+            "errors": [str(exc)],
+        }
+    alpha_summary = _alpha_summary_for_handoff(out_root)
+    errors = [str(error) for error in status_payload.get("errors") or []]
+    if not feedback_summary.get("ok", False):
+        errors.extend(str(error) for error in feedback_summary.get("errors") or [])
+    errors.extend(str(error) for error in alpha_summary.get("errors") or [])
+    status_exit_value = status_payload.get("status_exit_code")
+    review_exit_value = review_payload.get("review_exit_code")
+    status_exit_code = int(status_exit_value) if status_exit_value is not None else 2
+    review_exit_code = int(review_exit_value) if review_exit_value is not None else 2
+    if review_exit_code != status_exit_code and review_exit_code != 0:
+        errors.append(f"Review exited {review_exit_code}; status exited {status_exit_code}.")
+
+    markdown_path = output_dir / ALPHA_HANDOFF_MARKDOWN
+    json_path = output_dir / ALPHA_HANDOFF_JSON
+    next_actions = _alpha_handoff_next_actions(status_payload, feedback_summary, args.strict)
+    ok = not errors and status_exit_code == 0 and review_exit_code == 0
+    payload = {
+        "schema_version": ALPHA_HANDOFF_SCHEMA,
+        "ok": ok,
+        "status": status_payload.get("status") or "unknown",
+        "summary": (status_payload.get("check") or {}).get("summary") or "No status summary.",
+        "generated_at": utc_now_iso(),
+        "agentledger_version": f"agentledger {__version__}",
+        "repo": str(repo),
+        "out": str(out_root),
+        "latest_run": str(latest_dir),
+        "output_dir": str(output_dir),
+        "files": {
+            "markdown": str(markdown_path),
+            "json": str(json_path),
+        },
+        "review": review_payload,
+        "status_payload": status_payload,
+        "feedback_summary": feedback_summary,
+        "alpha_summary": alpha_summary,
+        "handling": _alpha_handoff_handling(),
+        "next_actions": next_actions,
+        "errors": errors,
+    }
+    markdown = _format_alpha_handoff_markdown(payload)
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        _write_rendered_output(markdown_path, markdown)
+        _write_rendered_output(json_path, json.dumps(payload, indent=2))
+    except OSError as exc:
+        return _alpha_handoff_error(
+            args,
+            repo=repo,
+            output_dir=output_dir,
+            out_root=out_root,
+            errors=[f"Unable to write alpha handoff packet in {output_dir}: {exc}"],
+        )
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"Alpha handoff written: {output_dir}")
+        print(f"Markdown: {markdown_path}")
+        print(f"JSON: {json_path}")
+        print(f"Status: {payload['status']}")
+        print(f"Summary: {payload['summary']}")
+        print("Raw evidence copied: no")
+        print("Next:")
+        for action in next_actions:
+            print(f"- {action}")
+    return 0 if ok else 2
 
 
 def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandResult:
@@ -3150,6 +3544,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_alpha(args)
     if args.command_name == "alpha-summary":
         return _handle_alpha_summary(args)
+    if args.command_name == "alpha-handoff":
+        return _handle_alpha_handoff(args)
     if args.command_name == "feedback":
         return _handle_feedback(args)
     if args.command_name == "feedback-summary":
