@@ -2343,6 +2343,63 @@ def test_verify_bundle_requires_manifest(tmp_path: Path, capsys) -> None:
     assert f"Missing {BUNDLE_MANIFEST_NAME} in bundle." in output
 
 
+def test_signing_key_reports_ready_for_ignored_repo_key(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    (repo / ".gitignore").write_text(".agentledger-signing-key*\n", encoding="utf-8")
+    key_file = repo / ".agentledger-signing-key"
+    key_file.write_text("0123456789abcdef0123456789abcdef\n", encoding="utf-8")
+
+    assert cli.main(["signing-key", "--repo", str(repo), "--key-file", str(key_file)]) == 0
+
+    output = capsys.readouterr().out
+    assert "AgentLedger signing key: ready" in output
+    assert f"Key file: {key_file.resolve()}" in output
+    assert "Inside repo: yes" in output
+    assert "Git ignored: yes" in output
+    assert "Git tracked: no" in output
+    assert "0123456789abcdef" not in output
+
+
+def test_signing_key_json_blocks_unignored_repo_key(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    key_file = repo / "local-signing-key.txt"
+    key_file.write_text("0123456789abcdef0123456789abcdef\n", encoding="utf-8")
+
+    assert cli.main(["signing-key", "--repo", str(repo), "--key-file", str(key_file), "--format", "json"]) == 2
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.signing_key.v1"
+    assert payload["ok"] is False
+    assert payload["key_file"] == str(key_file.resolve())
+    assert payload["repo"] == str(repo.resolve())
+    assert payload["exists"] is True
+    assert payload["file"] is True
+    assert payload["size_bytes"] == 32
+    assert payload["empty"] is False
+    assert payload["inside_repo"] is True
+    assert payload["ignored_by_git"] is False
+    assert payload["tracked_by_git"] is False
+    assert any("not ignored by git" in error for error in payload["errors"])
+    assert payload["next_actions"]
+    assert "0123456789abcdef" not in json.dumps(payload)
+
+
+def test_signing_key_json_blocks_missing_key(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    key_file = tmp_path / "missing-signing-key.txt"
+
+    assert cli.main(["signing-key", "--repo", str(repo), "--key-file", str(key_file), "--format", "json"]) == 2
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.signing_key.v1"
+    assert payload["ok"] is False
+    assert payload["exists"] is False
+    assert payload["file"] is False
+    assert payload["size_bytes"] is None
+    assert payload["empty"] is None
+    assert any("Key file not found" in error for error in payload["errors"])
+
+
 def test_sign_bundle_adds_and_verifies_hmac_signature(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

@@ -25,6 +25,7 @@ SCHEMAS = {
     "inspect_report": "agentledger.inspect_report.v1",
     "check": "agentledger.check.v1",
     "review": "agentledger.review.v1",
+    "signing_key": "agentledger.signing_key.v1",
     "sign_bundle": "agentledger.sign_bundle.v1",
     "verify_bundle": "agentledger.verify_bundle.v1",
     "compare": "agentledger.compare.v1",
@@ -224,6 +225,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "check": _run_json(capsys, ["check", "--format", "json", "--allow-warnings", str(second)]),
         "review": _run_json(capsys, ["review", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
         "verify_bundle": _run_json(capsys, ["verify-bundle", "--format", "json", f"{second}.zip"]),
+        "signing_key": _run_json(capsys, ["signing-key", "--format", "json", "--repo", str(repo), "--key-file", str(signature_key)]),
         "sign_bundle": _run_json(capsys, ["sign-bundle", "--format", "json", f"{second}.zip", "--key-file", str(signature_key)]),
         "compare": _run_json(capsys, ["compare", "--format", "json", str(first), str(second)]),
     }
@@ -407,6 +409,23 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "paths",
             "check",
             "review_exit_code",
+        },
+        "signing_key": {
+            "schema_version",
+            "ok",
+            "key_file",
+            "repo",
+            "git_root",
+            "exists",
+            "file",
+            "size_bytes",
+            "empty",
+            "inside_repo",
+            "ignored_by_git",
+            "tracked_by_git",
+            "warnings",
+            "errors",
+            "next_actions",
         },
         "sign_bundle": {
             "schema_version",
@@ -601,6 +620,17 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     review = json_payloads["review"]
     _assert_keys(review["paths"], {"markdown", "json", "html", "zip"})
     assert review["check"]["schema_version"] == SCHEMAS["check"]
+
+    signing_key = json_payloads["signing_key"]
+    assert signing_key["ok"] is True
+    assert signing_key["exists"] is True
+    assert signing_key["file"] is True
+    assert signing_key["empty"] is False
+    assert signing_key["inside_repo"] is False
+    assert signing_key["ignored_by_git"] is None
+    assert signing_key["tracked_by_git"] is None
+    assert signing_key["errors"] == []
+    assert signing_key["next_actions"]
 
     sign_bundle = json_payloads["sign_bundle"]
     assert sign_bundle["ok"] is True

@@ -262,6 +262,33 @@ Stable fields:
 Signature status values are `not_present`, `present_unverified`, `verified`, or
 `invalid`.
 
+### `agentledger signing-key --format json --key-file <key>`
+
+Schema: `agentledger.signing_key.v1`
+
+Use this to check shared signing-key file safety before signing bundles. The
+command reports file metadata and git hygiene status only; it does not print
+the key or a digest of the key.
+
+Stable fields:
+
+- `ok`: boolean
+- `key_file`: resolved key-file path
+- `repo`: resolved target repository path
+- `git_root`: resolved git root when available
+- `exists`: whether the key path exists
+- `file`: whether the key path is a regular file
+- `size_bytes`: trimmed key length, or `null` when unavailable
+- `empty`: whether the trimmed key is empty, or `null` when unavailable
+- `inside_repo`: whether the key path is under the target git root
+- `ignored_by_git`: whether git ignore rules cover the key, or `null` when not
+  checked
+- `tracked_by_git`: whether git already tracks the key, or `null` when not
+  checked
+- `warnings`: non-blocking hygiene warnings
+- `errors`: blocking issues such as missing, empty, tracked, or unignored keys
+- `next_actions`: concrete follow-up steps
+
 ### `agentledger sign-bundle --format json <bundle.zip> --key-file <key>`
 
 Schema: `agentledger.sign_bundle.v1`
