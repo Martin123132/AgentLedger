@@ -39,6 +39,7 @@ def artifact_paths(release_label: str) -> dict[str, str]:
     return {
         "release_rehearsal_dir": rehearsal_dir,
         "release_rehearsal_manifest": f"{rehearsal_dir}\\release-rehearsal-manifest.json",
+        "release_rehearsal_receipt": f"{rehearsal_dir}\\release-rehearsal-receipt.md",
         "draft_release_notes": _temp_path(f"agentledger-{release_label}-release.md"),
         "release_readiness_report": _temp_path("agentledger-release-readiness-report.md"),
         "release_check_json": _temp_path("agentledger-release-check.json"),
@@ -99,6 +100,10 @@ def build_release_command_index(
                 (
                     f"python scripts/release_artifact_doctor.py --version {package_version} "
                     f"--stage rehearsal --rehearsal-manifest {artifacts['release_rehearsal_manifest']}"
+                ),
+                (
+                    f"python scripts/release_rehearsal_receipt.py {artifacts['release_rehearsal_manifest']} "
+                    f"--format markdown --output {artifacts['release_rehearsal_receipt']}"
                 ),
                 (
                     f"python scripts/prepare_release.py --version {package_version} "

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a release rehearsal receipt for summarizing verified rehearsal
+  manifests, key artifacts, doctor status, and next release-prep commands.
 - Added a rehearsal stage to the release artifact doctor for validating saved
   release rehearsal manifests and output folders.
 - Added a release rehearsal manifest verifier for checking saved release dry-run
