@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hardened `agentledger alpha` so missing or non-git target repos return a
+  normal alpha summary instead of traceback-style failures.
 - Added `agentledger alpha` as a cross-platform core alpha pass that writes the
   same machine-readable alpha summary schema.
 - Added `agentledger alpha-summary` to inspect and validate one-command alpha
