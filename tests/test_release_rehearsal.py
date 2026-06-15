@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import sys
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "rehearse_release.py"
@@ -116,6 +118,42 @@ def test_rehearsal_reports_release_prep_failure(tmp_path: Path) -> None:
     assert result["steps"][-1]["name"] == "Release prep dry run"
     assert "Unreleased section is empty" in result["steps"][-1]["detail"]
     assert Path(result["summary_json"]).exists()
+
+
+def test_rehearsal_records_release_check_summary_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_release_repo(tmp_path)
+
+    def fake_release_check(repo_root: Path, output_dir: Path) -> dict[str, object]:
+        json_path = output_dir / "release-check.json"
+        summary_path = output_dir / "release-check-summary.md"
+        log_path = output_dir / "release-check.log"
+        json_path.write_text('{"ok": true, "status": "ready"}\n', encoding="utf-8")
+        summary_path.write_text("# AgentLedger Release Readiness\n", encoding="utf-8")
+        log_path.write_text("release-check passed\n", encoding="utf-8")
+        return {
+            "json": str(json_path),
+            "summary": str(summary_path),
+            "log": str(log_path),
+            "status": "ready",
+            "steps": 3,
+        }
+
+    monkeypatch.setattr(rehearse_release, "run_release_check", fake_release_check)
+
+    result = rehearse_release.rehearse_release(
+        repo_root=tmp_path,
+        version="0.1.8a0",
+        release_date="2026-06-15",
+        output_dir=tmp_path / "rehearsal",
+        require_clean_git=False,
+        run_full_release_check=True,
+    )
+
+    assert result["ok"] is True
+    assert result["release_check_summary"] == str(tmp_path / "rehearsal" / "release-check-summary.md")
+    summary_text = Path(result["summary_markdown"]).read_text(encoding="utf-8")
+    assert f"- Release-check summary: {result['release_check_summary']}" in summary_text
+    assert "Use the release-check JSON and summary paths" in summary_text
 
 
 def test_main_skip_release_check(tmp_path: Path, capsys) -> None:

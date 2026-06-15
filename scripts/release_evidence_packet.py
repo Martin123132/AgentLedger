@@ -185,7 +185,6 @@ def build_release_evidence_packet(
     )
 
     metadata = _as_mapping(release_check_payload.get("release_metadata"), "release metadata")
-    metadata_checks = _as_list(metadata.get("checks"), "release metadata checks")
     release_steps = _as_list(release_check_payload.get("steps"), "release-check steps")
     github_checks = _as_list(github_release_check_payload.get("checks"), "GitHub release check checks")
     release = _as_mapping(github_release_check_payload.get("release"), "GitHub release")

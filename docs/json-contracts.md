@@ -280,6 +280,117 @@ Stable fields:
 
 ## Script Summaries
 
+### `scripts/rehearse_release.py`
+
+Schema: `agentledger.release_rehearsal.v1`
+
+Use this to dry-run release prep, draft release notes outside the repo, run the
+release readiness check, and write a local release-day checklist.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`
+- `repo`
+- `package_version`
+- `release_version`
+- `release_date`
+- `output_dir`
+- `draft_release_notes`
+- `release_check_json`
+- `release_check_summary`
+- `release_check_log`
+- `summary_json`
+- `summary_markdown`
+- `steps`: release rehearsal steps with `name`, `status`, and `detail`
+
+### `scripts/release-check.ps1 -JsonOutput <path>`
+
+Schema: `agentledger.release_check.v1`
+
+Use this to run the local release readiness gate and write a machine-readable
+handoff for CI, release notes finalization, and post-release evidence packets.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`
+- `repo`
+- `branch`
+- `head`
+- `agentledger_version`
+- `package_version`
+- `require_clean_git`
+- `working_tree_dirty`
+- `release_metadata`: embedded `agentledger.release_metadata_check.v1` payload
+- `steps`: release readiness steps with status, seconds, and optional error
+
+### `scripts/check_github_release.py --format json`
+
+Schema: `agentledger.github_release_check.v1`
+
+Use this after publishing to validate the GitHub release tag, prerelease/draft
+state, release URL, publish-ready body, and published timestamp.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`
+- `repository`
+- `version`
+- `release_label`
+- `tag`
+- `release`: URL, draft/prerelease state, target commit, and timestamps
+- `checks`: individual release checks with name, status, and detail
+- `errors`
+
+### `scripts/release_evidence_packet.py --json-output <path>`
+
+Schema: `agentledger.release_evidence_packet.v1`
+
+Use this to build a public-safe release handoff from validated release-check
+JSON, rendered release-check Markdown, final release notes, and GitHub release
+check JSON. It records validation status and artifact names only; it does not
+bundle private `.agentledger/` evidence or release notes bodies.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`
+- `version`
+- `release_label`
+- `tag`
+- `repository`
+- `release_url`
+- `private_evidence_included`
+- `release_check`: branch, head, clean-git status, step counts, and metadata counts
+- `github_release_check`: check counts, draft/prerelease status, and publish timestamp
+- `artifacts`: validated artifact names, not artifact bodies
+- `handling`
+
+### `scripts/post_release_check.py`
+
+Schema: `agentledger.post_release_check.v1`
+
+Use this after publishing when you want one command to run the GitHub release
+check and build the public-safe evidence packet under one output directory.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`
+- `version`
+- `tag`
+- `repository`
+- `output_dir`
+- `github_release_check_json`
+- `github_release_check_markdown`
+- `release_evidence_packet_json`
+- `release_evidence_packet_markdown`
+- `summary_json`
+- `summary_markdown`
+- `errors`
+
 ### `agentledger alpha --format json [-- command]`
 
 Schema: `agentledger.alpha_summary.v1`

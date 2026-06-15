@@ -17,6 +17,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 PREPARE_RELEASE_SCRIPT = ROOT / "scripts" / "prepare_release.py"
 RELEASE_NOTES_SCRIPT = ROOT / "scripts" / "release_notes.py"
+RELEASE_CHECK_SUMMARY_SCRIPT = ROOT / "scripts" / "release_check_summary.py"
 
 
 class ReleaseRehearsalError(ValueError):
@@ -35,6 +36,10 @@ def load_script(name: str, path: Path) -> ModuleType:
 
 prepare_release = load_script("agentledger_prepare_release_rehearsal", PREPARE_RELEASE_SCRIPT)
 release_notes = load_script("agentledger_release_notes_rehearsal", RELEASE_NOTES_SCRIPT)
+release_check_summary = load_script(
+    "agentledger_release_check_summary_rehearsal",
+    RELEASE_CHECK_SUMMARY_SCRIPT,
+)
 
 
 def run_command(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -137,6 +142,7 @@ def run_release_check(repo_root: Path, output_dir: Path) -> dict[str, Any]:
         raise ReleaseRehearsalError("Could not find pwsh or powershell for release-check.ps1.")
 
     json_path = output_dir / "release-check.json"
+    summary_path = output_dir / "release-check-summary.md"
     log_path = output_dir / "release-check.log"
     command = [
         shell,
@@ -162,8 +168,13 @@ def run_release_check(repo_root: Path, output_dir: Path) -> dict[str, Any]:
     payload = json.loads(json_path.read_text(encoding="utf-8-sig"))
     if payload.get("ok") is not True:
         raise ReleaseRehearsalError(f"release-check.ps1 summary was not OK: {json_path}")
+    summary_path.write_text(
+        release_check_summary.render_release_check_markdown(payload),
+        encoding="utf-8",
+    )
     return {
         "json": str(json_path),
+        "summary": str(summary_path),
         "log": str(log_path),
         "status": payload.get("status"),
         "steps": len(payload.get("steps", [])),
@@ -198,6 +209,8 @@ def write_markdown_summary(result: dict[str, Any], path: Path) -> None:
     )
     if result.get("release_check_json"):
         lines.append(f"- Release-check JSON: {result['release_check_json']}")
+    if result.get("release_check_summary"):
+        lines.append(f"- Release-check summary: {result['release_check_summary']}")
     if result.get("release_check_log"):
         lines.append(f"- Release-check log: {result['release_check_log']}")
 
@@ -212,6 +225,7 @@ def write_markdown_summary(result: dict[str, Any], path: Path) -> None:
             "## Next",
             "",
             "- Review the draft release notes and replace validation TODOs with real links before publishing.",
+            "- Use the release-check JSON and summary paths when finalizing release notes and building the post-release evidence packet.",
             "- Keep rehearsal output outside the repository or delete it before committing.",
         ]
     )
@@ -260,6 +274,7 @@ def rehearse_release(
         "output_dir": str(out),
         "draft_release_notes": str(draft_notes),
         "release_check_json": None,
+        "release_check_summary": None,
         "release_check_log": None,
         "branch": None,
         "head": None,
@@ -357,6 +372,7 @@ def rehearse_release(
         try:
             release_check = run_release_check(root, out)
             result["release_check_json"] = release_check["json"]
+            result["release_check_summary"] = release_check["summary"]
             result["release_check_log"] = release_check["log"]
             add_step(
                 result,
@@ -439,6 +455,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Draft notes: {result['draft_release_notes']}")
     if result.get("release_check_json"):
         print(f"Release-check JSON: {result['release_check_json']}")
+    if result.get("release_check_summary"):
+        print(f"Release-check summary: {result['release_check_summary']}")
 
     return 0 if result["ok"] else 2
 
