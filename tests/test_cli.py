@@ -716,7 +716,7 @@ def test_status_summarizes_latest_run_and_feedback(tmp_path: Path, capsys) -> No
     )
     capsys.readouterr()
 
-    assert cli.main(["status", "--out", str(out), "--allow-warnings"]) == 0
+    assert cli.main(["status", "--repo", str(repo), "--out", str(out), "--allow-warnings"]) == 0
     output = capsys.readouterr().out
     assert "AgentLedger status: warn" in output
     assert "Summary: 2 warnings; review before accepting." in output
@@ -725,12 +725,12 @@ def test_status_summarizes_latest_run_and_feedback(tmp_path: Path, capsys) -> No
     assert f"Markdown report: {latest_dir / 'agentledger-report.md'}" in output
     assert "Use feedback-summary or feedback-export before sharing alpha notes." in output
 
-    assert cli.main(["status", "--out", str(out), "--format", "json", "--allow-warnings"]) == 0
+    assert cli.main(["status", "--repo", str(repo), "--out", str(out), "--format", "json", "--allow-warnings"]) == 0
     payload = _parse_json_output(capsys.readouterr().out)
     assert payload["schema_version"] == "agentledger.status.v1"
     assert payload["status"] == "warn"
     assert payload["ok"] is False
-    assert payload["repo"] == str(Path(".").resolve())
+    assert payload["repo"] == str(repo.resolve())
     assert payload["out"] == str(out.resolve())
     assert payload["latest_run"] == str(latest_dir)
     assert payload["paths"]["markdown"] == str(latest_dir / "agentledger-report.md")
@@ -743,6 +743,56 @@ def test_status_summarizes_latest_run_and_feedback(tmp_path: Path, capsys) -> No
     assert payload["feedback"]["categories"] == {"friction": 1}
     assert payload["errors"] == []
     assert payload["status_exit_code"] == 0
+
+
+def test_status_out_inherits_repo_warning_policy(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "cli-ledger"
+    (repo / ".agentledger.toml").write_text(
+        "\n".join(
+            [
+                'out = "ledger-from-config"',
+                "check_allow_warnings = true",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    latest_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+
+    assert cli.main(["status", "--repo", str(repo), "--out", str(out)]) == 0
+    output = capsys.readouterr().out
+    assert "AgentLedger status: warn" in output
+    assert f"Latest run: {latest_dir}" in output
+
+    assert cli.main(["status", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["status"] == "warn"
+    assert payload["out"] == str(out.resolve())
+    assert payload["status_exit_code"] == 0
+    assert payload["check"]["policy"]["dirty"] == "warn"
+    assert not (repo / "ledger-from-config").exists()
 
 
 def test_status_missing_latest_json(tmp_path: Path, capsys) -> None:
