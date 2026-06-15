@@ -38,6 +38,7 @@ def artifact_paths(release_label: str) -> dict[str, str]:
     return {
         "release_rehearsal_dir": _temp_path(f"agentledger-release-rehearsal-{release_label}"),
         "draft_release_notes": _temp_path(f"agentledger-{release_label}-release.md"),
+        "release_readiness_report": _temp_path("agentledger-release-readiness-report.md"),
         "release_check_json": _temp_path("agentledger-release-check.json"),
         "release_check_summary": _temp_path("agentledger-release-check-summary.md"),
         "github_release_check_json": _temp_path("agentledger-github-release-check.json"),
@@ -107,9 +108,13 @@ def build_release_command_index(
         ),
         _section(
             "3. Validate the release branch",
-            "Run local metadata, tests, release readiness, and artifact preflight before opening the PR.",
+            "Run local metadata, fast readiness, tests, release readiness, and artifact preflight before opening the PR.",
             [
                 "python scripts/check_release_metadata.py",
+                (
+                    "python scripts/release_readiness_report.py --format markdown "
+                    f"--output {artifacts['release_readiness_report']}"
+                ),
                 f"python scripts/release_notes.py --version {package_version} --check",
                 "python -m pytest",
                 (

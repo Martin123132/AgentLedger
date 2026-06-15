@@ -26,6 +26,7 @@ def test_build_release_command_index_lists_ordered_release_flow() -> None:
     assert index["schema_version"] == "agentledger.release_command_index.v1"
     assert index["release_label"] == "0.1.8-alpha"
     assert index["tag"] == "v0.1.8-alpha"
+    assert index["artifacts"]["release_readiness_report"] == "$env:TEMP\\agentledger-release-readiness-report.md"
     assert index["artifacts"]["release_check_json"] == "$env:TEMP\\agentledger-release-check.json"
     assert index["artifacts"]["post_release_dir"] == "$env:TEMP\\agentledger-post-release-0.1.8-alpha"
 
@@ -45,6 +46,7 @@ def test_build_release_command_index_lists_ordered_release_flow() -> None:
     )
     for fragment in [
         "python scripts/rehearse_release.py --version 0.1.8a0",
+        "python scripts/release_readiness_report.py --format markdown",
         "python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage final-notes",
         "gh workflow run \"Release Readiness\"",
         "git tag v0.1.8-alpha",

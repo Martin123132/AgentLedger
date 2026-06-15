@@ -321,6 +321,37 @@ Stable fields:
 - `errors`
 - `next_actions`
 
+### `scripts/release_readiness_report.py --format json`
+
+Schema: `agentledger.release_readiness_report.v1`
+
+Use this to run a fast local release preflight before the full release-check
+script. It checks release metadata, release-process documentation alignment,
+release notes source, `git diff --check`, tracked private artifact guardrails,
+and dirty working tree status without building wheels or running pytest/smoke.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`: `ready`, `ready_with_warnings`, or `failed`
+- `repo`
+- `branch`
+- `head`
+- `repository`
+- `package_version`
+- `project_version`
+- `release_label`
+- `release_date`
+- `require_clean_git`
+- `working_tree_dirty`
+- `release_metadata`: embedded `agentledger.release_metadata_check.v1` payload
+- `release_process`: embedded `agentledger.release_process_check.v1` payload
+- `summary`: total, passed, warnings, and failed check counts
+- `checks`: ordered release and git preflight checks
+- `errors`
+- `warnings`
+- `next_actions`
+
 ### `scripts/rehearse_release.py`
 
 Schema: `agentledger.release_rehearsal.v1`

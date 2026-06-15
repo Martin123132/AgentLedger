@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a fast release readiness report for metadata, release-process,
+  release-notes, and git-hygiene preflight checks before full release readiness.
 - Added the release-process consistency checker to the release-readiness gate
   and release evidence summaries.
 - Added a release-process consistency checker that compares the generated
