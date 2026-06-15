@@ -53,7 +53,7 @@ RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"
 python -m agentledger check --allow-warnings "$RUN"
 python -m agentledger review --out "$OUT" --allow-warnings
-python -m agentledger review --format json --out "$OUT" --allow-warnings
+python -m agentledger review --format json --out "$OUT" --allow-warnings --history-limit 1
 CHECK_JSON="$ROOT/agentledger-check.json"
 set +e
 python -m agentledger check --format json --allow-warnings "$RUN" > "$CHECK_JSON"

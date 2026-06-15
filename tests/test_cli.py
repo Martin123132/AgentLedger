@@ -1520,6 +1520,8 @@ def test_review_latest_summarizes_check_status(tmp_path: Path, capsys) -> None:
     assert f"JSON report: {run_dir / 'agentledger-report.json'}" in output
     assert f"HTML report: {run_dir / 'agentledger-report.html'}" in output
     assert f"Zip bundle: {run_dir}.zip" in output
+    assert "Recent runs:" in output
+    assert f"* {run_dir.name} | exit=0 | changed=1" in output
     assert "Warnings:" in output
     assert "- test_evidence: Command was not recognized as a test or verification command." in output
     assert "- repo_state: Repository had 1 changed file after the run." in output
@@ -1527,6 +1529,10 @@ def test_review_latest_summarizes_check_status(tmp_path: Path, capsys) -> None:
     assert "- Do not commit .agentledger folders or zip bundles." in output
 
     assert cli.main(["review", "--out", str(out), "--allow-warnings"]) == 0
+    capsys.readouterr()
+    assert cli.main(["review", "--out", str(out), "--allow-warnings", "--history-limit", "0"]) == 0
+    output = capsys.readouterr().out
+    assert "Recent runs:" not in output
 
 
 def test_review_json_output(tmp_path: Path, capsys) -> None:
@@ -1565,10 +1571,26 @@ def test_review_json_output(tmp_path: Path, capsys) -> None:
     assert payload["run_dir"] == str(run_dir.resolve())
     assert payload["paths"]["markdown"] == str(run_dir / "agentledger-report.md")
     assert payload["paths"]["zip"] == f"{run_dir}.zip"
+    assert payload["history"]["out"] == str(out.resolve())
+    assert payload["history"]["limit"] == 3
+    assert payload["history"]["errors"] == []
+    assert len(payload["history"]["runs"]) == 1
+    assert payload["history"]["runs"][0]["run_dir"] == str(run_dir)
+    assert payload["history"]["runs"][0]["current"] is True
+    assert payload["history"]["runs"][0]["test_framework"] == "pytest"
     assert payload["check"]["schema_version"] == "agentledger.check.v1"
     assert payload["check"]["command"].startswith(str(sys.executable))
     assert payload["command_exit_code"] == 0
     assert payload["review_exit_code"] == 0
+
+
+def test_review_rejects_negative_history_limit(tmp_path: Path, capsys) -> None:
+    out = tmp_path / "ledger"
+
+    assert cli.main(["review", "--out", str(out), "--history-limit", "-1"]) == 2
+
+    output = capsys.readouterr().out
+    assert "--history-limit must be zero or greater." in output
 
 
 def test_review_missing_latest_prints_hint(tmp_path: Path, capsys) -> None:
