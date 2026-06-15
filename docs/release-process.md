@@ -48,6 +48,7 @@ repo:
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
 python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
 python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage rehearsal --rehearsal-manifest $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
+python scripts/release_rehearsal_receipt.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json --format markdown --output $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-receipt.md
 ```
 
 Then run the release prep dry run:
@@ -83,6 +84,10 @@ Expected result:
 - `scripts/release_artifact_doctor.py --stage rehearsal` reports
   `agentledger.release_artifact_doctor.v1` with `ok=true` before source files
   are changed.
+- `scripts/release_rehearsal_receipt.py` writes
+  `release-rehearsal-receipt.md` using
+  `agentledger.release_rehearsal_receipt.v1`, including key artifacts and the
+  exact next `scripts/prepare_release.py` commands.
 - The draft release notes file is outside the repo, usually under `$env:TEMP`.
 
 Do not commit generated release note files, evidence folders, zip bundles, or

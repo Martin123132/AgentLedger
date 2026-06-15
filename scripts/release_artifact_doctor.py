@@ -206,8 +206,16 @@ def _validate_github_release_check(*, version: str, github_release_check_json: P
     )
 
 
-def _validate_rehearsal_manifest(*, version: str, rehearsal_manifest: Path) -> dict[str, Any]:
-    result = verify_release_rehearsal.verify_release_rehearsal_manifest(rehearsal_manifest)
+def _validate_rehearsal_manifest(
+    *,
+    version: str,
+    rehearsal_manifest: Path,
+    rehearsal_output_dir: Path | None = None,
+) -> dict[str, Any]:
+    result = verify_release_rehearsal.verify_release_rehearsal_manifest(
+        rehearsal_manifest,
+        output_dir=rehearsal_output_dir,
+    )
     if not result["ok"]:
         errors = result.get("errors") or ["release rehearsal manifest verification failed."]
         raise ReleaseArtifactDoctorError("; ".join(str(error) for error in errors))
@@ -230,6 +238,7 @@ def check_release_artifacts(
     version: str,
     stage: str,
     rehearsal_manifest: Path | None = None,
+    rehearsal_output_dir: Path | None = None,
     release_check_json: Path | None = None,
     release_check_summary_file: Path | None = None,
     release_notes_file: Path | None = None,
@@ -260,6 +269,7 @@ def check_release_artifacts(
                 action=lambda: _validate_rehearsal_manifest(
                     version=version,
                     rehearsal_manifest=rehearsal_manifest_path,
+                    rehearsal_output_dir=rehearsal_output_dir,
                 ),
                 next_action="Rerun `scripts/rehearse_release.py`, then verify the new manifest.",
             )
@@ -447,6 +457,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--version", required=True, help="Package version, for example 0.1.8a0.")
     parser.add_argument("--stage", choices=STAGES, required=True)
     parser.add_argument("--rehearsal-manifest", type=Path)
+    parser.add_argument("--rehearsal-output-dir", type=Path)
     parser.add_argument("--release-check-json", type=Path)
     parser.add_argument("--release-check-summary", type=Path)
     parser.add_argument("--release-notes", type=Path)
@@ -466,6 +477,7 @@ def main(argv: list[str] | None = None) -> int:
             version=args.version,
             stage=args.stage,
             rehearsal_manifest=args.rehearsal_manifest,
+            rehearsal_output_dir=args.rehearsal_output_dir,
             release_check_json=args.release_check_json,
             release_check_summary_file=args.release_check_summary,
             release_notes_file=args.release_notes,

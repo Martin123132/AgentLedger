@@ -173,6 +173,7 @@ python scripts/release_readiness_report.py --format markdown --output $env:TEMP\
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
 python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
 python scripts/release_artifact_doctor.py --version 0.1.8a0 --stage rehearsal --rehearsal-manifest $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
+python scripts/release_rehearsal_receipt.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json --format markdown --output $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-receipt.md
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
@@ -269,6 +270,7 @@ python scripts/check_release_process.py --version 0.1.8a0 --date 2026-06-14
 python scripts/release_readiness_report.py --format markdown --output $env:TEMP\agentledger-release-readiness-report.md
 python scripts/rehearse_release.py --version 0.1.8a0 --date 2026-06-14 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha
 python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json
+python scripts/release_rehearsal_receipt.py $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-manifest.json --format markdown --output $env:TEMP\agentledger-release-rehearsal-0.1.8-alpha\release-rehearsal-receipt.md
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --dry-run
 python scripts/prepare_release.py --version 0.1.8a0 --date 2026-06-14 --release-notes-output $env:TEMP\agentledger-0.1.8-alpha-release.md
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
@@ -334,6 +336,9 @@ one local checklist summary under the chosen output directory. It also writes
 generated rehearsal outputs.
 Use `scripts/verify_release_rehearsal.py` to verify a saved rehearsal output
 folder from that manifest later without rerunning the rehearsal.
+Use `scripts/release_rehearsal_receipt.py` after verification to write a compact
+human handoff with key artifacts, the rehearsal doctor result, and the exact
+next `scripts/prepare_release.py` commands.
 Use `scripts/prepare_release.py` to move current Unreleased notes into a dated
 release section while updating `pyproject.toml` and `src/agentledger/__init__.py`
 together. Run it with `--dry-run` first. Add `--release-notes-output` to write

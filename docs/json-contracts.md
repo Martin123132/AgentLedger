@@ -436,6 +436,40 @@ Stable fields:
 - `verified_artifacts`
 - `errors`
 
+### `scripts/release_rehearsal_receipt.py --format json`
+
+Schema: `agentledger.release_rehearsal_receipt.v1`
+
+Use this after verifying a release rehearsal manifest to produce a compact
+human handoff with key generated artifacts, the embedded rehearsal verifier
+result, the release artifact doctor result, and the exact next
+`scripts/prepare_release.py` commands.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`: `ready` or `blocked`
+- `created_at`
+- `manifest_json`
+- `output_dir`
+- `package_version`
+- `release_version`
+- `release_date`
+- `branch`
+- `head`
+- `artifact_count`
+- `verified_artifacts`
+- `key_artifacts`: important rehearsal artifacts with `kind`, `file`, `path`,
+  `bytes`, and `sha256`
+- `verification`: embedded `agentledger.release_rehearsal_manifest_verify.v1`
+  payload
+- `doctor`: embedded `agentledger.release_artifact_doctor.v1` payload when the
+  manifest provides a package version
+- `errors`
+- `next_commands`: exact follow-up commands when the receipt is ready
+- `next_actions`
+- `handling`: do-not-commit and storage guidance from the manifest
+
 ### `scripts/release-check.ps1 -JsonOutput <path>`
 
 Schema: `agentledger.release_check.v1`
