@@ -65,6 +65,7 @@ python scripts/check_release_metadata.py
 python scripts/release_notes.py --version 0.1.8a0 --check
 python -m pytest
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
+python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
 ```
 
 `scripts/check_release_metadata.py` is the cross-platform source metadata gate
@@ -74,7 +75,8 @@ source, git hygiene, isolated wheel metadata, tests, install check, and the
 Windows smoke flow, including the latest status command. `-JsonOutput` writes an
 `agentledger.release_check.v1` summary, including the
 `agentledger.release_metadata_check.v1` payload, that can be referenced from PR
-or release notes without parsing console output.
+or release notes without parsing console output. `scripts/release_check_summary.py`
+renders that JSON into a short Markdown summary for review notes or handoffs.
 
 If `-RequireCleanGit` fails because release prep changes are uncommitted, commit
 the intended source changes and rerun the command from that clean branch.
@@ -117,6 +119,7 @@ Expected result:
 
 - The manual Release Readiness workflow passes on the merge commit.
 - The workflow logs include the release-check JSON summary.
+- The workflow step summary includes the rendered release-check Markdown summary.
 - The workflow URL is added to the GitHub release notes validation section.
 
 ## 6. Tag and verify
