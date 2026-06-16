@@ -947,6 +947,7 @@ def test_alpha_command_runs_core_flow_and_writes_summary(tmp_path: Path, capsys)
     assert payload["status"] in {"pass", "warn"}
     assert payload["status_exit_code"] == 0
     assert payload["errors"] == []
+    assert payload["fix_first"] == []
     assert payload["next_actions"]
 
     assert cli.main(["alpha-summary", "--format", "json", str(summary_file)]) == 0
@@ -993,6 +994,7 @@ def test_alpha_command_reports_unwritable_json_output_without_traceback(tmp_path
     assert Path(payload["bundle"]).exists()
     assert any("Unable to write alpha summary" in error for error in payload["errors"])
     assert payload["status_exit_code"] == 2
+    assert "Choose a writable alpha summary path" in payload["fix_first"][-1]
     assert "Choose a writable alpha summary path" in payload["next_actions"][-1]
 
 
@@ -1028,6 +1030,7 @@ def test_alpha_command_reports_failed_capture(tmp_path: Path, capsys) -> None:
     assert "Captured command exited 7." in payload["errors"]
     assert payload["status"] == "block"
     assert payload["status_exit_code"] == 2
+    assert payload["fix_first"][0] == "Fix the captured command failure, then run agentledger alpha again."
     assert Path(payload["latest_run"]).exists()
     assert Path(payload["bundle"]).exists()
 
@@ -1056,6 +1059,11 @@ def test_alpha_command_reports_non_git_repo_without_traceback(tmp_path: Path, ca
         "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
         "After fixing required setup, run agentledger alpha again.",
     ]
+    assert payload["fix_first"] == [
+        "Fix required setup checks shown below, then run agentledger alpha again.",
+        "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
+        "After fixing required setup, run agentledger alpha again.",
+    ]
 
 
 def test_alpha_command_reports_missing_repo_without_traceback(tmp_path: Path, capsys) -> None:
@@ -1075,6 +1083,11 @@ def test_alpha_command_reports_missing_repo_without_traceback(tmp_path: Path, ca
     assert payload["summary_file"] == str(summary_file.resolve())
     assert any("Required doctor check failed: target_git_repo" in error for error in payload["errors"])
     assert payload["next_actions"] == [
+        "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
+        "After fixing required setup, run agentledger alpha again.",
+    ]
+    assert payload["fix_first"] == [
+        "Fix required setup checks shown below, then run agentledger alpha again.",
         "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
         "After fixing required setup, run agentledger alpha again.",
     ]
@@ -1104,6 +1117,10 @@ def test_alpha_command_config_error_writes_summary_with_out(tmp_path: Path, caps
     assert payload["status_exit_code"] == 2
     assert payload["report_paths"] == {}
     assert payload["next_actions"] == ["Fix the config error, then run agentledger alpha again."]
+    assert payload["fix_first"] == [
+        "Fix the config error shown below, then run agentledger alpha again.",
+        "Fix the config error, then run agentledger alpha again.",
+    ]
     assert "Config error:" in payload["errors"][0]
 
 
@@ -1176,6 +1193,8 @@ def test_alpha_command_config_error_reports_unwritable_summary_without_traceback
     assert "Config error:" in payload["errors"][0]
     assert any("Unable to write alpha summary" in error for error in payload["errors"])
     assert payload["status_exit_code"] == 2
+    assert "Fix the config error shown below, then run agentledger alpha again." in payload["fix_first"]
+    assert any("Choose a writable alpha summary path" in action for action in payload["fix_first"])
     assert "Choose a writable alpha summary path" in payload["next_actions"][-1]
 
 
@@ -1194,6 +1213,7 @@ def test_alpha_command_config_error_without_output_hint_is_full_json(tmp_path: P
     assert payload["doctor"] == "AgentLedger doctor: not run (config error)"
     assert payload["status"] == "block"
     assert payload["errors"]
+    assert payload["fix_first"][0] == "Fix the config error shown below, then run agentledger alpha again."
 
 
 def test_alpha_summary_reads_direct_path(tmp_path: Path, capsys) -> None:
@@ -1230,6 +1250,37 @@ def test_alpha_summary_json_output(tmp_path: Path, capsys) -> None:
     assert result["summary_file"] == str(summary_file)
     assert result["status"] == "warn"
     assert result["feedback"]["total_entries"] == 1
+    assert result["fix_first"] == []
+
+
+def test_alpha_summary_adds_fix_first_for_legacy_blocked_summary(tmp_path: Path, capsys) -> None:
+    summary_file = tmp_path / "alpha-summary.json"
+    payload = _alpha_summary_payload(summary_file)
+    payload["ok"] = False
+    payload["status"] = "block"
+    payload["status_summary"] = "Required setup is blocked; fix doctor errors before running alpha again."
+    payload["errors"] = ["Required doctor check failed: target_git_repo - not a git repository"]
+    payload["next_actions"] = [
+        "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
+        "After fixing required setup, run agentledger alpha again.",
+    ]
+    payload.pop("fix_first", None)
+    summary_file.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    assert cli.main(["alpha-summary", str(summary_file)]) == 2
+
+    output = capsys.readouterr().out
+    assert "Fix first:" in output
+    assert "- Fix required setup checks shown below, then run agentledger alpha again." in output
+    assert "- Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo." in output
+
+    assert cli.main(["alpha-summary", "--format", "json", str(summary_file)]) == 2
+    result = _parse_json_output(capsys.readouterr().out)
+    assert result["fix_first"] == [
+        "Fix required setup checks shown below, then run agentledger alpha again.",
+        "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
+        "After fixing required setup, run agentledger alpha again.",
+    ]
 
 
 def test_alpha_summary_defaults_to_output_directory(tmp_path: Path, capsys) -> None:
