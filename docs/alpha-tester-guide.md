@@ -31,7 +31,8 @@ Expected result:
 - `agentledger --version` prints the installed AgentLedger version
 - `doctor` should say `ready` when required checks pass
 - If `doctor` reports a missing check, read the `Hint:` line directly below it
-- `alpha-guide` shows the command loop, evidence paths, and privacy reminders
+- `alpha-guide` shows doctor readiness, optional integration counts, the command
+  loop, evidence paths, and privacy reminders
 - Missing RepoMori, Jester, or Tokometer warnings are OK for this alpha
 
 ## One-command alpha pass
@@ -57,6 +58,8 @@ Expected result:
 - latest/history/inspect/check/verify commands all succeed
 - a short summary is printed to send back
 - blocked runs include a `Fix first:` section before the detailed error list
+- blocked setup in `alpha-guide` includes the same `Fix first:` repair actions
+  before you run the alpha pass
 - `.agentledger/alpha-summary.json` records the same alpha pass for tools or
   agent handoffs
 - the Windows script also runs install and smoke checks

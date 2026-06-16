@@ -28,8 +28,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 
 Expected result:
 
-- `alpha-guide` prints setup/run/inspect/feedback commands plus evidence
-  handling reminders without creating evidence.
+- `alpha-guide` prints doctor readiness, optional integration counts,
+  setup/run/inspect/feedback commands, and evidence handling reminders without
+  creating evidence.
 - Doctor, captured pytest, status, inspect, check, and verify all pass.
 - The Windows script also runs install and smoke checks.
 - A short summary is printed for the tester to send back.
@@ -40,6 +41,8 @@ Expected result:
 - If required setup is blocked, the summary records config or doctor errors
   plus a `Fix first:` section with doctor repair hints instead of stopping with
   a traceback.
+- If `alpha-guide` sees required setup blockers, it prints the same
+  `Fix first:` repair actions before the command loop.
 - If the Windows `-JsonOutput` path cannot be written, the script prints the
   write error and exits 2.
 - `python -m agentledger alpha-summary --out .agentledger` prints the same

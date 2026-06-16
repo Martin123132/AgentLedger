@@ -332,6 +332,8 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "ok",
             "repo",
             "out",
+            "doctor",
+            "fix_first",
             "commands",
             "evidence",
             "send_back",
@@ -624,6 +626,12 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
 
     alpha_guide = json_payloads["alpha_guide"]
     assert alpha_guide["ok"] is True
+    _assert_keys(
+        alpha_guide["doctor"],
+        {"schema_version", "status", "summary", "required_ok", "optional", "required_blockers", "checks"},
+    )
+    assert alpha_guide["doctor"]["status"] == "ready"
+    assert alpha_guide["fix_first"] == []
     _assert_keys(alpha_guide["commands"], {"setup", "run", "inspect", "feedback"})
     _assert_keys(alpha_guide["evidence"], {"output_root", "latest_pointer", "run_folder_contains", "bundle"})
     assert alpha_guide["send_back"]

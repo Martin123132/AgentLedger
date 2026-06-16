@@ -1663,17 +1663,49 @@ def _alpha_guide_out_arg(args: argparse.Namespace, config: AgentLedgerConfig) ->
     return DEFAULT_OUT
 
 
+def _alpha_guide_doctor(doctor_report: dict) -> dict:
+    checks = doctor_report.get("checks") if isinstance(doctor_report.get("checks"), list) else []
+    required_blockers = []
+    for check in checks:
+        if not isinstance(check, dict) or check.get("ok") is True or check.get("required") is not True:
+            continue
+        required_blockers.append(
+            {
+                "name": check.get("name") or "unknown",
+                "detail": check.get("detail") or "required check failed",
+                "hint": check.get("hint") or "",
+            }
+        )
+
+    optional = doctor_report.get("optional") if isinstance(doctor_report.get("optional"), dict) else {}
+    return {
+        "schema_version": doctor_report.get("schema_version") or "agentledger.doctor.v1",
+        "status": doctor_report.get("status") or "unknown",
+        "summary": _first_line(format_doctor(doctor_report)),
+        "required_ok": doctor_report.get("required_ok") is True,
+        "optional": optional,
+        "required_blockers": required_blockers,
+        "checks": checks,
+    }
+
+
 def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
     repo = Path(args.repo or ".").resolve()
+    doctor_report = run_doctor(repo)
+    doctor = _alpha_guide_doctor(doctor_report)
     try:
         config = _load_output_config(args, repo)
     except ConfigError as exc:
+        errors = [f"Config error: {exc}"]
+        fix_first = _alpha_fix_first("block", errors, [])
         return (
             {
                 "schema_version": ALPHA_GUIDE_SCHEMA,
                 "ok": False,
                 "repo": str(repo),
                 "out": None,
+                "doctor": doctor,
+                "fix_first": fix_first,
                 "commands": {},
                 "evidence": {},
                 "send_back": [],
@@ -1681,7 +1713,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
                     "Do not commit or upload .agentledger folders, zip bundles, signing keys, or full reports unless reviewed and requested."
                 ],
                 "known_limitations": [],
-                "errors": [f"Config error: {exc}"],
+                "errors": errors,
             },
             2,
         )
@@ -1746,6 +1778,10 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
         ],
         "errors": [],
     }
+    doctor_errors = _alpha_required_setup_errors(doctor_report)
+    doctor_next_actions = _alpha_required_setup_next_actions(doctor_report) if doctor_errors else []
+    payload["doctor"] = doctor
+    payload["fix_first"] = _alpha_fix_first("block" if doctor_errors else "ready", doctor_errors, doctor_next_actions)
     return payload, 0
 
 
@@ -1755,6 +1791,20 @@ def _format_alpha_guide(payload: dict) -> str:
         f"Repo: {payload.get('repo') or 'n/a'}",
         f"Output: {payload.get('out') or 'n/a'}",
     ]
+    doctor = payload.get("doctor") if isinstance(payload.get("doctor"), dict) else {}
+    if doctor:
+        lines.append(f"Doctor: {doctor.get('summary') or doctor.get('status') or 'n/a'}")
+        optional = doctor.get("optional") if isinstance(doctor.get("optional"), dict) else {}
+        if optional:
+            lines.append(
+                "Optional integrations: "
+                f"{optional.get('configured', 0)}/{optional.get('total', 0)} configured"
+            )
+    fix_first = payload.get("fix_first") if isinstance(payload.get("fix_first"), list) else []
+    if fix_first:
+        lines.append("Fix first:")
+        for action in fix_first:
+            lines.append(f"- {action}")
     if payload.get("errors"):
         lines.append("Errors:")
         for error in payload["errors"]:

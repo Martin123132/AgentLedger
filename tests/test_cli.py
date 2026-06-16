@@ -882,6 +882,8 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert "AgentLedger alpha guide" in output
     assert f"Repo: {repo.resolve()}" in output
     assert f"Output: {out.resolve()}" in output
+    assert "Doctor: AgentLedger doctor: ready" in output
+    assert "Optional integrations:" in output
     assert f"python -m agentledger alpha --repo {repo} --out {out}" in output
     assert f"python -m agentledger alpha-summary --out {out}" in output
     assert f"- Output root: {out.resolve()}" in output
@@ -899,9 +901,43 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert payload["out"] == str(out.resolve())
     assert payload["commands"]["run"][0] == f"python -m agentledger alpha --repo {repo} --out {out}"
     assert payload["evidence"]["latest_pointer"] == str(out.resolve() / "latest.txt")
+    assert payload["doctor"]["schema_version"] == "agentledger.doctor.v1"
+    assert payload["doctor"]["status"] == "ready"
+    assert payload["doctor"]["required_ok"] is True
+    assert payload["doctor"]["optional"]["total"] >= 1
+    assert payload["doctor"]["required_blockers"] == []
+    assert payload["fix_first"] == []
     assert payload["send_back"]
     assert payload["keep_private"]
     assert payload["known_limitations"]
+    assert payload["errors"] == []
+
+
+def test_alpha_guide_reports_blocked_doctor_with_fix_first(tmp_path: Path, capsys) -> None:
+    repo = tmp_path / "missing-repo"
+    out = tmp_path / "ledger"
+
+    assert cli.main(["alpha-guide", "--repo", str(repo), "--out", str(out)]) == 0
+
+    output = capsys.readouterr().out
+    assert "Doctor: AgentLedger doctor: blocked (required setup needs attention)" in output
+    assert "Fix first:" in output
+    assert "- Fix required setup checks shown below, then run agentledger alpha again." in output
+    assert "- Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo." in output
+    assert f"python -m agentledger alpha --repo {repo} --out {out}" in output
+
+    assert cli.main(["alpha-guide", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.alpha_guide.v1"
+    assert payload["ok"] is True
+    assert payload["doctor"]["status"] == "blocked"
+    assert payload["doctor"]["required_ok"] is False
+    assert payload["doctor"]["required_blockers"][0]["name"] == "target_git_repo"
+    assert payload["fix_first"] == [
+        "Fix required setup checks shown below, then run agentledger alpha again.",
+        "Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo.",
+        "After fixing required setup, run agentledger alpha again.",
+    ]
     assert payload["errors"] == []
 
 

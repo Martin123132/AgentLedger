@@ -129,6 +129,10 @@ Stable fields:
 - `ok`: boolean
 - `repo`: resolved repository path used for config lookup
 - `out`: resolved AgentLedger output directory, or `null` on config failure
+- `doctor`: compact `agentledger.doctor.v1` readiness snapshot with summary,
+  optional integration counts, required blockers, and raw checks
+- `fix_first`: concise ordered setup repair actions, empty when required checks
+  are ready
 - `commands`: setup, run, inspect, and feedback command lists
 - `evidence`: output root, latest pointer, run folder contents, and bundle note
 - `send_back`: reviewed summary items a tester can report
