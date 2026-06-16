@@ -21,8 +21,12 @@ If PowerShell cannot find `git`, the alpha script will try common Windows Git lo
 From the repository root:
 
 ```powershell
+python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger alpha --repo . --out .agentledger
 ```
+
+`alpha-guide` prints the commands to run, where evidence appears, what to send
+back, and what must stay private.
 
 Windows users can also run the extended script:
 

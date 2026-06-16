@@ -872,6 +872,39 @@ def test_status_missing_latest_json(tmp_path: Path, capsys) -> None:
     assert payload["status_exit_code"] == 2
 
 
+def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert cli.main(["alpha-guide", "--repo", str(repo), "--out", str(out)]) == 0
+
+    output = capsys.readouterr().out
+    assert "AgentLedger alpha guide" in output
+    assert f"Repo: {repo.resolve()}" in output
+    assert f"Output: {out.resolve()}" in output
+    assert f"python -m agentledger alpha --repo {repo} --out {out}" in output
+    assert f"python -m agentledger alpha-summary --out {out}" in output
+    assert f"- Output root: {out.resolve()}" in output
+    assert f"- Latest pointer: {out.resolve() / 'latest.txt'}" in output
+    assert "Send back:" in output
+    assert "- The first command or message that felt confusing." in output
+    assert "Keep private:" in output
+    assert "- Do not commit .agentledger folders." in output
+
+    assert cli.main(["alpha-guide", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.alpha_guide.v1"
+    assert payload["ok"] is True
+    assert payload["repo"] == str(repo.resolve())
+    assert payload["out"] == str(out.resolve())
+    assert payload["commands"]["run"][0] == f"python -m agentledger alpha --repo {repo} --out {out}"
+    assert payload["evidence"]["latest_pointer"] == str(out.resolve() / "latest.txt")
+    assert payload["send_back"]
+    assert payload["keep_private"]
+    assert payload["known_limitations"]
+    assert payload["errors"] == []
+
+
 def test_alpha_command_runs_core_flow_and_writes_summary(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"

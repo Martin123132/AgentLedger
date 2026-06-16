@@ -61,6 +61,23 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
         },
     },
     {
+        "command": "alpha-guide --format json",
+        "schema_version": "agentledger.alpha_guide.v1",
+        "purpose": "Show the first-run alpha review loop without creating evidence.",
+        "stable_fields": [
+            "ok",
+            "repo",
+            "out",
+            "commands",
+            "evidence",
+            "send_back",
+            "keep_private",
+            "known_limitations",
+            "errors",
+        ],
+        "exit_codes": {"0": "guide printed", "2": "config invalid"},
+    },
+    {
         "command": "alpha --format json",
         "schema_version": "agentledger.alpha_summary.v1",
         "purpose": "Run the core alpha pass and write a machine-readable summary.",

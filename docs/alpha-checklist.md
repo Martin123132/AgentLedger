@@ -16,6 +16,7 @@
 Preferred one-command alpha pass:
 
 ```powershell
+python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger alpha --repo . --out .agentledger
 ```
 
@@ -27,6 +28,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 
 Expected result:
 
+- `alpha-guide` prints setup/run/inspect/feedback commands plus evidence
+  handling reminders without creating evidence.
 - Doctor, captured pytest, status, inspect, check, and verify all pass.
 - The Windows script also runs install and smoke checks.
 - A short summary is printed for the tester to send back.
@@ -69,6 +72,8 @@ Expected result:
   - `python -m agentledger review --format json --out .agentledger --allow-warnings`
   - `python -m agentledger review --out .agentledger --history-limit 5 --allow-warnings`
 - Show latest run status, evidence paths, feedback counts, and next action:
+  - `python -m agentledger alpha-guide --out .agentledger`
+  - `python -m agentledger alpha-guide --out .agentledger --format json`
   - `python -m agentledger status --out .agentledger --allow-warnings`
   - `python -m agentledger status --out .agentledger --format json --allow-warnings`
 - Inspect the one-command alpha summary if `agentledger alpha` or `scripts/alpha.ps1` was run:

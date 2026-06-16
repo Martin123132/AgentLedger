@@ -148,9 +148,11 @@ def test_readme_public_alpha_config_matches_repository_config() -> None:
 
 def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -> None:
     preferred_command = "python -m agentledger alpha --repo . --out .agentledger"
+    guide_command = "python -m agentledger alpha-guide --repo . --out .agentledger"
 
     for path in ALPHA_DOCS:
         text = path.read_text(encoding="utf-8")
+        assert guide_command in text, f"{path.relative_to(ROOT)} should document the alpha guide command"
         assert preferred_command in text, f"{path.relative_to(ROOT)} should document the preferred alpha CLI command"
         assert "scripts/alpha.ps1" in text, f"{path.relative_to(ROOT)} should keep the Windows extended alpha path"
 
@@ -159,6 +161,7 @@ def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -
 
 
 def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFixture[str]) -> None:
+    alpha_guide_help = _help_output(capsys, "alpha-guide")
     alpha_help = _help_output(capsys, "alpha")
     alpha_summary_help = _help_output(capsys, "alpha-summary")
     alpha_handoff_help = _help_output(capsys, "alpha-handoff")
@@ -174,6 +177,9 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     for option in ["--json-output", "--privacy-mode", "--strict", "--format"]:
         assert option in alpha_help
 
+    for option in ["--repo", "--out", "--format"]:
+        assert option in alpha_guide_help
+
     assert "current Python -m pytest" in normalized_alpha_help
     assert "--out OUT" in alpha_summary_help
     assert "Defaults to <out>/alpha" in normalized_alpha_summary_help
@@ -188,6 +194,7 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     for documented in [
         "--json-output <path>",
         "--strict",
+        "alpha-guide --out .agentledger",
         "alpha --format json",
         "alpha-summary --out .agentledger",
         "alpha-handoff --out .agentledger",
