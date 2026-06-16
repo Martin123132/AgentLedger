@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.9-alpha - 2026-06-16
+
 - Added a local release dry-run script and private-alpha release checklist for
   verifying built-wheel install, smoke, and `pack-alpha` before tagging.
 - Added `agentledger pack-alpha` to generate and validate share-safe alpha

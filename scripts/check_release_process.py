@@ -16,8 +16,8 @@ import release_command_index
 
 ROOT = SCRIPT_DIR.parent
 DEFAULT_DOC = ROOT / "docs" / "release-process.md"
-DEFAULT_VERSION = "0.1.8a0"
-DEFAULT_DATE = "2026-06-14"
+DEFAULT_VERSION = "0.1.9a0"
+DEFAULT_DATE = "2026-06-16"
 SCHEMA_VERSION = "agentledger.release_process_check.v1"
 
 
