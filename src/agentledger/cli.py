@@ -2279,6 +2279,16 @@ def _format_alpha_summary(path: Path, payload: dict) -> str:
         lines.append("Next:")
         for action in next_actions:
             lines.append(f"- {action}")
+    lines.extend(
+        [
+            "Send back:",
+            "- This summary text, plus the first command or message that felt confusing.",
+            "- Whether the Markdown report was understandable enough to trust.",
+            "- A reviewed feedback export or pack-alpha packet only if requested.",
+            "Keep private:",
+            "- Do not send .agentledger folders, zip bundles, signing keys, or full reports unless requested.",
+        ]
+    )
     if errors:
         lines.append("Errors:")
         for error in errors:

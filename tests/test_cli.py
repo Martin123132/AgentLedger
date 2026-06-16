@@ -1178,6 +1178,11 @@ def test_alpha_summary_reads_direct_path(tmp_path: Path, capsys) -> None:
     assert f"Bundle: {payload['bundle']}" in output
     assert "Feedback: 1 total entries across 1 runs; latest run has 1" in output
     assert "- Read the Markdown report before sharing evidence." in output
+    assert "Send back:" in output
+    assert "- This summary text, plus the first command or message that felt confusing." in output
+    assert "- A reviewed feedback export or pack-alpha packet only if requested." in output
+    assert "Keep private:" in output
+    assert "- Do not send .agentledger folders, zip bundles, signing keys, or full reports unless requested." in output
 
 
 def test_alpha_summary_json_output(tmp_path: Path, capsys) -> None:
