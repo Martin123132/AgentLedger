@@ -3998,9 +3998,6 @@ def _apply_privacy_mode(report: LedgerReport, privacy_mode: str) -> None:
         return
     report.before.diff = ""
     report.after.diff = ""
-    report.warnings.append(
-        "Privacy mode summary omitted command transcript content and full diffs from reports and bundles."
-    )
 
 
 def _capture(args: argparse.Namespace, task: list[str] | None) -> int:

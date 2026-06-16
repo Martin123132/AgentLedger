@@ -407,6 +407,49 @@ def test_run_privacy_summary_omits_transcripts_and_full_diff(tmp_path: Path) -> 
     assert "Privacy mode summary skipped Tokometer path evidence." in report["warnings"]
 
 
+def test_privacy_summary_note_does_not_create_warning_status(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--privacy-mode",
+                "summary",
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    capsys.readouterr()
+
+    assert report["privacy_mode"] == "summary"
+    assert report["warnings"] == []
+    assert "Summary privacy mode omits command transcript content and full diffs from reports." in markdown
+    assert "report-level warning" not in markdown
+
+    assert cli.main(["check", "--format", "json", str(latest)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["status"] == "pass"
+    assert payload["summary"] == "All 9 checks passed."
+    assert _rule_by_id(payload, "report_warnings")["status"] == "pass"
+
+
 def test_config_file_sets_run_defaults(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     config_out = repo / "ledger-from-config"
