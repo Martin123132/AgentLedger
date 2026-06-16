@@ -68,6 +68,8 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "ok",
             "repo",
             "out",
+            "doctor",
+            "fix_first",
             "commands",
             "evidence",
             "send_back",

@@ -90,6 +90,10 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger alpha --repo . --out .agentledger
 ```
 
+`alpha-guide` is read-only: it prints doctor readiness, optional integration
+counts, `Fix first:` setup repairs when needed, the alpha command loop, and
+privacy reminders before any evidence is created.
+
 Windows extended alpha check:
 
 ```powershell
