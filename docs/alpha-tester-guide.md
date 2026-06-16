@@ -56,6 +56,7 @@ Expected result:
 - `status` summarizes the latest captured run
 - latest/history/inspect/check/verify commands all succeed
 - a short summary is printed to send back
+- blocked runs include a `Fix first:` section before the detailed error list
 - `.agentledger/alpha-summary.json` records the same alpha pass for tools or
   agent handoffs
 - the Windows script also runs install and smoke checks

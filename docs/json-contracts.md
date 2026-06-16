@@ -798,6 +798,7 @@ Stable fields:
 - `status_exit_code`
 - `report_paths`: `markdown`, `json`, `html`, and optional `zip`
 - `feedback`: latest feedback counts
+- `fix_first`: concise ordered actions to clear blockers before rerunning alpha
 - `next_actions`: human-readable next action list
 - `errors`: machine-readable alpha pass errors
 

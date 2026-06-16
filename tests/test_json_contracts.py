@@ -105,6 +105,7 @@ def _write_alpha_summary(path: Path, run_dir: Path) -> None:
             "errors": [],
         },
         "next_actions": ["Read the Markdown report before sharing evidence."],
+        "fix_first": [],
         "errors": [],
     }
     path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
@@ -357,6 +358,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "status_exit_code",
             "report_paths",
             "feedback",
+            "fix_first",
             "next_actions",
             "errors",
         },
@@ -379,6 +381,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "status_exit_code",
             "report_paths",
             "feedback",
+            "fix_first",
             "next_actions",
             "errors",
         },
@@ -645,6 +648,7 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
         },
     )
     assert alpha["next_actions"]
+    assert alpha["fix_first"] == []
 
     alpha_summary = json_payloads["alpha_summary"]
     assert alpha_summary["ok"] is True
@@ -663,6 +667,7 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
         },
     )
     assert alpha_summary["next_actions"]
+    assert alpha_summary["fix_first"] == []
 
     alpha_handoff = json_payloads["alpha_handoff"]
     assert alpha_handoff["ok"] is True

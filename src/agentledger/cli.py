@@ -2001,6 +2001,7 @@ def _apply_alpha_summary_write_errors(
     payload["status_exit_code"] = 2
     payload["errors"] = errors
     payload["next_actions"] = next_actions
+    payload["fix_first"] = _alpha_fix_first(str(payload.get("status") or "unknown"), errors, next_actions)
     return True
 
 
@@ -2039,6 +2040,40 @@ def _alpha_required_setup_next_actions(doctor_report: dict) -> list[str]:
     return actions
 
 
+def _append_unique(items: list[str], value: str) -> None:
+    if value and value not in items:
+        items.append(value)
+
+
+def _alpha_fix_first(status: str, errors: list[str], next_actions: list[str]) -> list[str]:
+    if status != "block" and not errors:
+        return []
+
+    actions: list[str] = []
+    for error in errors:
+        if error.startswith("Config error:"):
+            _append_unique(actions, "Fix the config error shown below, then run agentledger alpha again.")
+        elif error.startswith("Required doctor check failed:"):
+            _append_unique(actions, "Fix required setup checks shown below, then run agentledger alpha again.")
+        elif error.startswith("Captured command exited"):
+            _append_unique(actions, "Fix the captured command failure, then run agentledger alpha again.")
+        elif error.startswith("Report check exited"):
+            _append_unique(actions, "Fix the report check blocker, then run agentledger alpha again.")
+        elif error.startswith("Bundle verification exited"):
+            _append_unique(actions, "Fix bundle verification, then run agentledger alpha again.")
+        elif "Unable to write alpha summary" in error:
+            _append_unique(actions, ALPHA_SUMMARY_WRITE_NEXT_ACTION)
+
+    for action in next_actions:
+        action_text = str(action)
+        if status == "block" or action_text.startswith(("Fix ", "After fixing", "Choose a writable")):
+            _append_unique(actions, action_text)
+
+    if (status == "block" or errors) and not actions:
+        actions.append("Review the errors below, fix the first blocker, then run agentledger alpha again.")
+    return actions
+
+
 def _alpha_payload(
     *,
     ok: bool,
@@ -2056,6 +2091,7 @@ def _alpha_payload(
     feedback: dict | None = None,
     next_actions: list[str] | None = None,
 ) -> dict:
+    next_actions = next_actions or []
     return {
         "schema_version": ALPHA_SUMMARY_SCHEMA,
         "ok": ok,
@@ -2075,7 +2111,8 @@ def _alpha_payload(
         "status_exit_code": status_exit_code,
         "report_paths": report_paths or {},
         "feedback": feedback or _empty_status_feedback(),
-        "next_actions": next_actions or [],
+        "fix_first": _alpha_fix_first(status, errors, next_actions),
+        "next_actions": next_actions,
         "errors": errors,
     }
 
@@ -2399,11 +2436,24 @@ def _validate_alpha_summary(payload: dict) -> list[str]:
         errors.append("Alpha summary field errors must be a list.")
     if "next_actions" in payload and not isinstance(payload.get("next_actions"), list):
         errors.append("Alpha summary field next_actions must be a list.")
+    if "fix_first" in payload and not isinstance(payload.get("fix_first"), list):
+        errors.append("Alpha summary field fix_first must be a list.")
     if "report_paths" in payload and not isinstance(payload.get("report_paths"), dict):
         errors.append("Alpha summary field report_paths must be an object.")
     if "feedback" in payload and not isinstance(payload.get("feedback"), dict):
         errors.append("Alpha summary field feedback must be an object.")
     return errors
+
+
+def _normalized_alpha_summary_payload(payload: dict) -> dict:
+    next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
+    errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+    fix_first = payload.get("fix_first")
+    if isinstance(fix_first, list):
+        return payload
+    normalized = dict(payload)
+    normalized["fix_first"] = _alpha_fix_first(str(payload.get("status") or "unknown"), errors, next_actions)
+    return normalized
 
 
 def _format_alpha_summary(path: Path, payload: dict) -> str:
@@ -2413,6 +2463,7 @@ def _format_alpha_summary(path: Path, payload: dict) -> str:
     paths = payload.get("report_paths") if isinstance(payload.get("report_paths"), dict) else {}
     next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
     errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+    fix_first = payload.get("fix_first") if isinstance(payload.get("fix_first"), list) else _alpha_fix_first(str(status), errors, next_actions)
 
     lines = [
         f"AgentLedger alpha summary: {status}",
@@ -2431,6 +2482,10 @@ def _format_alpha_summary(path: Path, payload: dict) -> str:
             f"{feedback.get('runs_with_feedback', 0)} runs; latest run has {feedback.get('latest_run_entries', 0)}"
         ),
     ]
+    if fix_first:
+        lines.append("Fix first:")
+        for action in fix_first:
+            lines.append(f"- {action}")
     if paths:
         lines.extend(
             [
@@ -2474,6 +2529,7 @@ def _handle_alpha_summary(args: argparse.Namespace) -> int:
     validation_errors = _validate_alpha_summary(payload)
     if validation_errors:
         return _alpha_summary_error(args, validation_errors, summary_file)
+    payload = _normalized_alpha_summary_payload(payload)
 
     if getattr(args, "format", "text") == "json":
         print(json.dumps(payload, indent=2))
