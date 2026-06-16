@@ -1,5 +1,9 @@
 # Alpha Feedback Template
 
+Use this file for local notes. When feedback belongs in GitHub, use
+`.github/ISSUE_TEMPLATE/alpha-feedback.md` and paste only reviewed summary
+text or reviewed exports.
+
 Tester:
 
 Date:

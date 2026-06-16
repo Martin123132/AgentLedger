@@ -161,4 +161,5 @@ Please report:
 - whether the status/latest/history/inspect/check/verify flow made sense
 - whether anything looked unsafe to share or too noisy
 
-Use `docs/alpha-feedback-template.md` for notes.
+Use `docs/alpha-feedback-template.md` for notes, or
+`.github/ISSUE_TEMPLATE/alpha-feedback.md` when opening an alpha feedback issue.

@@ -50,6 +50,7 @@ Send back:
 
 - the final summary printed by `agentledger alpha` or `scripts/alpha.ps1`
 - notes from `docs/alpha-feedback-template.md`
+- a GitHub issue using `.github/ISSUE_TEMPLATE/alpha-feedback.md` when feedback is tracked in the repo
 - optional local `agentledger feedback --out .agentledger --note "..."` entries
 - optional local `agentledger feedback-summary --out .agentledger` output
 - optional reviewed `agentledger feedback-export --out .agentledger --output <path>` file
