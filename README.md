@@ -71,6 +71,7 @@ From this checkout:
 python -m pip install -e ".[dev]"
 agentledger --version
 python -m agentledger doctor --repo .
+python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
 ```
 
@@ -85,6 +86,7 @@ Open the `agentledger-report.md` inside that latest run folder.
 Five-minute public alpha check:
 
 ```powershell
+python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger alpha --repo . --out .agentledger
 ```
 
@@ -101,6 +103,7 @@ python -m agentledger run --repo . --out .agentledger --no-repomori --no-jester 
 python -m agentledger review --out .agentledger --allow-warnings
 python -m agentledger review --format markdown --out .agentledger --allow-warnings --output $env:TEMP\agentledger-review.md
 python -m agentledger status --out .agentledger --allow-warnings
+python -m agentledger alpha-guide --out .agentledger
 python -m agentledger open-latest --out .agentledger
 python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
@@ -147,7 +150,7 @@ check_max_changed_files = 25
 check_allow_warnings = true
 ```
 
-`run`, `snapshot`, `open-latest`, `history`, `status`, `alpha`, and
+`run`, `snapshot`, `open-latest`, `history`, `status`, `alpha-guide`, `alpha`, and
 `alpha-summary` read that file from the target repo when it exists. `--out`
 overrides only the evidence directory for a single command; the repo policy
 still applies. `--privacy-mode` overrides the privacy setting for a single
@@ -164,6 +167,8 @@ python -m pip install -e ".[dev]"
 agentledger --version
 python -m pytest
 python -m agentledger alpha --repo . --out .agentledger --json-output $env:TEMP\agentledger-alpha-cli-summary.json --format json
+python -m agentledger alpha-guide --repo . --out .agentledger
+python -m agentledger alpha-guide --repo . --out .agentledger --format json
 python scripts/check_release_metadata.py
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1

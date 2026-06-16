@@ -23,6 +23,7 @@ From the repository root:
 python -m pip install -e ".[dev]"
 agentledger --version
 python -m agentledger doctor --repo .
+python -m agentledger alpha-guide --repo . --out .agentledger
 ```
 
 Expected result:
@@ -30,6 +31,7 @@ Expected result:
 - `agentledger --version` prints the installed AgentLedger version
 - `doctor` should say `ready` when required checks pass
 - If `doctor` reports a missing check, read the `Hint:` line directly below it
+- `alpha-guide` shows the command loop, evidence paths, and privacy reminders
 - Missing RepoMori, Jester, or Tokometer warnings are OK for this alpha
 
 ## One-command alpha pass
@@ -37,6 +39,7 @@ Expected result:
 Run:
 
 ```powershell
+python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger alpha --repo . --out .agentledger
 ```
 

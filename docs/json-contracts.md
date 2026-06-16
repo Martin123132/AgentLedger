@@ -116,6 +116,26 @@ Stable fields:
 - `errors`: human-readable error list
 - `status_exit_code`: exit code returned by the command for this payload
 
+### `agentledger alpha-guide --format json`
+
+Schema: `agentledger.alpha_guide.v1`
+
+Use this to show the first-run alpha review loop without creating evidence.
+The payload is suitable for agents that need to tell a tester what to run,
+where evidence appears, and what must stay private.
+
+Stable fields:
+
+- `ok`: boolean
+- `repo`: resolved repository path used for config lookup
+- `out`: resolved AgentLedger output directory, or `null` on config failure
+- `commands`: setup, run, inspect, and feedback command lists
+- `evidence`: output root, latest pointer, run folder contents, and bundle note
+- `send_back`: reviewed summary items a tester can report
+- `keep_private`: evidence and secret handling reminders
+- `known_limitations`: expected alpha limitations such as missing optional tools
+- `errors`: human-readable error list
+
 ### `agentledger feedback --format json --note <text>`
 
 Schema: `agentledger.feedback.v1`

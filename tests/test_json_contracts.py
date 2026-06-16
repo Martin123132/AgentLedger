@@ -17,6 +17,7 @@ SCHEMAS = {
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
     "status": "agentledger.status.v1",
+    "alpha_guide": "agentledger.alpha_guide.v1",
     "alpha": "agentledger.alpha_summary.v1",
     "alpha_summary": "agentledger.alpha_summary.v1",
     "alpha_handoff": "agentledger.alpha_handoff.v1",
@@ -170,6 +171,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "status": _run_json(capsys, ["status", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
+        "alpha_guide": _run_json(capsys, ["alpha-guide", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "alpha": _run_json(
             capsys,
             [
@@ -323,6 +325,18 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "next_actions",
             "errors",
             "status_exit_code",
+        },
+        "alpha_guide": {
+            "schema_version",
+            "ok",
+            "repo",
+            "out",
+            "commands",
+            "evidence",
+            "send_back",
+            "keep_private",
+            "known_limitations",
+            "errors",
         },
         "alpha": {
             "schema_version",
@@ -604,6 +618,15 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
         },
     )
     assert status["next_actions"]
+
+    alpha_guide = json_payloads["alpha_guide"]
+    assert alpha_guide["ok"] is True
+    _assert_keys(alpha_guide["commands"], {"setup", "run", "inspect", "feedback"})
+    _assert_keys(alpha_guide["evidence"], {"output_root", "latest_pointer", "run_folder_contains", "bundle"})
+    assert alpha_guide["send_back"]
+    assert alpha_guide["keep_private"]
+    assert alpha_guide["known_limitations"]
+    assert alpha_guide["errors"] == []
 
     alpha = json_payloads["alpha"]
     assert alpha["ok"] is True

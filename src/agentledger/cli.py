@@ -65,6 +65,7 @@ PRIVACY_OMISSION = "[omitted by privacy-mode summary]"
 DEFAULT_OUT = ".agentledger"
 DEFAULT_PRIVACY_MODE = "standard"
 STATUS_SCHEMA = "agentledger.status.v1"
+ALPHA_GUIDE_SCHEMA = "agentledger.alpha_guide.v1"
 ALPHA_SUMMARY_SCHEMA = "agentledger.alpha_summary.v1"
 ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
 SIGNING_KEY_SCHEMA = "agentledger.signing_key.v1"
@@ -171,6 +172,12 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--feedback-limit", type=int, default=3, help="Recent feedback entries to inspect for counts.")
     status.add_argument("--allow-warnings", action="store_true", help="Return success for pass or warn statuses.")
     status.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    alpha_guide = sub.add_parser("alpha-guide", help="Show the first-run alpha review loop.")
+    alpha_guide.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
+    alpha_guide.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    alpha_guide.add_argument("--out", default=None, help="Evidence output directory.")
+    alpha_guide.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     alpha = sub.add_parser("alpha", help="Run a cross-platform one-command alpha pass.")
     alpha.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
@@ -1646,6 +1653,165 @@ def _status_error(
         for message in errors:
             print(message)
     return 2
+
+
+def _alpha_guide_out_arg(args: argparse.Namespace, config: AgentLedgerConfig) -> str:
+    if args.out is not None:
+        return str(args.out)
+    if config.out is not None:
+        return str(config.out)
+    return DEFAULT_OUT
+
+
+def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
+    repo = Path(args.repo or ".").resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return (
+            {
+                "schema_version": ALPHA_GUIDE_SCHEMA,
+                "ok": False,
+                "repo": str(repo),
+                "out": None,
+                "commands": {},
+                "evidence": {},
+                "send_back": [],
+                "keep_private": [
+                    "Do not commit or upload .agentledger folders, zip bundles, signing keys, or full reports unless reviewed and requested."
+                ],
+                "known_limitations": [],
+                "errors": [f"Config error: {exc}"],
+            },
+            2,
+        )
+
+    out_root = _resolve_out_root(args, repo, config)
+    repo_arg = str(args.repo or ".")
+    out_arg = _alpha_guide_out_arg(args, config)
+    commands = {
+        "setup": [
+            'python -m pip install -e ".[dev]"',
+            "agentledger --version",
+            f"python -m agentledger doctor --repo {repo_arg}",
+        ],
+        "run": [
+            f"python -m agentledger alpha --repo {repo_arg} --out {out_arg}",
+            f"python -m agentledger alpha-summary --out {out_arg}",
+        ],
+        "inspect": [
+            f"python -m agentledger status --out {out_arg} --allow-warnings",
+            f"python -m agentledger history --out {out_arg}",
+            f"python -m agentledger open-latest --out {out_arg}",
+        ],
+        "feedback": [
+            f'python -m agentledger feedback --out {out_arg} --note "First confusing thing: ..."',
+            f"python -m agentledger feedback-summary --out {out_arg}",
+            f"python -m agentledger feedback-export --out {out_arg} --output $env:TEMP\\agentledger-feedback.md",
+            f"python -m agentledger pack-alpha --out {out_arg} --output-dir $env:TEMP\\agentledger-alpha-packet",
+        ],
+    }
+    payload = {
+        "schema_version": ALPHA_GUIDE_SCHEMA,
+        "ok": True,
+        "repo": str(repo),
+        "out": str(out_root),
+        "commands": commands,
+        "evidence": {
+            "output_root": str(out_root),
+            "latest_pointer": str(out_root / "latest.txt"),
+            "run_folder_contains": [
+                "agentledger-report.md",
+                "agentledger-report.json",
+                "agentledger-report.html",
+                "artifacts/",
+                "alpha-feedback.jsonl when local feedback has been recorded",
+            ],
+            "bundle": "A sibling .zip bundle is written beside each run folder unless zip export is disabled.",
+        },
+        "send_back": [
+            "Final alpha summary text from agentledger alpha or alpha-summary.",
+            "The first command or message that felt confusing.",
+            "Whether the Markdown report was understandable enough to trust.",
+            "Reviewed feedback export or pack-alpha packet only when requested.",
+        ],
+        "keep_private": [
+            "Do not commit .agentledger folders.",
+            "Do not send zip bundles, signing keys, secrets, non-public source, or full reports unless reviewed and requested.",
+            "Review feedback exports and pack-alpha packets before sharing.",
+        ],
+        "known_limitations": [
+            "Optional RepoMori, Jester, and Tokometer integrations may warn when not installed.",
+            "Bash smoke checks require WSL or another Linux shell with bash.",
+        ],
+        "errors": [],
+    }
+    return payload, 0
+
+
+def _format_alpha_guide(payload: dict) -> str:
+    lines = [
+        "AgentLedger alpha guide",
+        f"Repo: {payload.get('repo') or 'n/a'}",
+        f"Output: {payload.get('out') or 'n/a'}",
+    ]
+    if payload.get("errors"):
+        lines.append("Errors:")
+        for error in payload["errors"]:
+            lines.append(f"- {error}")
+        return "\n".join(lines)
+
+    commands = payload.get("commands") if isinstance(payload.get("commands"), dict) else {}
+    for title, key in [
+        ("Setup", "setup"),
+        ("Run", "run"),
+        ("Inspect", "inspect"),
+        ("Feedback", "feedback"),
+    ]:
+        values = commands.get(key) if isinstance(commands.get(key), list) else []
+        if not values:
+            continue
+        lines.append(f"{title}:")
+        for command in values:
+            lines.append(f"- {command}")
+
+    evidence = payload.get("evidence") if isinstance(payload.get("evidence"), dict) else {}
+    lines.extend(
+        [
+            "Evidence appears:",
+            f"- Output root: {evidence.get('output_root') or 'n/a'}",
+            f"- Latest pointer: {evidence.get('latest_pointer') or 'n/a'}",
+        ]
+    )
+    run_folder_contains = evidence.get("run_folder_contains")
+    if isinstance(run_folder_contains, list):
+        lines.append("- Run folder contains:")
+        for item in run_folder_contains:
+            lines.append(f"  - {item}")
+    if evidence.get("bundle"):
+        lines.append(f"- {evidence['bundle']}")
+
+    for title, key in [
+        ("Send back", "send_back"),
+        ("Keep private", "keep_private"),
+        ("Known limitations", "known_limitations"),
+    ]:
+        values = payload.get(key) if isinstance(payload.get(key), list) else []
+        if not values:
+            continue
+        lines.append(f"{title}:")
+        for item in values:
+            lines.append(f"- {item}")
+    return "\n".join(lines)
+
+
+def _handle_alpha_guide(args: argparse.Namespace) -> int:
+    payload, exit_code = _alpha_guide_payload(args)
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        print(_format_alpha_guide(payload))
+    return exit_code
 
 
 def _build_status_payload_for_latest(
@@ -3841,6 +4007,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_history(args)
     if args.command_name == "status":
         return _handle_status(args)
+    if args.command_name == "alpha-guide":
+        return _handle_alpha_guide(args)
     if args.command_name == "alpha":
         return _handle_alpha(args)
     if args.command_name == "alpha-summary":
