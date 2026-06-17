@@ -9,6 +9,7 @@ import platform
 import re
 import subprocess
 import sys
+import tempfile
 import uuid
 from zipfile import BadZipFile, ZipFile
 from pathlib import Path
@@ -113,6 +114,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     contracts = sub.add_parser("contracts", help="List AgentLedger JSON command contracts.")
     contracts.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    demo = sub.add_parser("demo", help="Run a safe temporary AgentLedger demo.")
+    demo.add_argument(
+        "--output-dir",
+        default=None,
+        help="Directory for the isolated demo workspace. Defaults to a new temp directory.",
+    )
+    demo.add_argument(
+        "--privacy-mode",
+        choices=["standard", "summary"],
+        default="summary",
+        help="Evidence detail level for the demo capture.",
+    )
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")
     run.add_argument("--repo", default=".", help="Target git repository.")
@@ -4011,6 +4025,165 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
     return 0 if ok else 2
 
 
+DEMO_TEST = '''from pathlib import Path
+import unittest
+
+
+class DemoWorkflowTest(unittest.TestCase):
+    def test_demo_repo_can_be_verified(self):
+        readme = Path("README.md").read_text(encoding="utf-8")
+        self.assertIn("AgentLedger demo repository", readme)
+        Path("demo-result.txt").write_text("AgentLedger demo verification passed\\n", encoding="utf-8")
+
+
+if __name__ == "__main__":
+    unittest.main()
+'''
+
+
+def _demo_cleanup_command(workspace: Path) -> str:
+    return f"python -c \"import shutil; shutil.rmtree({str(workspace)!r})\""
+
+
+def _resolve_demo_workspace(args: argparse.Namespace) -> tuple[Path | None, list[str]]:
+    if args.output_dir:
+        workspace = Path(args.output_dir).expanduser().resolve()
+        try:
+            if workspace.exists() and not workspace.is_dir():
+                return None, [f"Output path is not a directory: {workspace}"]
+            if workspace.exists() and any(workspace.iterdir()):
+                return None, [f"Output directory is not empty: {workspace}"]
+            workspace.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            return None, [f"Unable to prepare demo output directory {workspace}: {exc}"]
+        return workspace, []
+
+    try:
+        return Path(tempfile.mkdtemp(prefix="agentledger-demo-")).resolve(), []
+    except OSError as exc:
+        return None, [f"Unable to create demo temp directory: {exc}"]
+
+
+def _run_demo_git(repo: Path, args: list[str]) -> tuple[int, str, str]:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        return 127, "", "git was not found on PATH."
+    return result.returncode, result.stdout.strip(), result.stderr.strip()
+
+
+def _demo_git_step(repo: Path, args: list[str], label: str) -> list[str]:
+    code, stdout, stderr = _run_demo_git(repo, args)
+    if code == 0:
+        return []
+    detail = stderr or stdout or f"exit code {code}"
+    return [f"{label} failed: {detail}"]
+
+
+def _write_demo_repo(repo: Path) -> list[str]:
+    try:
+        repo.mkdir(parents=True, exist_ok=False)
+        (repo / "README.md").write_text(
+            "# AgentLedger demo repository\n\n"
+            "This tiny repository is created by `agentledger demo` so first-time users "
+            "can inspect a real local evidence run without touching their own work.\n",
+            encoding="utf-8",
+        )
+        (repo / "test_demo.py").write_text(DEMO_TEST, encoding="utf-8")
+    except OSError as exc:
+        return [f"Unable to write demo repository files in {repo}: {exc}"]
+
+    steps = [
+        (["init"], "git init"),
+        (["config", "user.email", "agentledger-demo@example.local"], "git config user.email"),
+        (["config", "user.name", "AgentLedger Demo"], "git config user.name"),
+        (["add", "README.md", "test_demo.py"], "git add"),
+        (["commit", "-m", "Initial AgentLedger demo repo"], "git commit"),
+    ]
+    for git_args, label in steps:
+        errors = _demo_git_step(repo, git_args, label)
+        if errors:
+            return errors
+    return []
+
+
+def _handle_demo(args: argparse.Namespace) -> int:
+    workspace, errors = _resolve_demo_workspace(args)
+    if workspace is None:
+        print("AgentLedger demo: failed")
+        for error in errors:
+            print(f"- {error}")
+        return 2
+
+    repo = workspace / "demo-repo"
+    out_root = workspace / "agentledger-output"
+    errors = _write_demo_repo(repo)
+    if errors:
+        print("AgentLedger demo: failed")
+        print(f"Workspace: {workspace}")
+        for error in errors:
+            print(f"- {error}")
+        print(f"Cleanup: {_demo_cleanup_command(workspace)}")
+        return 2
+
+    task = [sys.executable, "-B", "-m", "unittest", "test_demo.py"]
+    capture_args = argparse.Namespace(
+        repo=str(repo),
+        config=None,
+        out=str(out_root),
+        no_repomori=True,
+        no_jester=True,
+        no_tokometer=True,
+        no_zip=False,
+        privacy_mode=args.privacy_mode,
+    )
+    capture_output = io.StringIO()
+    with contextlib.redirect_stdout(capture_output):
+        capture_exit = _capture(capture_args, task)
+    latest_dir, latest_errors = _resolve_latest_run_dir(out_root)
+
+    ok = capture_exit == 0 and latest_dir is not None
+    print(f"AgentLedger demo: {'pass' if ok else 'failed'}")
+    print(f"Workspace: {workspace}")
+    print(f"Demo repo: {repo}")
+    print(f"Evidence output: {out_root}")
+
+    if latest_dir is not None:
+        paths = _latest_paths(latest_dir)
+        print(f"Latest run: {latest_dir}")
+        print(f"Markdown report: {paths['markdown']}")
+        print(f"HTML report: {paths['html']}")
+        print(f"Bundle: {paths['zip'] or 'not written'}")
+
+    if latest_errors:
+        print("Errors:")
+        for error in latest_errors:
+            print(f"- {error}")
+    if capture_exit != 0:
+        print(f"Captured command exit code: {capture_exit}")
+        captured = capture_output.getvalue().strip()
+        if captured:
+            print("Capture output:")
+            print(captured)
+
+    print("Try next:")
+    print(f"- python -m agentledger open-latest --repo {repo} --out {out_root}")
+    print(f"- python -m agentledger history --repo {repo} --out {out_root}")
+    print(f"- python -m agentledger status --repo {repo} --out {out_root} --allow-warnings")
+    if latest_dir is not None:
+        print(f"- python -m agentledger inspect-report {latest_dir}")
+        print(f"- python -m agentledger verify-bundle {latest_dir.with_suffix('.zip')}")
+    print("Cleanup:")
+    print(f"- {_demo_cleanup_command(workspace)}")
+    return 0 if ok else 2
+
+
 def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandResult:
     started = utc_now_iso()
     try:
@@ -4164,6 +4337,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(format_contracts_text(__version__))
         return 0
+    if args.command_name == "demo":
+        return _handle_demo(args)
     if args.command_name == "run":
         return _capture(args, args.task)
     if args.command_name == "snapshot":
