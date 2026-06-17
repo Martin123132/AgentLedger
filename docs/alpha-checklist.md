@@ -143,7 +143,8 @@ Expected result:
 - Use `alpha-handoff --share-safe` before sharing a packet outside your own
   machine so local absolute paths are replaced with stable markers.
 - Prefer `pack-alpha` for the final packet because it validates the generated
-  files before telling you what to send.
+  files before telling you what to send. Review the packet `Sharing` section
+  for the exact files to share and what stays private.
 - Do not commit `.agentledger-signing-key` or any shared signing key.
 - Do not commit temporary `Temp/agentledger-smoke-*` folders.
 - Keep only source/config/docs files in git history.

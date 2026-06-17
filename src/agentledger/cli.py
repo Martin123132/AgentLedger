@@ -3422,6 +3422,7 @@ def _alpha_handoff_error(
             "files": {},
             "share_safe": share_safe,
             "redactions": _alpha_handoff_redactions(share_safe),
+            "sharing": _alpha_packet_sharing({}, share_safe),
             "review": None,
             "status_payload": None,
             "feedback_summary": None,
@@ -3489,6 +3490,27 @@ def _alpha_handoff_handling(share_safe: bool = False) -> dict[str, object]:
     }
 
 
+def _alpha_packet_keep_private() -> list[str]:
+    return [
+        ".agentledger/ run folders",
+        "zip evidence bundles",
+        "command transcript artifacts",
+        "signing keys",
+        "full reports unless explicitly requested",
+    ]
+
+
+def _alpha_packet_sharing(files: dict[str, str], share_safe: bool) -> dict[str, object]:
+    share_files = [files[label] for label in ("markdown", "json") if files.get(label)]
+    return {
+        "review_required": True,
+        "share_safe": share_safe,
+        "share_files": share_files,
+        "keep_private": _alpha_packet_keep_private(),
+        "note": "Review the listed packet files before sharing; do not attach raw AgentLedger evidence.",
+    }
+
+
 def _alpha_summary_for_handoff(out_root: Path) -> dict:
     summary_path = (out_root / ALPHA_SUMMARY_FILENAME).resolve()
     if not summary_path.exists():
@@ -3532,6 +3554,7 @@ def _format_alpha_handoff_markdown(payload: dict) -> str:
     comparison = review.get("comparison") if isinstance(review.get("comparison"), dict) else {}
     next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
     errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+    sharing = payload.get("sharing") if isinstance(payload.get("sharing"), dict) else {}
 
     lines = [
         "# AgentLedger Alpha Handoff",
@@ -3550,6 +3573,28 @@ def _format_alpha_handoff_markdown(payload: dict) -> str:
     for label in ("markdown", "json"):
         if files.get(label):
             lines.append(f"- {label}: {_markdown_inline(files[label])}")
+
+    if sharing:
+        lines.extend(
+            [
+                "",
+                "## Sharing",
+                "",
+                f"- Review required: {'yes' if sharing.get('review_required') else 'no'}",
+                f"- Share-safe: {'yes' if sharing.get('share_safe') else 'no'}",
+                f"- Note: {sharing.get('note') or 'Review packet files before sharing.'}",
+            ]
+        )
+        share_files = sharing.get("share_files") if isinstance(sharing.get("share_files"), list) else []
+        if share_files:
+            lines.append("- Packet files to review/share:")
+            for item in share_files:
+                lines.append(f"  - {_markdown_inline(item)}")
+        keep_private = sharing.get("keep_private") if isinstance(sharing.get("keep_private"), list) else []
+        if keep_private:
+            lines.append("- Keep private:")
+            for item in keep_private:
+                lines.append(f"  - {item}")
 
     lines.extend(
         [
@@ -3713,6 +3758,10 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
 
     markdown_path = output_dir / ALPHA_HANDOFF_MARKDOWN
     json_path = output_dir / ALPHA_HANDOFF_JSON
+    files = {
+        "markdown": str(markdown_path),
+        "json": str(json_path),
+    }
     next_actions = _alpha_handoff_next_actions(status_payload, feedback_summary, args.strict)
     ok = not errors and status_exit_code == 0 and review_exit_code == 0
     payload = {
@@ -3726,12 +3775,10 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
         "out": str(out_root),
         "latest_run": str(latest_dir),
         "output_dir": str(output_dir),
-        "files": {
-            "markdown": str(markdown_path),
-            "json": str(json_path),
-        },
+        "files": files,
         "share_safe": bool(args.share_safe),
         "redactions": _alpha_handoff_redactions(bool(args.share_safe)),
+        "sharing": _alpha_packet_sharing(files, bool(args.share_safe)),
         "review": review_payload,
         "status_payload": status_payload,
         "feedback_summary": feedback_summary,
@@ -3772,6 +3819,17 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
         print(f"Status: {payload['status']}")
         print(f"Summary: {payload['summary']}")
         print("Raw evidence copied: no")
+        sharing = payload.get("sharing") if isinstance(payload.get("sharing"), dict) else {}
+        share_files = sharing.get("share_files") if isinstance(sharing.get("share_files"), list) else []
+        if share_files:
+            print("Review/share files:")
+            for item in share_files:
+                print(f"- {item}")
+        keep_private = sharing.get("keep_private") if isinstance(sharing.get("keep_private"), list) else []
+        if keep_private:
+            print("Keep private:")
+            for item in keep_private:
+                print(f"- {item}")
         print("Next:")
         for action in next_actions:
             print(f"- {action}")
@@ -3914,6 +3972,7 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         "repo": str(repo),
         "output_dir": str(output_dir),
         "files": files,
+        "sharing": _alpha_packet_sharing(files, True),
         "raw_evidence_copied": False,
         "handoff_exit_code": handoff_exit_code,
         "handoff": handoff_payload,
@@ -3931,6 +3990,17 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         print(f"JSON to share: {json_path}")
         print("Raw evidence copied: no")
         print(f"Packet validation: {'pass' if validation.get('ok') else 'fail'}")
+        sharing = payload.get("sharing") if isinstance(payload.get("sharing"), dict) else {}
+        share_files = sharing.get("share_files") if isinstance(sharing.get("share_files"), list) else []
+        if share_files:
+            print("Review/share files:")
+            for item in share_files:
+                print(f"- {item}")
+        keep_private = sharing.get("keep_private") if isinstance(sharing.get("keep_private"), list) else []
+        if keep_private:
+            print("Keep private:")
+            for item in keep_private:
+                print(f"- {item}")
         if errors:
             print("Errors:")
             for error in errors:

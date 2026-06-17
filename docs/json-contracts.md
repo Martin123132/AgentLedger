@@ -184,6 +184,8 @@ Stable fields:
 - `files`: written `markdown` and `json` packet paths
 - `share_safe`: boolean, true when local absolute paths were redacted
 - `redactions`: path-redaction status, marker labels, and sharing note
+- `sharing`: review-required flag, packet files to review/share, and
+  keep-private reminders for raw evidence
 - `review`: embedded `agentledger.review.v1` payload
 - `status_payload`: embedded `agentledger.status.v1` payload
 - `feedback_summary`: embedded `agentledger.feedback_summary.v1` payload
@@ -221,6 +223,7 @@ Stable fields:
 - `repo`: local repository path used to generate the packet
 - `output_dir`: local directory containing the packet files
 - `files`: generated `markdown` and `json` packet files to share
+- `sharing`: explicit review/share file list and keep-private reminders
 - `raw_evidence_copied`: always false
 - `handoff_exit_code`: exit code from the wrapped alpha handoff command
 - `handoff`: embedded `agentledger.alpha_handoff.v1` share-safe payload

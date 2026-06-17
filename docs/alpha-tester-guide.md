@@ -130,7 +130,7 @@ Expected result:
 - `feedback-summary` rolls local notes up across run folders
 - `feedback-export` writes a reviewed Markdown or JSON feedback handoff without local evidence paths
 - `alpha-handoff --share-safe` writes a compact Markdown/JSON handoff packet without copying raw evidence or exposing local absolute paths
-- `pack-alpha` validates that share-safe packet and prints the two files to send
+- `pack-alpha` validates that share-safe packet, prints the two files to send, and includes a `Sharing` section with keep-private reminders
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `inspect-bundle` summarizes manifest, signature presence, reports, command outcome, and pass/warn/block review status without needing a signing key

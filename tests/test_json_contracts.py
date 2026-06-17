@@ -401,6 +401,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "files",
             "share_safe",
             "redactions",
+            "sharing",
             "review",
             "status_payload",
             "feedback_summary",
@@ -419,6 +420,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "repo",
             "output_dir",
             "files",
+            "sharing",
             "raw_evidence_copied",
             "handoff_exit_code",
             "handoff",
@@ -684,6 +686,9 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     _assert_keys(alpha_handoff["redactions"], {"local_paths", "markers", "note"})
     assert alpha_handoff["redactions"]["local_paths"] is False
     _assert_keys(alpha_handoff["files"], {"markdown", "json"})
+    _assert_keys(alpha_handoff["sharing"], {"review_required", "share_safe", "share_files", "keep_private", "note"})
+    assert alpha_handoff["sharing"]["review_required"] is True
+    assert alpha_handoff["sharing"]["share_safe"] is False
     _assert_keys(
         alpha_handoff["handling"],
         {"raw_evidence_copied", "copied_files", "share_safe", "local_paths_redacted", "omits", "do_not_commit"},
@@ -704,6 +709,8 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert pack_alpha["raw_evidence_copied"] is False
     assert pack_alpha["handoff_exit_code"] == 0
     _assert_keys(pack_alpha["files"], {"markdown", "json"})
+    _assert_keys(pack_alpha["sharing"], {"review_required", "share_safe", "share_files", "keep_private", "note"})
+    assert pack_alpha["sharing"]["share_safe"] is True
     assert pack_alpha["handoff"]["schema_version"] == SCHEMAS["alpha_handoff"]
     assert pack_alpha["handoff"]["share_safe"] is True
     _assert_keys(pack_alpha["validation"], {"ok", "checked_files", "checks", "errors"})

@@ -1475,6 +1475,10 @@ def test_alpha_handoff_writes_reviewed_packet(tmp_path: Path, capsys) -> None:
         "markdown": str(markdown_path),
         "json": str(json_path),
     }
+    assert payload["sharing"]["review_required"] is True
+    assert payload["sharing"]["share_safe"] is False
+    assert payload["sharing"]["share_files"] == [str(markdown_path), str(json_path)]
+    assert ".agentledger/ run folders" in payload["sharing"]["keep_private"]
     assert payload["review"]["schema_version"] == "agentledger.review.v1"
     assert payload["status_payload"]["schema_version"] == "agentledger.status.v1"
     assert payload["feedback_summary"]["schema_version"] == "agentledger.feedback_summary.v1"
@@ -1489,6 +1493,9 @@ def test_alpha_handoff_writes_reviewed_packet(tmp_path: Path, capsys) -> None:
 
     markdown = markdown_path.read_text(encoding="utf-8")
     assert "# AgentLedger Alpha Handoff" in markdown
+    assert "## Sharing" in markdown
+    assert "- Packet files to review/share:" in markdown
+    assert "- Keep private:" in markdown
     assert "Handoff packet should mention feedback." in markdown
     assert "Raw evidence copied: no" in markdown
     assert str(latest_dir / "agentledger-report.md") in markdown
@@ -1569,6 +1576,9 @@ def test_alpha_handoff_share_safe_redacts_local_paths(tmp_path: Path, capsys) ->
     assert payload["latest_run"] == "[latest-run]"
     assert payload["output_dir"] == "[handoff-output]"
     assert payload["files"]["markdown"].startswith("[handoff-output]")
+    assert payload["sharing"]["share_safe"] is True
+    assert payload["sharing"]["share_files"][0].startswith("[handoff-output]")
+    assert ".agentledger/ run folders" in payload["sharing"]["keep_private"]
     assert payload["review"]["paths"]["markdown"].startswith("[latest-run]")
     assert "[redacted-local-path]" in combined
     assert "[repo]" in markdown
@@ -1652,6 +1662,10 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     assert payload["ok"] is True
     assert payload["status"] == "warn"
     assert payload["files"] == {"markdown": str(markdown_path), "json": str(json_path)}
+    assert payload["sharing"]["review_required"] is True
+    assert payload["sharing"]["share_safe"] is True
+    assert payload["sharing"]["share_files"] == [str(markdown_path), str(json_path)]
+    assert "zip evidence bundles" in payload["sharing"]["keep_private"]
     assert payload["raw_evidence_copied"] is False
     assert payload["handoff_exit_code"] == 0
     assert payload["validation"]["ok"] is True
