@@ -287,7 +287,9 @@ no raw `.agentledger` run folders, transcript files, diffs, zip bundles, or
 signing keys. Add `--share-safe` or `--redact-local-paths` to replace local
 absolute paths with stable markers before sharing the packet.
 `pack-alpha` runs the share-safe handoff flow, validates the generated packet
-files for local absolute path leaks, and prints the two files to send.
+files for local absolute path leaks, and prints the two files to send. Both
+packet commands include a `Sharing` section with files to review/share and
+raw evidence to keep private.
 
 Alpha release readiness:
 
@@ -611,7 +613,8 @@ local absolute paths are replaced with `[repo]`, `[agentledger-output]`,
 `[latest-run]`, and `[handoff-output]` markers.
 `pack-alpha` is the one-command sharing path: it writes a share-safe packet,
 validates the written Markdown/JSON for local path leaks, then prints the two
-packet files to send.
+packet files to send. The generated packet includes a `Sharing` section naming
+the reviewed files and the raw evidence that should stay private.
 
 The normal local review loop is:
 
