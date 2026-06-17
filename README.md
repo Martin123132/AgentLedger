@@ -70,10 +70,17 @@ From this checkout:
 ```powershell
 python -m pip install -e ".[dev]"
 agentledger --version
+python -m agentledger demo
 python -m agentledger doctor --repo .
 python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
 ```
+
+`agentledger demo` creates a tiny temporary git repository, runs a standard
+library `unittest` command through AgentLedger, and prints the Markdown report,
+HTML report, bundle, follow-up commands, and cleanup command. It is the safest
+way to inspect a real local evidence run before pointing AgentLedger at your
+own repository.
 
 After a run:
 
@@ -423,6 +430,23 @@ git push -u origin my-agentledger-branch
 Open a pull request for review rather than pushing directly to `master`.
 
 ## Commands
+
+Run a safe first demo in an isolated temporary workspace:
+
+```powershell
+agentledger demo
+```
+
+Use a chosen empty workspace if you want predictable paths:
+
+```powershell
+agentledger demo --output-dir $env:TEMP\agentledger-demo
+```
+
+The demo creates `demo-repo/` and `agentledger-output/` under that workspace,
+runs `python -B -m unittest test_demo.py`, and prints the latest report, bundle,
+follow-up inspection commands, and cleanup command. It does not touch the
+current repository unless you explicitly choose an output directory inside it.
 
 Capture repository state only:
 

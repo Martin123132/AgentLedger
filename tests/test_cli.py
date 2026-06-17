@@ -183,6 +183,48 @@ def test_init_config_force_overwrites_existing_file(tmp_path: Path, capsys) -> N
     assert config.check_require_tests is True
 
 
+def test_demo_command_creates_isolated_report(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+
+    assert cli.main(["demo", "--output-dir", str(workspace)]) == 0
+
+    output = capsys.readouterr().out
+    repo = workspace / "demo-repo"
+    out = workspace / "agentledger-output"
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+
+    assert "AgentLedger demo: pass" in output
+    assert f"Workspace: {workspace.resolve()}" in output
+    assert f"Demo repo: {repo.resolve()}" in output
+    assert f"Evidence output: {out.resolve()}" in output
+    assert "python -m agentledger open-latest" in output
+    assert "Cleanup:" in output
+    assert repo.exists()
+    assert out.exists()
+    assert (latest / "agentledger-report.md").exists()
+    assert (latest / "agentledger-report.html").exists()
+    assert latest.with_suffix(".zip").exists()
+    assert report["target_repo"] == str(repo.resolve())
+    assert report["privacy_mode"] == "summary"
+    assert report["command"]["test_detected"] is True
+    assert report["command"]["test_framework"] == "unittest"
+    assert "?? demo-result.txt" in report["after"]["status"]
+
+
+def test_demo_command_refuses_non_empty_output_dir(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+    workspace.mkdir()
+    (workspace / "existing.txt").write_text("keep me\n", encoding="utf-8")
+
+    assert cli.main(["demo", "--output-dir", str(workspace)]) == 2
+
+    output = capsys.readouterr().out
+    assert "AgentLedger demo: failed" in output
+    assert f"Output directory is not empty: {workspace.resolve()}" in output
+    assert not (workspace / "demo-repo").exists()
+
+
 def test_snapshot_writes_json_and_markdown(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
