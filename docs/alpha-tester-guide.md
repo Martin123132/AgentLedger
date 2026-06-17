@@ -22,6 +22,7 @@ From the repository root:
 ```powershell
 python -m pip install -e ".[dev]"
 agentledger --version
+python -m agentledger demo
 python -m agentledger doctor --repo .
 python -m agentledger alpha-guide --repo . --out .agentledger
 ```
@@ -29,11 +30,16 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 Expected result:
 
 - `agentledger --version` prints the installed AgentLedger version
+- `agentledger demo` creates an isolated temporary demo repo, prints report and
+  bundle paths, and gives a cleanup command
 - `doctor` should say `ready` when required checks pass
 - If `doctor` reports a missing check, read the `Hint:` line directly below it
 - `alpha-guide` shows doctor readiness, optional integration counts, the command
   loop, evidence paths, and privacy reminders
 - Missing RepoMori, Jester, or Tokometer warnings are OK for this alpha
+
+See [demo.md](demo.md) when you want the expected demo output before running
+the full alpha pass.
 
 ## One-command alpha pass
 
