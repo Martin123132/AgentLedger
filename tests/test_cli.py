@@ -1760,23 +1760,30 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     )
 
     payload = _parse_json_output(capsys.readouterr().out)
+    issue_path = output_dir / "agentledger-alpha-issue.md"
     markdown_path = output_dir / "agentledger-alpha-handoff.md"
     json_path = output_dir / "agentledger-alpha-handoff.json"
+    issue_markdown = issue_path.read_text(encoding="utf-8")
     packet_json = json_path.read_text(encoding="utf-8")
     packet_markdown = markdown_path.read_text(encoding="utf-8")
-    packet_text = "\n".join([packet_json, packet_markdown])
+    packet_text = "\n".join([issue_markdown, packet_json, packet_markdown])
 
     assert payload["schema_version"] == "agentledger.pack_alpha.v1"
     assert payload["ok"] is True
     assert payload["status"] == "warn"
-    assert payload["files"] == {"markdown": str(markdown_path), "json": str(json_path)}
+    assert payload["files"] == {"issue": str(issue_path), "markdown": str(markdown_path), "json": str(json_path)}
     assert payload["sharing"]["review_required"] is True
     assert payload["sharing"]["share_safe"] is True
-    assert payload["sharing"]["share_files"] == [str(markdown_path), str(json_path)]
+    assert payload["sharing"]["share_files"] == [str(issue_path), str(markdown_path), str(json_path)]
     assert "zip evidence bundles" in payload["sharing"]["keep_private"]
     assert payload["raw_evidence_copied"] is False
     assert payload["handoff_exit_code"] == 0
     assert payload["validation"]["ok"] is True
+    assert payload["validation"]["checked_files"] == {
+        "issue": str(issue_path),
+        "markdown": str(markdown_path),
+        "json": str(json_path),
+    }
     assert payload["validation"]["errors"] == []
     assert payload["handoff"]["schema_version"] == "agentledger.alpha_handoff.v1"
     assert payload["handoff"]["share_safe"] is True
@@ -1784,6 +1791,8 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     assert payload["public_summary"] == payload["handoff"]["public_summary"]
     assert payload["public_summary"]["share_safe"] is True
     assert "AgentLedger alpha check: warn." in payload["public_summary"]["text"]
+    assert "### AgentLedger alpha check" in issue_markdown
+    assert "Reviewed public summary only." in issue_markdown
     assert json.loads(packet_json) == payload["handoff"]
     assert "[latest-run]" in packet_markdown
     assert "## Public Summary" in packet_markdown

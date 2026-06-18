@@ -77,6 +77,7 @@ COMPARE_SCHEMA = "agentledger.compare.v1"
 ALPHA_HANDOFF_SCHEMA = "agentledger.alpha_handoff.v1"
 ALPHA_HANDOFF_MARKDOWN = "agentledger-alpha-handoff.md"
 ALPHA_HANDOFF_JSON = "agentledger-alpha-handoff.json"
+ALPHA_ISSUE_MARKDOWN = "agentledger-alpha-issue.md"
 PACK_ALPHA_SCHEMA = "agentledger.pack_alpha.v1"
 PUBLIC_SUMMARY_TEXT_LIMIT = 280
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
@@ -3525,7 +3526,7 @@ def _alpha_packet_keep_private() -> list[str]:
 
 
 def _alpha_packet_sharing(files: dict[str, str], share_safe: bool) -> dict[str, object]:
-    share_files = [files[label] for label in ("markdown", "json") if files.get(label)]
+    share_files = [files[label] for label in ("issue", "markdown", "json") if files.get(label)]
     return {
         "review_required": True,
         "share_safe": share_safe,
@@ -3583,6 +3584,31 @@ def _alpha_public_summary(
         "markdown": "\n".join(issue_lines),
         "do_not_share": _alpha_packet_keep_private(),
     }
+
+
+def _format_alpha_issue_markdown(public_summary: dict | None) -> str:
+    public_summary = public_summary if isinstance(public_summary, dict) else {}
+    markdown = str(public_summary.get("markdown") or "").strip()
+    if not markdown:
+        markdown = "\n".join(
+            [
+                "### AgentLedger alpha check",
+                "",
+                "- Status: unknown",
+                "- Summary: Public alpha summary was not available.",
+                "- Raw evidence copied: no",
+                "- Local paths omitted: yes",
+            ]
+        )
+    lines = [
+        markdown,
+        "",
+        (
+            "Reviewed public summary only. Raw AgentLedger evidence stays private "
+            "unless explicitly requested."
+        ),
+    ]
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _alpha_summary_for_handoff(out_root: Path) -> dict:
@@ -3960,11 +3986,16 @@ def _pack_alpha_validation(
     *,
     markdown_path: Path,
     json_path: Path,
+    issue_path: Path,
     local_paths: dict[str, Path],
 ) -> dict:
     errors: list[str] = []
     contents: list[str] = []
-    checked_files = {"markdown": str(markdown_path), "json": str(json_path)}
+    checked_files = {
+        "issue": str(issue_path),
+        "markdown": str(markdown_path),
+        "json": str(json_path),
+    }
     for label, path in checked_files.items():
         file_path = Path(path)
         if not file_path.exists():
@@ -3991,6 +4022,7 @@ def _pack_alpha_validation(
         "ok": not errors,
         "checked_files": checked_files,
         "checks": [
+            "generated issue/comment draft exists",
             "generated Markdown packet exists",
             "generated JSON packet exists",
             "known local roots are absent",
@@ -4009,7 +4041,10 @@ def _pack_alpha_next_actions(handoff_payload: dict | None, validation: dict, han
         actions.append("Review handoff errors or rerun without --strict when warnings are acceptable.")
     if isinstance(handoff_payload, dict) and handoff_payload.get("status") == "warn":
         actions.append("Review warning rules before sending the packet.")
-    actions.append("Send only the listed Markdown and JSON packet files; do not attach raw .agentledger evidence.")
+    actions.append(
+        "Share only the listed issue/comment draft and packet files after review; "
+        "do not attach raw .agentledger evidence."
+    )
     deduped: list[str] = []
     for action in actions:
         if action not in deduped:
@@ -4040,6 +4075,14 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
 
     markdown_path = output_dir / ALPHA_HANDOFF_MARKDOWN
     json_path = output_dir / ALPHA_HANDOFF_JSON
+    issue_path = output_dir / ALPHA_ISSUE_MARKDOWN
+    issue_errors: list[str] = []
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        public_summary = handoff_payload.get("public_summary") if isinstance(handoff_payload, dict) else None
+        _write_rendered_output(issue_path, _format_alpha_issue_markdown(public_summary))
+    except OSError as exc:
+        issue_errors.append(f"Unable to write alpha issue/comment draft in {output_dir}: {exc}")
     local_paths = {
         "repo": repo,
         "handoff output": output_dir,
@@ -4049,6 +4092,7 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
     validation = _pack_alpha_validation(
         markdown_path=markdown_path,
         json_path=json_path,
+        issue_path=issue_path,
         local_paths=local_paths,
     )
     handoff_errors = []
@@ -4056,9 +4100,9 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         handoff_errors = [str(error) for error in handoff_payload.get("errors") or []]
     elif handoff_exit_code != 0:
         handoff_errors = ["Unable to parse alpha-handoff JSON output."]
-    errors = handoff_errors + [str(error) for error in validation.get("errors") or []]
-    ok = handoff_exit_code == 0 and validation.get("ok") is True
-    files = {"markdown": str(markdown_path), "json": str(json_path)}
+    errors = handoff_errors + issue_errors + [str(error) for error in validation.get("errors") or []]
+    ok = handoff_exit_code == 0 and not issue_errors and validation.get("ok") is True
+    files = {"issue": str(issue_path), "markdown": str(markdown_path), "json": str(json_path)}
     payload = {
         "schema_version": PACK_ALPHA_SCHEMA,
         "ok": ok,
@@ -4084,6 +4128,7 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
     else:
         print(f"AgentLedger alpha packet: {payload['status']}")
         print(f"Summary: {payload['summary']}")
+        print(f"Issue/comment draft: {issue_path}")
         print(f"Markdown to share: {markdown_path}")
         print(f"JSON to share: {json_path}")
         public_summary = payload.get("public_summary") if isinstance(payload.get("public_summary"), dict) else {}

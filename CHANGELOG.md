@@ -6,6 +6,8 @@
   machine-readable demo evidence paths.
 - Added path-free `public_summary` snippets to alpha handoff packets for GitHub
   issues, short posts, and public alpha updates after review.
+- Added `agentledger-alpha-issue.md` to `pack-alpha` as a copy-ready,
+  share-safe GitHub issue/comment draft.
 
 ## 0.1.10-alpha - 2026-06-18
 
