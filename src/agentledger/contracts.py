@@ -191,7 +191,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
     {
         "command": "pack-alpha --format json --output-dir <dir>",
         "schema_version": "agentledger.pack_alpha.v1",
-        "purpose": "Write and validate a share-safe alpha handoff packet.",
+        "purpose": "Write and validate a share-safe alpha handoff packet with a copy-ready issue/comment draft.",
         "stable_fields": [
             "ok",
             "status",

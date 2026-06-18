@@ -239,9 +239,9 @@ point. Both are still drafts for humans to review before posting.
 Schema: `agentledger.pack_alpha.v1`
 
 Use this to create the share-safe alpha handoff packet and validate the written
-Markdown/JSON before sharing. It wraps `alpha-handoff --share-safe`, checks the
-generated packet files for local absolute path leaks, and reports exactly which
-two files should be sent.
+issue/comment draft plus Markdown/JSON before sharing. It wraps
+`alpha-handoff --share-safe`, checks the generated packet files for local
+absolute path leaks, and reports exactly which files should be reviewed/shared.
 
 Stable fields:
 
@@ -253,7 +253,7 @@ Stable fields:
 - `agentledger_version`
 - `repo`: local repository path used to generate the packet
 - `output_dir`: local directory containing the packet files
-- `files`: generated `markdown` and `json` packet files to share
+- `files`: generated `issue`, `markdown`, and `json` packet files to review/share
 - `sharing`: explicit review/share file list and keep-private reminders
 - `raw_evidence_copied`: always false
 - `handoff_exit_code`: exit code from the wrapped alpha handoff command
@@ -264,8 +264,10 @@ Stable fields:
 - `errors`
 
 The `pack-alpha` command output is a local operator summary and may contain
-local output paths so the operator can find the files. The generated handoff
-packet files are the share-safe artifacts intended for review.
+local output paths so the operator can find the files.
+`agentledger-alpha-issue.md` is a copy-ready GitHub issue/comment draft built
+from `public_summary.markdown`; the generated handoff packet files remain the
+deeper share-safe artifacts intended for review.
 
 ### `agentledger feedback-summary --format json`
 

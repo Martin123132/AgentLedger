@@ -742,14 +742,16 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert pack_alpha["status"] in {"pass", "warn"}
     assert pack_alpha["raw_evidence_copied"] is False
     assert pack_alpha["handoff_exit_code"] == 0
-    _assert_keys(pack_alpha["files"], {"markdown", "json"})
+    _assert_keys(pack_alpha["files"], {"issue", "markdown", "json"})
     _assert_keys(pack_alpha["sharing"], {"review_required", "share_safe", "share_files", "keep_private", "note"})
     assert pack_alpha["sharing"]["share_safe"] is True
+    assert pack_alpha["sharing"]["share_files"][0] == pack_alpha["files"]["issue"]
     assert pack_alpha["handoff"]["schema_version"] == SCHEMAS["alpha_handoff"]
     assert pack_alpha["handoff"]["share_safe"] is True
     assert pack_alpha["public_summary"] == pack_alpha["handoff"]["public_summary"]
     assert pack_alpha["public_summary"]["share_safe"] is True
     _assert_keys(pack_alpha["validation"], {"ok", "checked_files", "checks", "errors"})
+    _assert_keys(pack_alpha["validation"]["checked_files"], {"issue", "markdown", "json"})
     assert pack_alpha["validation"]["ok"] is True
     assert pack_alpha["validation"]["errors"] == []
     assert pack_alpha["next_actions"]
