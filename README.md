@@ -73,8 +73,10 @@ python -m agentledger demo
 ```
 
 The demo creates an isolated temporary git repository, runs a standard-library
-`unittest` command through AgentLedger, and prints the Markdown report, HTML
-report, zip bundle, follow-up inspection commands, and cleanup command.
+`unittest` command through AgentLedger, and prints the Markdown report, JSON
+report, HTML report, zip bundle, follow-up inspection commands, and cleanup
+command. Use `python -m agentledger demo --format json` when another agent or
+wrapper needs the paths without scraping text.
 
 See [docs/demo.md](docs/demo.md) for expected output and a walkthrough.
 
@@ -100,9 +102,10 @@ python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')
 
 `agentledger demo` creates a tiny temporary git repository, runs a standard
 library `unittest` command through AgentLedger, and prints the Markdown report,
-HTML report, bundle, follow-up commands, and cleanup command. It is the safest
-way to inspect a real local evidence run before pointing AgentLedger at your
-own repository.
+JSON report, HTML report, bundle, follow-up commands, and cleanup command. Use
+`agentledger demo --format json` for machine-readable first-run evidence paths.
+It is the safest way to inspect a real local evidence run before pointing
+AgentLedger at your own repository.
 
 After a run:
 
@@ -464,11 +467,13 @@ Use a chosen empty workspace if you want predictable paths:
 
 ```powershell
 agentledger demo --output-dir $env:TEMP\agentledger-demo
+agentledger demo --format json
 ```
 
 The demo creates `demo-repo/` and `agentledger-output/` under that workspace,
 runs `python -B -m unittest test_demo.py`, and prints the latest report, bundle,
-follow-up inspection commands, and cleanup command. It does not touch the
+follow-up inspection commands, and cleanup command. JSON output uses
+`agentledger.demo.v1` for scripts and agent handoffs. It does not touch the
 current repository unless you explicitly choose an output directory inside it.
 
 Capture repository state only:

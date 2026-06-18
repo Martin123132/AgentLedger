@@ -13,6 +13,7 @@ from agentledger.contracts import CONTRACTS_DOC, CONTRACTS_SCHEMA, JSON_CONTRACT
 
 SCHEMAS = {
     "contracts": "agentledger.contracts.v1",
+    "demo": "agentledger.demo.v1",
     "doctor": "agentledger.doctor.v1",
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
@@ -168,6 +169,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
 
     return {
         "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
+        "demo": _run_json(capsys, ["demo", "--format", "json", "--output-dir", str(tmp_path / "demo-workspace")]),
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--repo", str(repo), "--out", str(out)]),
@@ -300,6 +302,22 @@ def test_json_contract_payloads_use_documented_schemas(json_payloads: dict[str, 
 def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: dict[str, dict]) -> None:
     expected_fields = {
         "contracts": {"schema_version", "agentledger_version", "docs", "compatibility", "contracts"},
+        "demo": {
+            "schema_version",
+            "ok",
+            "status",
+            "workspace",
+            "repo",
+            "out",
+            "latest_run",
+            "paths",
+            "privacy_mode",
+            "command",
+            "command_exit_code",
+            "try_next",
+            "cleanup",
+            "errors",
+        },
         "doctor": {"schema_version", "status", "required_ok", "optional", "checks"},
         "open_latest": {
             "schema_version",
@@ -575,6 +593,14 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     contracts = json_payloads["contracts"]
     assert contracts["contracts"]
     _assert_keys(contracts["contracts"][0], {"command", "schema_version", "purpose", "stable_fields", "exit_codes"})
+
+    demo = json_payloads["demo"]
+    assert demo["ok"] is True
+    assert demo["status"] == "pass"
+    _assert_keys(demo["paths"], {"markdown", "json", "html", "zip"})
+    assert demo["try_next"]
+    assert demo["cleanup"]
+    assert demo["errors"] == []
 
     doctor = json_payloads["doctor"]
     _assert_keys(doctor["optional"], {"configured", "total", "missing"})

@@ -47,6 +47,29 @@ Stable fields:
 - `contracts`: known command contracts, each with command text, schema version,
   purpose, stable fields, and exit code meanings
 
+### `agentledger demo --format json`
+
+Schema: `agentledger.demo.v1`
+
+Use this for automated first-run smoke checks and onboarding wrappers that need
+the demo evidence paths without scraping text output.
+
+Stable fields:
+
+- `ok`: boolean
+- `status`: `pass` or `failed`
+- `workspace`: isolated demo workspace, or `null` when setup failed early
+- `repo`: demo git repository path, or `null`
+- `out`: demo evidence output directory, or `null`
+- `latest_run`: resolved latest run directory, or `null`
+- `paths`: `markdown`, `json`, `html`, and optional `zip`
+- `privacy_mode`: evidence detail level used for the demo capture
+- `command`: captured verification command as an argument list
+- `command_exit_code`: captured command exit code, or `null`
+- `try_next`: follow-up CLI commands for inspecting demo evidence
+- `cleanup`: command for removing the isolated workspace, or `null`
+- `errors`: human-readable error list
+
 ### `agentledger doctor --json`
 
 Schema: `agentledger.doctor.v1`

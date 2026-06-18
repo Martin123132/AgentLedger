@@ -66,6 +66,7 @@ PRIVACY_OMISSION = "[omitted by privacy-mode summary]"
 DEFAULT_OUT = ".agentledger"
 DEFAULT_PRIVACY_MODE = "standard"
 STATUS_SCHEMA = "agentledger.status.v1"
+DEMO_SCHEMA = "agentledger.demo.v1"
 ALPHA_GUIDE_SCHEMA = "agentledger.alpha_guide.v1"
 ALPHA_SUMMARY_SCHEMA = "agentledger.alpha_summary.v1"
 ALPHA_SUMMARY_FILENAME = "alpha-summary.json"
@@ -127,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="summary",
         help="Evidence detail level for the demo capture.",
     )
+    demo.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")
     run.add_argument("--repo", default=".", help="Target git repository.")
@@ -4113,23 +4115,129 @@ def _write_demo_repo(repo: Path) -> list[str]:
     return []
 
 
+def _demo_try_next_commands(repo: Path, out_root: Path, latest_dir: Path | None) -> list[str]:
+    commands = [
+        f"python -m agentledger open-latest --repo {repo} --out {out_root}",
+        f"python -m agentledger history --repo {repo} --out {out_root}",
+        f"python -m agentledger status --repo {repo} --out {out_root} --allow-warnings",
+    ]
+    if latest_dir is not None:
+        commands.extend(
+            [
+                f"python -m agentledger inspect-report {latest_dir}",
+                f"python -m agentledger verify-bundle {latest_dir.with_suffix('.zip')}",
+            ]
+        )
+    return commands
+
+
+def _demo_payload(
+    *,
+    ok: bool,
+    workspace: Path | None,
+    repo: Path | None,
+    out_root: Path | None,
+    latest_dir: Path | None,
+    privacy_mode: str,
+    command: list[str],
+    command_exit_code: int | None,
+    errors: list[str],
+) -> dict:
+    return {
+        "schema_version": DEMO_SCHEMA,
+        "ok": ok,
+        "status": "pass" if ok else "failed",
+        "workspace": str(workspace) if workspace is not None else None,
+        "repo": str(repo) if repo is not None else None,
+        "out": str(out_root) if out_root is not None else None,
+        "latest_run": str(latest_dir) if latest_dir is not None else None,
+        "paths": _latest_paths(latest_dir) if latest_dir is not None else {},
+        "privacy_mode": privacy_mode,
+        "command": command,
+        "command_exit_code": command_exit_code,
+        "try_next": _demo_try_next_commands(repo, out_root, latest_dir) if repo is not None and out_root is not None else [],
+        "cleanup": _demo_cleanup_command(workspace) if workspace is not None else None,
+        "errors": errors,
+    }
+
+
+def _print_demo_text(payload: dict, capture_output: str = "") -> None:
+    print(f"AgentLedger demo: {payload['status']}")
+    if payload.get("workspace"):
+        print(f"Workspace: {payload['workspace']}")
+    if payload.get("repo"):
+        print(f"Demo repo: {payload['repo']}")
+    if payload.get("out"):
+        print(f"Evidence output: {payload['out']}")
+
+    latest_run = payload.get("latest_run")
+    paths = payload.get("paths") if isinstance(payload.get("paths"), dict) else {}
+    if latest_run:
+        print(f"Latest run: {latest_run}")
+        print(f"Markdown report: {paths.get('markdown')}")
+        print(f"JSON report: {paths.get('json')}")
+        print(f"HTML report: {paths.get('html')}")
+        print(f"Bundle: {paths.get('zip') or 'not written'}")
+
+    errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+    if errors:
+        print("Errors:")
+        for error in errors:
+            print(f"- {error}")
+
+    if payload.get("command_exit_code") not in (None, 0):
+        print(f"Captured command exit code: {payload['command_exit_code']}")
+        if capture_output:
+            print("Capture output:")
+            print(capture_output)
+
+    print("Try next:")
+    for command in payload.get("try_next") or []:
+        print(f"- {command}")
+    if payload.get("cleanup"):
+        print("Cleanup:")
+        print(f"- {payload['cleanup']}")
+
+
 def _handle_demo(args: argparse.Namespace) -> int:
     workspace, errors = _resolve_demo_workspace(args)
     if workspace is None:
-        print("AgentLedger demo: failed")
-        for error in errors:
-            print(f"- {error}")
+        payload = _demo_payload(
+            ok=False,
+            workspace=None,
+            repo=None,
+            out_root=None,
+            latest_dir=None,
+            privacy_mode=args.privacy_mode,
+            command=[],
+            command_exit_code=None,
+            errors=errors,
+        )
+        if args.format == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            _print_demo_text(payload)
         return 2
 
     repo = workspace / "demo-repo"
     out_root = workspace / "agentledger-output"
     errors = _write_demo_repo(repo)
     if errors:
-        print("AgentLedger demo: failed")
-        print(f"Workspace: {workspace}")
-        for error in errors:
-            print(f"- {error}")
-        print(f"Cleanup: {_demo_cleanup_command(workspace)}")
+        payload = _demo_payload(
+            ok=False,
+            workspace=workspace,
+            repo=repo,
+            out_root=out_root,
+            latest_dir=None,
+            privacy_mode=args.privacy_mode,
+            command=[],
+            command_exit_code=None,
+            errors=errors,
+        )
+        if args.format == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            _print_demo_text(payload)
         return 2
 
     task = [sys.executable, "-B", "-m", "unittest", "test_demo.py"]
@@ -4149,38 +4257,21 @@ def _handle_demo(args: argparse.Namespace) -> int:
     latest_dir, latest_errors = _resolve_latest_run_dir(out_root)
 
     ok = capture_exit == 0 and latest_dir is not None
-    print(f"AgentLedger demo: {'pass' if ok else 'failed'}")
-    print(f"Workspace: {workspace}")
-    print(f"Demo repo: {repo}")
-    print(f"Evidence output: {out_root}")
-
-    if latest_dir is not None:
-        paths = _latest_paths(latest_dir)
-        print(f"Latest run: {latest_dir}")
-        print(f"Markdown report: {paths['markdown']}")
-        print(f"HTML report: {paths['html']}")
-        print(f"Bundle: {paths['zip'] or 'not written'}")
-
-    if latest_errors:
-        print("Errors:")
-        for error in latest_errors:
-            print(f"- {error}")
-    if capture_exit != 0:
-        print(f"Captured command exit code: {capture_exit}")
-        captured = capture_output.getvalue().strip()
-        if captured:
-            print("Capture output:")
-            print(captured)
-
-    print("Try next:")
-    print(f"- python -m agentledger open-latest --repo {repo} --out {out_root}")
-    print(f"- python -m agentledger history --repo {repo} --out {out_root}")
-    print(f"- python -m agentledger status --repo {repo} --out {out_root} --allow-warnings")
-    if latest_dir is not None:
-        print(f"- python -m agentledger inspect-report {latest_dir}")
-        print(f"- python -m agentledger verify-bundle {latest_dir.with_suffix('.zip')}")
-    print("Cleanup:")
-    print(f"- {_demo_cleanup_command(workspace)}")
+    payload = _demo_payload(
+        ok=ok,
+        workspace=workspace,
+        repo=repo,
+        out_root=out_root,
+        latest_dir=latest_dir,
+        privacy_mode=args.privacy_mode,
+        command=task,
+        command_exit_code=capture_exit,
+        errors=latest_errors,
+    )
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        _print_demo_text(payload, capture_output.getvalue().strip())
     return 0 if ok else 2
 
 
