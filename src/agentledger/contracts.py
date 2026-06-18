@@ -8,6 +8,27 @@ CONTRACTS_DOC = "docs/json-contracts.md"
 
 JSON_CONTRACTS: list[dict[str, Any]] = [
     {
+        "command": "demo --format json",
+        "schema_version": "agentledger.demo.v1",
+        "purpose": "Run a safe temporary demo and return machine-readable evidence paths.",
+        "stable_fields": [
+            "ok",
+            "status",
+            "workspace",
+            "repo",
+            "out",
+            "latest_run",
+            "paths",
+            "privacy_mode",
+            "command",
+            "command_exit_code",
+            "try_next",
+            "cleanup",
+            "errors",
+        ],
+        "exit_codes": {"0": "demo run captured", "2": "demo setup or capture failed"},
+    },
+    {
         "command": "doctor --json",
         "schema_version": "agentledger.doctor.v1",
         "purpose": "Check local AgentLedger setup readiness.",

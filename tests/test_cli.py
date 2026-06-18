@@ -199,6 +199,7 @@ def test_demo_command_creates_isolated_report(tmp_path: Path, capsys) -> None:
     assert f"Demo repo: {repo.resolve()}" in output
     assert f"Evidence output: {out.resolve()}" in output
     assert "python -m agentledger open-latest" in output
+    assert "JSON report:" in output
     assert "Cleanup:" in output
     assert repo.exists()
     assert out.exists()
@@ -210,6 +211,53 @@ def test_demo_command_creates_isolated_report(tmp_path: Path, capsys) -> None:
     assert report["command"]["test_detected"] is True
     assert report["command"]["test_framework"] == "unittest"
     assert "?? demo-result.txt" in report["after"]["status"]
+
+
+def test_demo_command_json_output_lists_evidence_paths(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+
+    assert cli.main(["demo", "--format", "json", "--output-dir", str(workspace)]) == 0
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    repo = workspace / "demo-repo"
+    out = workspace / "agentledger-output"
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+
+    assert payload["schema_version"] == "agentledger.demo.v1"
+    assert payload["ok"] is True
+    assert payload["status"] == "pass"
+    assert payload["workspace"] == str(workspace.resolve())
+    assert payload["repo"] == str(repo.resolve())
+    assert payload["out"] == str(out.resolve())
+    assert payload["latest_run"] == str(latest)
+    assert payload["paths"]["markdown"] == str(latest / "agentledger-report.md")
+    assert payload["paths"]["json"] == str(latest / "agentledger-report.json")
+    assert payload["paths"]["html"] == str(latest / "agentledger-report.html")
+    assert payload["paths"]["zip"] == str(latest.with_suffix(".zip"))
+    assert payload["privacy_mode"] == "summary"
+    assert payload["command"][-2:] == ["unittest", "test_demo.py"]
+    assert payload["command_exit_code"] == 0
+    assert len(payload["try_next"]) == 5
+    assert payload["cleanup"]
+    assert payload["errors"] == []
+
+
+def test_demo_command_json_output_reports_setup_errors(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+    workspace.mkdir()
+    (workspace / "existing.txt").write_text("keep me\n", encoding="utf-8")
+
+    assert cli.main(["demo", "--format", "json", "--output-dir", str(workspace)]) == 2
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentledger.demo.v1"
+    assert payload["ok"] is False
+    assert payload["status"] == "failed"
+    assert payload["workspace"] is None
+    assert payload["paths"] == {}
+    assert payload["try_next"] == []
+    assert payload["cleanup"] is None
+    assert payload["errors"] == [f"Output directory is not empty: {workspace.resolve()}"]
 
 
 def test_demo_command_refuses_non_empty_output_dir(tmp_path: Path, capsys) -> None:

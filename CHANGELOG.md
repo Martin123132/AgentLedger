@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added `agentledger demo --format json` for scripted first-run checks and
+  machine-readable demo evidence paths.
+
 ## 0.1.10-alpha - 2026-06-18
 
 - Added `agentledger demo` for a safe first run in an isolated temporary git

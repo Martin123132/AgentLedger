@@ -22,6 +22,13 @@ python -m agentledger demo --output-dir $env:TEMP\agentledger-demo
 The chosen `--output-dir` must be empty. This avoids mixing demo evidence with
 other files.
 
+Use JSON output when a wrapper, script, or another agent needs the evidence
+paths without scraping text:
+
+```powershell
+python -m agentledger demo --format json
+```
+
 ## What It Does
 
 The command creates:
@@ -51,6 +58,7 @@ Demo repo: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\demo-repo
 Evidence output: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output
 Latest run: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345
 Markdown report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.md
+JSON report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.json
 HTML report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.html
 Bundle: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
 Try next:
@@ -76,6 +84,10 @@ Run the `Try next:` commands printed by `agentledger demo`. They show:
 The demo uses `--privacy-mode summary` by default, so reports keep counts,
 paths, and metadata while omitting full command transcript content and full
 diffs.
+
+With `--format json`, the payload uses schema `agentledger.demo.v1` and includes
+`workspace`, `repo`, `out`, `latest_run`, `paths`, `try_next`, `cleanup`, and
+`errors`.
 
 ## What Stays Local
 
