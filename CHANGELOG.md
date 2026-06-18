@@ -4,6 +4,8 @@
 
 - Added `agentledger demo --format json` for scripted first-run checks and
   machine-readable demo evidence paths.
+- Added path-free `public_summary` snippets to alpha handoff packets for GitHub
+  issues, short posts, and public alpha updates after review.
 
 ## 0.1.10-alpha - 2026-06-18
 

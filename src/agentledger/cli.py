@@ -78,6 +78,7 @@ ALPHA_HANDOFF_SCHEMA = "agentledger.alpha_handoff.v1"
 ALPHA_HANDOFF_MARKDOWN = "agentledger-alpha-handoff.md"
 ALPHA_HANDOFF_JSON = "agentledger-alpha-handoff.json"
 PACK_ALPHA_SCHEMA = "agentledger.pack_alpha.v1"
+PUBLIC_SUMMARY_TEXT_LIMIT = 280
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
 )
@@ -3443,6 +3444,13 @@ def _alpha_handoff_error(
             "status_payload": None,
             "feedback_summary": None,
             "alpha_summary": None,
+            "public_summary": _alpha_public_summary(
+                status="unknown",
+                summary="Alpha handoff could not be written.",
+                status_payload=None,
+                feedback_summary=None,
+                share_safe=share_safe,
+            ),
             "handling": _alpha_handoff_handling(share_safe),
             "next_actions": ["Fix the reported handoff errors, then run agentledger alpha-handoff again."],
             "errors": errors,
@@ -3527,6 +3535,56 @@ def _alpha_packet_sharing(files: dict[str, str], share_safe: bool) -> dict[str, 
     }
 
 
+def _truncate_public_summary_text(text: str) -> str:
+    if len(text) <= PUBLIC_SUMMARY_TEXT_LIMIT:
+        return text
+    return text[: PUBLIC_SUMMARY_TEXT_LIMIT - 3].rstrip() + "..."
+
+
+def _alpha_public_summary(
+    *,
+    status: str,
+    summary: str,
+    status_payload: dict | None,
+    feedback_summary: dict | None,
+    share_safe: bool,
+) -> dict[str, object]:
+    status_payload = status_payload or {}
+    feedback_summary = feedback_summary or {}
+    check = status_payload.get("check") if isinstance(status_payload.get("check"), dict) else {}
+    changed_files = check.get("changed_files")
+    test_framework = check.get("test_framework") or "n/a"
+    privacy_mode = check.get("privacy_mode") or "n/a"
+    feedback_total = feedback_summary.get("total_entries", 0)
+    social_text = _truncate_public_summary_text(
+        f"AgentLedger alpha check: {status}. {summary} "
+        f"Changed files: {changed_files if changed_files is not None else 'n/a'}; "
+        f"tests: {test_framework}; privacy: {privacy_mode}. Raw evidence kept private."
+    )
+    issue_lines = [
+        "### AgentLedger alpha check",
+        "",
+        f"- Status: {status}",
+        f"- Summary: {summary}",
+        f"- Changed files: {changed_files if changed_files is not None else 'n/a'}",
+        f"- Test framework: {test_framework}",
+        f"- Privacy mode: {privacy_mode}",
+        f"- Feedback entries: {feedback_total}",
+        "- Raw evidence copied: no",
+        "- Local paths omitted: yes",
+        "- Keep private: .agentledger run folders, zip bundles, command transcripts, signing keys, and full reports unless requested",
+    ]
+    return {
+        "share_safe": share_safe,
+        "local_paths_omitted": True,
+        "raw_evidence_copied": False,
+        "text": social_text,
+        "text_limit": PUBLIC_SUMMARY_TEXT_LIMIT,
+        "markdown": "\n".join(issue_lines),
+        "do_not_share": _alpha_packet_keep_private(),
+    }
+
+
 def _alpha_summary_for_handoff(out_root: Path) -> dict:
     summary_path = (out_root / ALPHA_SUMMARY_FILENAME).resolve()
     if not summary_path.exists():
@@ -3571,6 +3629,7 @@ def _format_alpha_handoff_markdown(payload: dict) -> str:
     next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
     errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
     sharing = payload.get("sharing") if isinstance(payload.get("sharing"), dict) else {}
+    public_summary = payload.get("public_summary") if isinstance(payload.get("public_summary"), dict) else {}
 
     lines = [
         "# AgentLedger Alpha Handoff",
@@ -3611,6 +3670,15 @@ def _format_alpha_handoff_markdown(payload: dict) -> str:
             lines.append("- Keep private:")
             for item in keep_private:
                 lines.append(f"  - {item}")
+
+    if public_summary:
+        lines.extend(["", "## Public Summary", ""])
+        text_summary = public_summary.get("text")
+        if text_summary:
+            lines.extend(["```text", str(text_summary), "```", ""])
+        markdown_summary = public_summary.get("markdown")
+        if markdown_summary:
+            lines.extend(["```markdown", str(markdown_summary), "```"])
 
     lines.extend(
         [
@@ -3780,11 +3848,13 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
     }
     next_actions = _alpha_handoff_next_actions(status_payload, feedback_summary, args.strict)
     ok = not errors and status_exit_code == 0 and review_exit_code == 0
+    status = str(status_payload.get("status") or "unknown")
+    summary = (status_payload.get("check") or {}).get("summary") or "No status summary."
     payload = {
         "schema_version": ALPHA_HANDOFF_SCHEMA,
         "ok": ok,
-        "status": status_payload.get("status") or "unknown",
-        "summary": (status_payload.get("check") or {}).get("summary") or "No status summary.",
+        "status": status,
+        "summary": summary,
         "generated_at": utc_now_iso(),
         "agentledger_version": f"agentledger {__version__}",
         "repo": str(repo),
@@ -3799,6 +3869,13 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
         "status_payload": status_payload,
         "feedback_summary": feedback_summary,
         "alpha_summary": alpha_summary,
+        "public_summary": _alpha_public_summary(
+            status=status,
+            summary=summary,
+            status_payload=status_payload,
+            feedback_summary=feedback_summary,
+            share_safe=bool(args.share_safe),
+        ),
         "handling": _alpha_handoff_handling(bool(args.share_safe)),
         "next_actions": next_actions,
         "errors": errors,
@@ -3834,6 +3911,10 @@ def _handle_alpha_handoff(args: argparse.Namespace) -> int:
         print(f"Share-safe: {'yes' if args.share_safe else 'no'}")
         print(f"Status: {payload['status']}")
         print(f"Summary: {payload['summary']}")
+        public_summary = payload.get("public_summary") if isinstance(payload.get("public_summary"), dict) else {}
+        if public_summary.get("text"):
+            print("Public summary:")
+            print(public_summary["text"])
         print("Raw evidence copied: no")
         sharing = payload.get("sharing") if isinstance(payload.get("sharing"), dict) else {}
         share_files = sharing.get("share_files") if isinstance(sharing.get("share_files"), list) else []
@@ -3992,6 +4073,7 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         "raw_evidence_copied": False,
         "handoff_exit_code": handoff_exit_code,
         "handoff": handoff_payload,
+        "public_summary": handoff_payload.get("public_summary") if isinstance(handoff_payload, dict) else None,
         "validation": validation,
         "next_actions": _pack_alpha_next_actions(handoff_payload, validation, handoff_exit_code),
         "errors": errors,
@@ -4004,6 +4086,10 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         print(f"Summary: {payload['summary']}")
         print(f"Markdown to share: {markdown_path}")
         print(f"JSON to share: {json_path}")
+        public_summary = payload.get("public_summary") if isinstance(payload.get("public_summary"), dict) else {}
+        if public_summary.get("text"):
+            print("Public summary:")
+            print(public_summary["text"])
         print("Raw evidence copied: no")
         print(f"Packet validation: {'pass' if validation.get('ok') else 'fail'}")
         sharing = payload.get("sharing") if isinstance(payload.get("sharing"), dict) else {}

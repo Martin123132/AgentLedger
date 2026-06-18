@@ -424,6 +424,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "status_payload",
             "feedback_summary",
             "alpha_summary",
+            "public_summary",
             "handling",
             "next_actions",
             "errors",
@@ -442,6 +443,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "raw_evidence_copied",
             "handoff_exit_code",
             "handoff",
+            "public_summary",
             "validation",
             "next_actions",
             "errors",
@@ -727,6 +729,12 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert alpha_handoff["status_payload"]["schema_version"] == SCHEMAS["status"]
     assert alpha_handoff["feedback_summary"]["schema_version"] == SCHEMAS["feedback_summary"]
     _assert_keys(alpha_handoff["alpha_summary"], {"available", "summary_file", "payload", "errors"})
+    _assert_keys(
+        alpha_handoff["public_summary"],
+        {"share_safe", "local_paths_omitted", "raw_evidence_copied", "text", "text_limit", "markdown", "do_not_share"},
+    )
+    assert alpha_handoff["public_summary"]["local_paths_omitted"] is True
+    assert len(alpha_handoff["public_summary"]["text"]) <= alpha_handoff["public_summary"]["text_limit"]
     assert alpha_handoff["next_actions"]
 
     pack_alpha = json_payloads["pack_alpha"]
@@ -739,6 +747,8 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert pack_alpha["sharing"]["share_safe"] is True
     assert pack_alpha["handoff"]["schema_version"] == SCHEMAS["alpha_handoff"]
     assert pack_alpha["handoff"]["share_safe"] is True
+    assert pack_alpha["public_summary"] == pack_alpha["handoff"]["public_summary"]
+    assert pack_alpha["public_summary"]["share_safe"] is True
     _assert_keys(pack_alpha["validation"], {"ok", "checked_files", "checks", "errors"})
     assert pack_alpha["validation"]["ok"] is True
     assert pack_alpha["validation"]["errors"] == []
