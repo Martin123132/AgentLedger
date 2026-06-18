@@ -1574,6 +1574,14 @@ def test_alpha_handoff_writes_reviewed_packet(tmp_path: Path, capsys) -> None:
     assert payload["feedback_summary"]["schema_version"] == "agentledger.feedback_summary.v1"
     assert payload["feedback_summary"]["total_entries"] == 1
     assert payload["alpha_summary"]["available"] is False
+    assert payload["public_summary"]["share_safe"] is False
+    assert payload["public_summary"]["local_paths_omitted"] is True
+    assert payload["public_summary"]["raw_evidence_copied"] is False
+    assert "AgentLedger alpha check: warn." in payload["public_summary"]["text"]
+    assert payload["public_summary"]["text_limit"] == 280
+    assert len(payload["public_summary"]["text"]) <= payload["public_summary"]["text_limit"]
+    assert "### AgentLedger alpha check" in payload["public_summary"]["markdown"]
+    assert ".agentledger/ run folders" in payload["public_summary"]["do_not_share"]
     assert payload["share_safe"] is False
     assert payload["redactions"]["local_paths"] is False
     assert payload["handling"]["raw_evidence_copied"] is False
@@ -1584,6 +1592,9 @@ def test_alpha_handoff_writes_reviewed_packet(tmp_path: Path, capsys) -> None:
     markdown = markdown_path.read_text(encoding="utf-8")
     assert "# AgentLedger Alpha Handoff" in markdown
     assert "## Sharing" in markdown
+    assert "## Public Summary" in markdown
+    assert "AgentLedger alpha check: warn." in markdown
+    assert "### AgentLedger alpha check" in markdown
     assert "- Packet files to review/share:" in markdown
     assert "- Keep private:" in markdown
     assert "Handoff packet should mention feedback." in markdown
@@ -1669,8 +1680,15 @@ def test_alpha_handoff_share_safe_redacts_local_paths(tmp_path: Path, capsys) ->
     assert payload["sharing"]["share_safe"] is True
     assert payload["sharing"]["share_files"][0].startswith("[handoff-output]")
     assert ".agentledger/ run folders" in payload["sharing"]["keep_private"]
+    assert payload["public_summary"]["share_safe"] is True
+    assert payload["public_summary"]["local_paths_omitted"] is True
+    assert payload["public_summary"]["raw_evidence_copied"] is False
+    assert "Raw evidence kept private." in payload["public_summary"]["text"]
+    assert len(payload["public_summary"]["text"]) <= payload["public_summary"]["text_limit"]
+    assert "Local paths omitted: yes" in payload["public_summary"]["markdown"]
     assert payload["review"]["paths"]["markdown"].startswith("[latest-run]")
     assert "[redacted-local-path]" in combined
+    assert "## Public Summary" in markdown
     assert "[repo]" in markdown
     assert "[latest-run]" in markdown
     assert json.loads(json_text) == payload
@@ -1763,8 +1781,12 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     assert payload["handoff"]["schema_version"] == "agentledger.alpha_handoff.v1"
     assert payload["handoff"]["share_safe"] is True
     assert payload["handoff"]["handling"]["local_paths_redacted"] is True
+    assert payload["public_summary"] == payload["handoff"]["public_summary"]
+    assert payload["public_summary"]["share_safe"] is True
+    assert "AgentLedger alpha check: warn." in payload["public_summary"]["text"]
     assert json.loads(packet_json) == payload["handoff"]
     assert "[latest-run]" in packet_markdown
+    assert "## Public Summary" in packet_markdown
     assert "[redacted-local-path]" in packet_text
 
     for path in (repo, out, latest_dir, output_dir):

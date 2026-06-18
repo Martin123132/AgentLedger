@@ -322,7 +322,9 @@ absolute paths with stable markers before sharing the packet.
 `pack-alpha` runs the share-safe handoff flow, validates the generated packet
 files for local absolute path leaks, and prints the two files to send. Both
 packet commands include a `Sharing` section with files to review/share and
-raw evidence to keep private.
+raw evidence to keep private. They also include `public_summary.text` and
+`public_summary.markdown` as path-free copy/paste starting points for GitHub
+issues, short posts, or alpha updates after review.
 
 Alpha release readiness:
 
@@ -666,7 +668,9 @@ local absolute paths are replaced with `[repo]`, `[agentledger-output]`,
 `pack-alpha` is the one-command sharing path: it writes a share-safe packet,
 validates the written Markdown/JSON for local path leaks, then prints the two
 packet files to send. The generated packet includes a `Sharing` section naming
-the reviewed files and the raw evidence that should stay private.
+the reviewed files and the raw evidence that should stay private, plus
+`public_summary.text` and `public_summary.markdown` snippets that omit local
+paths and raw evidence.
 
 The normal local review loop is:
 

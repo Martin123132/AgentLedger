@@ -214,6 +214,8 @@ Stable fields:
 - `feedback_summary`: embedded `agentledger.feedback_summary.v1` payload
 - `alpha_summary`: optional loaded `agentledger.alpha_summary.v1` payload plus
   availability and validation errors
+- `public_summary`: path-free `text` and `markdown` snippets for GitHub issues,
+  short posts, or public alpha updates after review
 - `handling`: proof that no raw evidence files were copied, plus do-not-commit
   handling notes
 - `next_actions`
@@ -225,6 +227,12 @@ stable markers such as `[repo]`, `[agentledger-output]`, `[latest-run]`, and
 `[handoff-output]` in the written packet. Review the packet before sharing
 because feedback notes and command summaries can still contain project context,
 even though raw evidence is not copied.
+
+`public_summary` is intentionally compact and omits local paths, raw evidence,
+full reports, command transcripts, zip bundles, signing keys, and source
+snippets. `public_summary.text` is capped at 280 characters for short-post
+workflows; `public_summary.markdown` is a longer GitHub issue/comment starting
+point. Both are still drafts for humans to review before posting.
 
 ### `agentledger pack-alpha --format json --output-dir <dir>`
 
@@ -250,6 +258,7 @@ Stable fields:
 - `raw_evidence_copied`: always false
 - `handoff_exit_code`: exit code from the wrapped alpha handoff command
 - `handoff`: embedded `agentledger.alpha_handoff.v1` share-safe payload
+- `public_summary`: the same path-free summary exposed by the embedded handoff
 - `validation`: file existence and local absolute path leak checks
 - `next_actions`
 - `errors`
