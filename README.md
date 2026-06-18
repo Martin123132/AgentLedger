@@ -63,6 +63,28 @@ Local-first control tools for AI coding agents: usage metering, repo memory,
 execution evidence, and eval gates.
 ```
 
+## Try It Safely
+
+Run the built-in demo before pointing AgentLedger at your own repository:
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m agentledger demo
+```
+
+The demo creates an isolated temporary git repository, runs a standard-library
+`unittest` command through AgentLedger, and prints the Markdown report, HTML
+report, zip bundle, follow-up inspection commands, and cleanup command.
+
+See [docs/demo.md](docs/demo.md) for expected output and a walkthrough.
+
+| Output | Default handling |
+| --- | --- |
+| Demo workspace | Temporary local folder printed by `agentledger demo` |
+| `agentledger-report.md` / `.html` / `.json` | Local evidence to inspect before sharing |
+| Zip evidence bundle | Local proof; do not commit or post by default |
+| Handoff packet from `pack-alpha` | Review first, then share only when requested |
+
 ## Quick Start
 
 From this checkout:
@@ -229,6 +251,7 @@ Alpha docs:
 
 - `ALPHA.md`
 - `.github/ISSUE_TEMPLATE/alpha-feedback.md`
+- `docs/demo.md`
 - `docs/alpha-checklist.md`
 - `docs/alpha-tester-guide.md`
 - `docs/alpha-feedback-template.md`

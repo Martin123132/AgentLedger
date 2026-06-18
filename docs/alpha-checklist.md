@@ -7,6 +7,7 @@
   - `agentledger --version`
 - Optional safe first demo before touching your own repo:
   - `python -m agentledger demo`
+  - See [demo.md](demo.md) for expected output and cleanup.
 - Confirm branch and remote are correct:
   - `git status --short --branch`
   - `git branch --show-current`
