@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.10-alpha - 2026-06-18
+
+- Added `agentledger demo` for a safe first run in an isolated temporary git
+  repository.
+- Added `docs/demo.md` and README onboarding for trying the demo before
+  capturing evidence from a real repository.
+
 ## 0.1.9-alpha - 2026-06-16
 
 - Added a local release dry-run script and private-alpha release checklist for
