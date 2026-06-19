@@ -14,7 +14,8 @@ python -m agentledger demo
 
 `agentledger demo` creates a temporary git repository, runs a small
 standard-library `unittest` command through AgentLedger, and prints the evidence
-paths plus cleanup command. It does not touch your current repository.
+paths, a `Read first` cue, follow-up inspection commands, and a cleanup command.
+It does not touch your current repository.
 For development checkouts, editable installs, source checks, and uninstall
 commands, see `docs/install.md`.
 
@@ -28,9 +29,13 @@ The demo output prints:
 - `Markdown report`: the easiest report to read first
 - `HTML report`: the same report in browser-friendly form
 - `Bundle`: the local zip evidence bundle
+- `Read first`: the fastest way to understand the report and verdict
 - `Try next`: commands for latest paths, history, status, report inspection, and bundle verification
+- `Next real repo`: the read-only alpha-guide command to run from your own repository
 
-Evidence is local proof first. Review reports before sharing them.
+Open the Markdown report first, then run the printed `status` command for the
+pass/warn/block verdict. Evidence is local proof first. Review reports before
+sharing them.
 
 ## Next Real Repo
 
@@ -43,7 +48,8 @@ python -m agentledger status --out .agentledger --allow-warnings
 ```
 
 `alpha-guide` is read-only. It shows setup checks, the fast path, evidence
-locations, what to send back, and what to keep private.
+locations, what to read first after the alpha run, what to send back, and what
+to keep private.
 
 ## Keep Private
 

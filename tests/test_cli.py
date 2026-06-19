@@ -203,6 +203,11 @@ def test_demo_command_creates_isolated_report(tmp_path: Path, capsys) -> None:
     assert "- Captured command:" in output
     assert "- Privacy mode: summary" in output
     assert "python -m agentledger open-latest" in output
+    assert "Read first:" in output
+    assert "- Open the Markdown report for the human summary." in output
+    assert "- Run status when you want the pass/warn/block verdict." in output
+    assert "Next real repo:" in output
+    assert "- python -m agentledger alpha-guide --repo . --out .agentledger" in output
     assert "JSON report:" in output
     assert "Cleanup:" in output
     assert repo.exists()
@@ -1025,6 +1030,7 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert "- Safe demo: python -m agentledger demo" in output
     assert f"- First alpha pass: python -m agentledger alpha --repo {repo} --out {out}" in output
     assert f"- Inspect latest status: python -m agentledger status --out {out} --allow-warnings" in output
+    assert "- Read status first, then open the Markdown report from open-latest." in output
     assert "Verify:" in output
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.12-alpha"' in output
     assert "python -m agentledger demo" in output

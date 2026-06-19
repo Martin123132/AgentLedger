@@ -1836,6 +1836,7 @@ def _format_alpha_guide(payload: dict) -> str:
             lines.append(f"- First alpha pass: {run_commands[0]}")
         if inspect_commands:
             lines.append(f"- Inspect latest status: {inspect_commands[0]}")
+        lines.append("- Read status first, then open the Markdown report from open-latest.")
     fix_first = payload.get("fix_first") if isinstance(payload.get("fix_first"), list) else []
     if fix_first:
         lines.append("Fix first:")
@@ -4335,6 +4336,9 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
         print(f"JSON report: {paths.get('json')}")
         print(f"HTML report: {paths.get('html')}")
         print(f"Bundle: {paths.get('zip') or 'not written'}")
+        print("Read first:")
+        print("- Open the Markdown report for the human summary.")
+        print("- Run status when you want the pass/warn/block verdict.")
 
     errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
     if errors:
@@ -4351,6 +4355,10 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
     print("Try next:")
     for command in payload.get("try_next") or []:
         print(f"- {command}")
+    if payload.get("ok"):
+        print("Next real repo:")
+        print("- cd <your-repo>")
+        print("- python -m agentledger alpha-guide --repo . --out .agentledger")
     if payload.get("cleanup"):
         print("Cleanup:")
         print(f"- {payload['cleanup']}")

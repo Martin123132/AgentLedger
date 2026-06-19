@@ -66,12 +66,18 @@ Markdown report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledge
 JSON report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.json
 HTML report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.html
 Bundle: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
+Read first:
+- Open the Markdown report for the human summary.
+- Run status when you want the pass/warn/block verdict.
 Try next:
 - python -m agentledger open-latest --repo <demo-repo> --out <agentledger-output>
 - python -m agentledger history --repo <demo-repo> --out <agentledger-output>
 - python -m agentledger status --repo <demo-repo> --out <agentledger-output> --allow-warnings
 - python -m agentledger inspect-report <latest-run>
 - python -m agentledger verify-bundle <latest-run>.zip
+Next real repo:
+- cd <your-repo>
+- python -m agentledger alpha-guide --repo . --out .agentledger
 Cleanup:
 - python -c "import shutil; shutil.rmtree('<workspace>')"
 ```
@@ -85,6 +91,10 @@ Run the `Try next:` commands printed by `agentledger demo`. They show:
 - pass/warn/block review status
 - a concise report summary
 - bundle manifest verification
+
+Use the printed `Next real repo:` commands only after the demo report makes
+sense. `alpha-guide` is read-only, so it is safe to run before creating evidence
+inside your own checkout.
 
 The demo uses `--privacy-mode summary` by default, so reports keep counts,
 paths, and metadata while omitting full command transcript content and full

@@ -74,27 +74,24 @@ python -m agentledger demo
 ```
 
 The demo creates a temporary git repo, captures a small `unittest` run, prints
-the Markdown/HTML/JSON report paths, and tells you how to inspect or clean up
-the local evidence. See [docs/first-run.md](docs/first-run.md) for the short
-walkthrough and [docs/install.md](docs/install.md) for clone, editable install,
-source-check, and uninstall commands.
+the Markdown/HTML/JSON report paths, and prints a `Read first` cue plus follow-up
+inspection commands. Open the Markdown report first, then run the printed
+`status` command for the pass/warn/block verdict. Use
+`python -m agentledger demo --format json` when another agent or wrapper needs
+the paths without scraping text.
 
-## Try It Safely
-
-Run the built-in demo before pointing AgentLedger at your own repository:
+When the demo makes sense, move into your real repository and run:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.12-alpha"
-python -m agentledger demo
+python -m agentledger alpha-guide --repo . --out .agentledger
 ```
 
-The demo creates an isolated temporary git repository, runs a standard-library
-`unittest` command through AgentLedger, and prints the Markdown report, JSON
-report, HTML report, zip bundle, follow-up inspection commands, and cleanup
-command. Use `python -m agentledger demo --format json` when another agent or
-wrapper needs the paths without scraping text.
+See [docs/first-run.md](docs/first-run.md) for the short walkthrough,
+[docs/demo.md](docs/demo.md) for expected output, and
+[docs/install.md](docs/install.md) for clone, editable install, source-check,
+and uninstall commands.
 
-See [docs/demo.md](docs/demo.md) for expected output and a walkthrough.
+## What Stays Local
 
 | Output | Default handling |
 | --- | --- |
