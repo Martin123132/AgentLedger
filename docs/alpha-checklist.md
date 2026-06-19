@@ -32,8 +32,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/alpha.ps1
 Expected result:
 
 - `alpha-guide` prints doctor readiness, optional integration counts,
-  setup/run/inspect/feedback commands, and evidence handling reminders without
-  creating evidence.
+  setup/verify/run/inspect/feedback commands, and evidence handling reminders
+  without creating evidence.
 - Doctor, captured pytest, status, inspect, check, and verify all pass.
 - The Windows script also runs install and smoke checks.
 - A short summary is printed for the tester to send back.
