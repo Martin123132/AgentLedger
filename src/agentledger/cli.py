@@ -1741,12 +1741,14 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
     out_arg = _alpha_guide_out_arg(args, config)
     commands = {
         "setup": [
+            'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.11-alpha"',
             'python -m pip install -e ".[dev]"',
-            "agentledger --version",
+            "python -m agentledger --version",
             f"python -m agentledger doctor --repo {repo_arg}",
         ],
         "verify": [
             "python -m agentledger demo",
+            "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1",
             "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1",
         ],
         "run": [

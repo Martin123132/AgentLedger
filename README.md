@@ -65,24 +65,26 @@ execution evidence, and eval gates.
 
 ## Try It In 60 Seconds
 
-Run the safe demo before pointing AgentLedger at a real repository:
+Install the current alpha tag from GitHub and run the safe demo before pointing
+AgentLedger at a real repository:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.11-alpha"
 python -m agentledger demo
 ```
 
 The demo creates a temporary git repo, captures a small `unittest` run, prints
 the Markdown/HTML/JSON report paths, and tells you how to inspect or clean up
 the local evidence. See [docs/first-run.md](docs/first-run.md) for the short
-walkthrough.
+walkthrough and [docs/install.md](docs/install.md) for clone, editable install,
+source-check, and uninstall commands.
 
 ## Try It Safely
 
 Run the built-in demo before pointing AgentLedger at your own repository:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.11-alpha"
 python -m agentledger demo
 ```
 
@@ -103,7 +105,7 @@ See [docs/demo.md](docs/demo.md) for expected output and a walkthrough.
 
 ## Quick Start
 
-From this checkout:
+From a development checkout:
 
 ```powershell
 python -m pip install -e ".[dev]"
@@ -222,6 +224,7 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger alpha-guide --repo . --out .agentledger --format json
 python scripts/check_release_metadata.py
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
+powershell -ExecutionPolicy Bypass -File scripts/install-source-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-dry-run.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
@@ -269,6 +272,8 @@ Alpha docs:
 
 - `ALPHA.md`
 - `.github/ISSUE_TEMPLATE/alpha-feedback.md`
+- `docs/install.md`
+- `docs/first-run.md`
 - `docs/demo.md`
 - `docs/alpha-checklist.md`
 - `docs/alpha-tester-guide.md`
@@ -283,13 +288,20 @@ Alpha install check:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
+powershell -ExecutionPolicy Bypass -File scripts/install-source-check.ps1
 ```
 
-That script installs AgentLedger from the local checkout into a temporary
-virtual environment using local packaging tools, prints each verification step,
-verifies `agentledger --version`, verifies `python -m agentledger --version`,
-checks `agentledger --help`, and removes the temporary environment when it
-finishes.
+`scripts/install-check.ps1` installs AgentLedger from the local checkout into a
+temporary virtual environment using local packaging tools, prints each
+verification step, verifies `agentledger --version`, verifies
+`python -m agentledger --version`, checks `agentledger --help`, and removes the
+temporary environment when it finishes.
+
+`scripts/install-source-check.ps1` installs AgentLedger from a pip source spec
+into a temporary virtual environment, verifies `python -m agentledger --version`,
+runs `python -m agentledger demo --format json`, and removes the temporary
+workspace when it finishes. Pass `-Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.11-alpha"`
+to verify the public GitHub tag path.
 
 Alpha one-command pass:
 
