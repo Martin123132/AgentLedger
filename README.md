@@ -63,6 +63,20 @@ Local-first control tools for AI coding agents: usage metering, repo memory,
 execution evidence, and eval gates.
 ```
 
+## Try It In 60 Seconds
+
+Run the safe demo before pointing AgentLedger at a real repository:
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m agentledger demo
+```
+
+The demo creates a temporary git repo, captures a small `unittest` run, prints
+the Markdown/HTML/JSON report paths, and tells you how to inspect or clean up
+the local evidence. See [docs/first-run.md](docs/first-run.md) for the short
+walkthrough.
+
 ## Try It Safely
 
 Run the built-in demo before pointing AgentLedger at your own repository:

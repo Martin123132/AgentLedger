@@ -75,6 +75,7 @@ Generated evidence is local proof for you first. We only need your summary and n
 
 ## More detail
 
+- First run: `docs/first-run.md`
 - Safe demo guide: `docs/demo.md`
 - Tester guide: `docs/alpha-tester-guide.md`
 - Checklist: `docs/alpha-checklist.md`

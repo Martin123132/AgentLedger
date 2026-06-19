@@ -56,6 +56,11 @@ AgentLedger demo: pass
 Workspace: C:\Users\you\AppData\Local\Temp\agentledger-demo-...
 Demo repo: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\demo-repo
 Evidence output: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output
+What happened:
+- Created an isolated demo git repo.
+- Captured command: C:\path\to\python.exe -B -m unittest test_demo.py
+- Wrote local Markdown, HTML, JSON, and zip evidence.
+- Privacy mode: summary
 Latest run: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345
 Markdown report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.md
 JSON report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.json
@@ -104,6 +109,8 @@ but reports can still include local paths, command names, and repository
 metadata. Treat evidence as local proof first.
 
 ## Next Real Run
+
+For the shortest walkthrough, see `docs/first-run.md`.
 
 After the demo makes sense, run the alpha guide from your target repository:
 

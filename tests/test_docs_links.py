@@ -146,6 +146,16 @@ def test_readme_public_alpha_config_matches_repository_config() -> None:
     assert _config_lines(match.group("config")) == _config_lines(config)
 
 
+def test_first_run_doc_is_linked_from_readme() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    first_run = (ROOT / "docs" / "first-run.md").read_text(encoding="utf-8")
+
+    assert "[docs/first-run.md](docs/first-run.md)" in readme
+    assert "python -m agentledger demo" in first_run
+    assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
+    assert "Do not commit or upload:" in first_run
+
+
 def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -> None:
     preferred_command = "python -m agentledger alpha --repo . --out .agentledger"
     guide_command = "python -m agentledger alpha-guide --repo . --out .agentledger"

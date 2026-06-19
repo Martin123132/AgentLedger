@@ -198,6 +198,10 @@ def test_demo_command_creates_isolated_report(tmp_path: Path, capsys) -> None:
     assert f"Workspace: {workspace.resolve()}" in output
     assert f"Demo repo: {repo.resolve()}" in output
     assert f"Evidence output: {out.resolve()}" in output
+    assert "What happened:" in output
+    assert "- Created an isolated demo git repo." in output
+    assert "- Captured command:" in output
+    assert "- Privacy mode: summary" in output
     assert "python -m agentledger open-latest" in output
     assert "JSON report:" in output
     assert "Cleanup:" in output
@@ -1017,6 +1021,10 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert f"Output: {out.resolve()}" in output
     assert "Doctor: AgentLedger doctor: ready" in output
     assert "Optional integrations:" in output
+    assert "Fast path:" in output
+    assert "- Safe demo: python -m agentledger demo" in output
+    assert f"- First alpha pass: python -m agentledger alpha --repo {repo} --out {out}" in output
+    assert f"- Inspect latest status: python -m agentledger status --out {out} --allow-warnings" in output
     assert "Verify:" in output
     assert "python -m agentledger demo" in output
     assert "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1" in output
@@ -1061,6 +1069,7 @@ def test_alpha_guide_reports_blocked_doctor_with_fix_first(tmp_path: Path, capsy
 
     output = capsys.readouterr().out
     assert "Doctor: AgentLedger doctor: blocked (required setup needs attention)" in output
+    assert "Fast path:" in output
     assert "Fix first:" in output
     assert "- Fix required setup checks shown below, then run agentledger alpha again." in output
     assert "- Fix target_git_repo: Run from a git checkout or pass --repo <path> to an existing git repo." in output
