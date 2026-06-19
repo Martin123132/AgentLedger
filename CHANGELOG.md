@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.1.13-alpha - 2026-06-19
+
+- Added clearer `agentledger demo` first-read guidance for Markdown reports,
+  status verdicts, and the next real-repository step.
+- Added matching `alpha-guide` reading-order guidance for the first alpha pass.
+- Simplified the README public quickstart so the GitHub install, demo, and
+  read-only alpha-guide loop are easier to follow.
+
 ## 0.1.12-alpha - 2026-06-19
 
 - Added GitHub install documentation for public alpha tags, `master`, editable
