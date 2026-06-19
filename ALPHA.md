@@ -9,7 +9,7 @@ AgentLedger is source-available for non-commercial use. See `LICENSE` and
 
 You need:
 
-- access to this repository
+- AgentLedger installed from the GitHub alpha tag, or a local checkout if you are contributing
 - Python 3.12 or newer
 - Git installed locally
 - Windows PowerShell only if you use the extended script
@@ -75,6 +75,7 @@ Generated evidence is local proof for you first. We only need your summary and n
 
 ## More detail
 
+- Install guide: `docs/install.md`
 - First run: `docs/first-run.md`
 - Safe demo guide: `docs/demo.md`
 - Tester guide: `docs/alpha-tester-guide.md`

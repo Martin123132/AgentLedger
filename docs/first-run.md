@@ -5,16 +5,18 @@ project.
 
 ## Try It In 60 Seconds
 
-From an AgentLedger checkout:
+Install the current alpha tag from GitHub:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.11-alpha"
 python -m agentledger demo
 ```
 
 `agentledger demo` creates a temporary git repository, runs a small
 standard-library `unittest` command through AgentLedger, and prints the evidence
 paths plus cleanup command. It does not touch your current repository.
+For development checkouts, editable installs, source checks, and uninstall
+commands, see `docs/install.md`.
 
 ## What To Look At
 

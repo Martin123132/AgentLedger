@@ -6,10 +6,10 @@ report paths without touching the current repository.
 
 ## Run It
 
-From an AgentLedger checkout:
+From any shell with Python and Git:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.11-alpha"
 python -m agentledger demo
 ```
 
