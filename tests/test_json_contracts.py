@@ -662,7 +662,8 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     )
     assert alpha_guide["doctor"]["status"] == "ready"
     assert alpha_guide["fix_first"] == []
-    _assert_keys(alpha_guide["commands"], {"setup", "run", "inspect", "feedback"})
+    _assert_keys(alpha_guide["commands"], {"setup", "verify", "run", "inspect", "feedback"})
+    assert alpha_guide["commands"]["verify"]
     _assert_keys(alpha_guide["evidence"], {"output_root", "latest_pointer", "run_folder_contains", "bundle"})
     assert alpha_guide["send_back"]
     assert alpha_guide["keep_private"]

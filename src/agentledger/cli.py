@@ -1745,6 +1745,10 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
             "agentledger --version",
             f"python -m agentledger doctor --repo {repo_arg}",
         ],
+        "verify": [
+            "python -m agentledger demo",
+            "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1",
+        ],
         "run": [
             f"python -m agentledger alpha --repo {repo_arg} --out {out_arg}",
             f"python -m agentledger alpha-summary --out {out_arg}",
@@ -1832,6 +1836,7 @@ def _format_alpha_guide(payload: dict) -> str:
     commands = payload.get("commands") if isinstance(payload.get("commands"), dict) else {}
     for title, key in [
         ("Setup", "setup"),
+        ("Verify", "verify"),
         ("Run", "run"),
         ("Inspect", "inspect"),
         ("Feedback", "feedback"),

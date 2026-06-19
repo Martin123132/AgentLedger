@@ -1017,6 +1017,9 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert f"Output: {out.resolve()}" in output
     assert "Doctor: AgentLedger doctor: ready" in output
     assert "Optional integrations:" in output
+    assert "Verify:" in output
+    assert "python -m agentledger demo" in output
+    assert "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1" in output
     assert f"python -m agentledger alpha --repo {repo} --out {out}" in output
     assert f"python -m agentledger alpha-summary --out {out}" in output
     assert f"- Output root: {out.resolve()}" in output
@@ -1032,6 +1035,10 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert payload["ok"] is True
     assert payload["repo"] == str(repo.resolve())
     assert payload["out"] == str(out.resolve())
+    assert payload["commands"]["verify"] == [
+        "python -m agentledger demo",
+        "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1",
+    ]
     assert payload["commands"]["run"][0] == f"python -m agentledger alpha --repo {repo} --out {out}"
     assert payload["evidence"]["latest_pointer"] == str(out.resolve() / "latest.txt")
     assert payload["doctor"]["schema_version"] == "agentledger.doctor.v1"

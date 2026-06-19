@@ -95,6 +95,7 @@ From this checkout:
 python -m pip install -e ".[dev]"
 agentledger --version
 python -m agentledger demo
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1
 python -m agentledger doctor --repo .
 python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
@@ -123,8 +124,8 @@ python -m agentledger alpha --repo . --out .agentledger
 ```
 
 `alpha-guide` is read-only: it prints doctor readiness, optional integration
-counts, `Fix first:` setup repairs when needed, the alpha command loop, and
-privacy reminders before any evidence is created.
+counts, `Fix first:` setup repairs when needed, install verification commands,
+the alpha command loop, and privacy reminders before any evidence is created.
 
 Windows extended alpha check:
 
@@ -270,7 +271,11 @@ Alpha install check:
 powershell -ExecutionPolicy Bypass -File scripts/install-check.ps1
 ```
 
-That script installs AgentLedger from the local checkout into a temporary virtual environment using local packaging tools, verifies `agentledger --version`, verifies `python -m agentledger --version`, and removes the temporary environment when it finishes.
+That script installs AgentLedger from the local checkout into a temporary
+virtual environment using local packaging tools, prints each verification step,
+verifies `agentledger --version`, verifies `python -m agentledger --version`,
+checks `agentledger --help`, and removes the temporary environment when it
+finishes.
 
 Alpha one-command pass:
 

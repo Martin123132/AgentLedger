@@ -156,7 +156,7 @@ Stable fields:
   optional integration counts, required blockers, and raw checks
 - `fix_first`: concise ordered setup repair actions, empty when required checks
   are ready
-- `commands`: setup, run, inspect, and feedback command lists
+- `commands`: setup, verify, run, inspect, and feedback command lists
 - `evidence`: output root, latest pointer, run folder contents, and bundle note
 - `send_back`: reviewed summary items a tester can report
 - `keep_private`: evidence and secret handling reminders

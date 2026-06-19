@@ -8,6 +8,8 @@
   issues, short posts, and public alpha updates after review.
 - Added `agentledger-alpha-issue.md` to `pack-alpha` as a copy-ready,
   share-safe GitHub issue/comment draft.
+- Added install-verification commands to `alpha-guide` and clearer step markers
+  to `scripts/install-check.ps1`.
 
 ## 0.1.10-alpha - 2026-06-18
 
