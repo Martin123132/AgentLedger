@@ -1822,6 +1822,18 @@ def _format_alpha_guide(payload: dict) -> str:
                 "Optional integrations: "
                 f"{optional.get('configured', 0)}/{optional.get('total', 0)} configured"
             )
+    commands = payload.get("commands") if isinstance(payload.get("commands"), dict) else {}
+    verify_commands = commands.get("verify") if isinstance(commands.get("verify"), list) else []
+    run_commands = commands.get("run") if isinstance(commands.get("run"), list) else []
+    inspect_commands = commands.get("inspect") if isinstance(commands.get("inspect"), list) else []
+    if verify_commands or run_commands or inspect_commands:
+        lines.append("Fast path:")
+        if verify_commands:
+            lines.append(f"- Safe demo: {verify_commands[0]}")
+        if run_commands:
+            lines.append(f"- First alpha pass: {run_commands[0]}")
+        if inspect_commands:
+            lines.append(f"- Inspect latest status: {inspect_commands[0]}")
     fix_first = payload.get("fix_first") if isinstance(payload.get("fix_first"), list) else []
     if fix_first:
         lines.append("Fix first:")
@@ -1833,7 +1845,6 @@ def _format_alpha_guide(payload: dict) -> str:
             lines.append(f"- {error}")
         return "\n".join(lines)
 
-    commands = payload.get("commands") if isinstance(payload.get("commands"), dict) else {}
     for title, key in [
         ("Setup", "setup"),
         ("Verify", "verify"),
@@ -4305,6 +4316,14 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
         print(f"Demo repo: {payload['repo']}")
     if payload.get("out"):
         print(f"Evidence output: {payload['out']}")
+    if payload.get("ok"):
+        command = " ".join(str(part) for part in payload.get("command") or [])
+        print("What happened:")
+        print("- Created an isolated demo git repo.")
+        if command:
+            print(f"- Captured command: {command}")
+        print("- Wrote local Markdown, HTML, JSON, and zip evidence.")
+        print(f"- Privacy mode: {payload.get('privacy_mode') or 'n/a'}")
 
     latest_run = payload.get("latest_run")
     paths = payload.get("paths") if isinstance(payload.get("paths"), dict) else {}
