@@ -1741,7 +1741,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
     out_arg = _alpha_guide_out_arg(args, config)
     commands = {
         "setup": [
-            'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.11-alpha"',
+            'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.12-alpha"',
             'python -m pip install -e ".[dev]"',
             "python -m agentledger --version",
             f"python -m agentledger doctor --repo {repo_arg}",

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.1.12-alpha - 2026-06-19
+
+- Added GitHub install documentation for public alpha tags, `master`, editable
+  checkouts, uninstall, and source-install verification.
+- Added `scripts/install-source-check.ps1` for checking a GitHub/local source
+  install in a temporary virtual environment.
+- Updated first-run, demo, README, and `alpha-guide` onboarding to start from
+  the public GitHub alpha install path.
+
 ## 0.1.11-alpha - 2026-06-19
 
 - Added `agentledger demo --format json` for scripted first-run checks and
