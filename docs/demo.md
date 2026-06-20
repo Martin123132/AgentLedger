@@ -29,6 +29,13 @@ paths without scraping text:
 python -m agentledger demo --format json
 ```
 
+Write a short path-free Markdown summary when you want copyable public proof to
+review before sharing:
+
+```powershell
+python -m agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md
+```
+
 ## What It Does
 
 The command creates:
@@ -101,8 +108,19 @@ paths, and metadata while omitting full command transcript content and full
 diffs.
 
 With `--format json`, the payload uses schema `agentledger.demo.v1` and includes
-`workspace`, `repo`, `out`, `latest_run`, `paths`, `try_next`, `cleanup`, and
-`errors`.
+`workspace`, `repo`, `out`, `latest_run`, `paths`, `summary_output`,
+`summary_written`, `try_next`, `cleanup`, and `errors`.
+
+## Public Demo Summary
+
+`--summary-output` writes a compact Markdown file that omits local paths and raw
+evidence. It includes the demo result, AgentLedger version, captured demo
+command, evidence types produced, privacy mode, what to read first, and what to
+keep private.
+
+The summary is meant as a starting point for short posts or GitHub comments.
+Review it before sharing, and keep the full run folder and zip bundle local
+unless you intentionally choose to share them.
 
 ## What Stays Local
 
@@ -112,6 +130,7 @@ With `--format json`, the payload uses schema `agentledger.demo.v1` and includes
 | `agentledger-output/` | Yes | This is raw local evidence |
 | Run folder | Yes | Contains reports and artifacts |
 | Zip bundle | Yes | Useful for verification, but do not commit or post by default |
+| Public demo summary | Review first | Path-free by design, but still check before sharing |
 | Printed status summary | Usually safe | Review before sharing because paths may reveal local context |
 
 AgentLedger redacts common token, password, API key, and private-key patterns,

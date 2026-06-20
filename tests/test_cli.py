@@ -246,9 +246,34 @@ def test_demo_command_json_output_lists_evidence_paths(tmp_path: Path, capsys) -
     assert payload["privacy_mode"] == "summary"
     assert payload["command"][-2:] == ["unittest", "test_demo.py"]
     assert payload["command_exit_code"] == 0
+    assert payload["summary_output"] is None
+    assert payload["summary_written"] is False
     assert len(payload["try_next"]) == 5
     assert payload["cleanup"]
     assert payload["errors"] == []
+
+
+def test_demo_command_writes_public_safe_summary(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+    summary = tmp_path / "demo-summary.md"
+
+    assert cli.main(["demo", "--output-dir", str(workspace), "--summary-output", str(summary)]) == 0
+
+    output = capsys.readouterr().out
+    content = summary.read_text(encoding="utf-8")
+
+    assert f"Public summary: {summary.resolve()}" in output
+    assert "# AgentLedger Demo Summary" in content
+    assert "- Result: pass" in content
+    assert f"- AgentLedger: agentledger {__version__}" in content
+    assert "- Captured command: python -B -m unittest test_demo.py" in content
+    assert "- Evidence produced: Markdown report, HTML report, JSON report, zip bundle" in content
+    assert "- Privacy mode: summary" in content
+    assert "- Local paths: omitted from this summary" in content
+    assert "- Raw evidence copied: no" in content
+    assert "- python -m agentledger alpha-guide --repo . --out .agentledger" in content
+    assert str(workspace.resolve()) not in content
+    assert str(summary.resolve()) not in content
 
 
 def test_demo_command_json_output_reports_setup_errors(tmp_path: Path, capsys) -> None:

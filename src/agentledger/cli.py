@@ -130,6 +130,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="summary",
         help="Evidence detail level for the demo capture.",
     )
+    demo.add_argument(
+        "--summary-output",
+        default=None,
+        help="Path to write a public-safe Markdown demo summary.",
+    )
     demo.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")
@@ -4281,6 +4286,12 @@ def _demo_try_next_commands(repo: Path, out_root: Path, latest_dir: Path | None)
     return commands
 
 
+def _demo_summary_output_path(args: argparse.Namespace) -> Path | None:
+    if not getattr(args, "summary_output", None):
+        return None
+    return Path(args.summary_output).expanduser().resolve()
+
+
 def _demo_payload(
     *,
     ok: bool,
@@ -4292,6 +4303,8 @@ def _demo_payload(
     command: list[str],
     command_exit_code: int | None,
     errors: list[str],
+    summary_output: Path | None = None,
+    summary_written: bool = False,
 ) -> dict:
     return {
         "schema_version": DEMO_SCHEMA,
@@ -4305,10 +4318,67 @@ def _demo_payload(
         "privacy_mode": privacy_mode,
         "command": command,
         "command_exit_code": command_exit_code,
+        "summary_output": str(summary_output) if summary_output is not None else None,
+        "summary_written": summary_written,
         "try_next": _demo_try_next_commands(repo, out_root, latest_dir) if repo is not None and out_root is not None else [],
         "cleanup": _demo_cleanup_command(workspace) if workspace is not None else None,
         "errors": errors,
     }
+
+
+def _format_demo_public_summary(payload: dict) -> str:
+    paths = payload.get("paths") if isinstance(payload.get("paths"), dict) else {}
+    evidence = ["Markdown report", "HTML report", "JSON report"]
+    if paths.get("zip"):
+        evidence.append("zip bundle")
+
+    lines = [
+        "# AgentLedger Demo Summary",
+        "",
+        f"- Result: {payload.get('status') or 'unknown'}",
+        f"- AgentLedger: agentledger {__version__}",
+        "- Captured command: python -B -m unittest test_demo.py",
+        f"- Evidence produced: {', '.join(evidence) if payload.get('ok') else 'not completed'}",
+        f"- Privacy mode: {payload.get('privacy_mode') or 'n/a'}",
+        "- Local paths: omitted from this summary",
+        "- Raw evidence copied: no",
+        "",
+        "## Read First",
+        "",
+        "- Open the Markdown report locally for the human summary.",
+        "- Run status locally when you want the pass/warn/block verdict.",
+        "",
+        "## Keep Private",
+        "",
+        "- Raw evidence folders such as .agentledger/ or agentledger-output/",
+        "- Run folders, zip bundles, signing keys, and temporary demo workspaces",
+        "",
+        "## Next Real Repo",
+        "",
+        "- python -m agentledger alpha-guide --repo . --out .agentledger",
+    ]
+    if not payload.get("ok"):
+        errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+        lines.extend(
+            [
+                "",
+                "## Local Follow-Up",
+                "",
+                f"- Error count: {len(errors)}",
+                "- Inspect the local terminal output before sharing anything.",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _try_write_demo_summary(path: Path | None, payload: dict) -> list[str]:
+    if path is None:
+        return []
+    try:
+        _write_rendered_output(path, _format_demo_public_summary(payload))
+    except OSError as exc:
+        return [f"Unable to write demo public summary {path}: {exc}"]
+    return []
 
 
 def _print_demo_text(payload: dict, capture_output: str = "") -> None:
@@ -4336,6 +4406,8 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
         print(f"JSON report: {paths.get('json')}")
         print(f"HTML report: {paths.get('html')}")
         print(f"Bundle: {paths.get('zip') or 'not written'}")
+        if payload.get("summary_written") and payload.get("summary_output"):
+            print(f"Public summary: {payload['summary_output']}")
         print("Read first:")
         print("- Open the Markdown report for the human summary.")
         print("- Run status when you want the pass/warn/block verdict.")
@@ -4365,6 +4437,7 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
 
 
 def _handle_demo(args: argparse.Namespace) -> int:
+    summary_output = _demo_summary_output_path(args)
     workspace, errors = _resolve_demo_workspace(args)
     if workspace is None:
         payload = _demo_payload(
@@ -4377,6 +4450,7 @@ def _handle_demo(args: argparse.Namespace) -> int:
             command=[],
             command_exit_code=None,
             errors=errors,
+            summary_output=summary_output,
         )
         if args.format == "json":
             print(json.dumps(payload, indent=2))
@@ -4398,6 +4472,7 @@ def _handle_demo(args: argparse.Namespace) -> int:
             command=[],
             command_exit_code=None,
             errors=errors,
+            summary_output=summary_output,
         )
         if args.format == "json":
             print(json.dumps(payload, indent=2))
@@ -4432,7 +4507,17 @@ def _handle_demo(args: argparse.Namespace) -> int:
         command=task,
         command_exit_code=capture_exit,
         errors=latest_errors,
+        summary_output=summary_output,
     )
+    summary_errors = _try_write_demo_summary(summary_output, payload) if ok else []
+    if summary_errors:
+        payload["ok"] = False
+        payload["status"] = "failed"
+        payload["errors"].extend(summary_errors)
+        ok = False
+    elif summary_output is not None and ok:
+        payload["summary_written"] = True
+
     if args.format == "json":
         print(json.dumps(payload, indent=2))
     else:
