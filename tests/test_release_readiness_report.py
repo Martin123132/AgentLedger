@@ -42,7 +42,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentledger"
-version = "0.1.14a0"
+version = "0.1.15a0"
 description = "Local-first black box recorder for AI coding agents."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -53,7 +53,7 @@ dependencies = []
         encoding="utf-8",
     )
     (package_dir / "__init__.py").write_text(
-        '"""AgentLedger package."""\n\n__version__ = "0.1.14a0"\n',
+        '"""AgentLedger package."""\n\n__version__ = "0.1.15a0"\n',
         encoding="utf-8",
     )
     (repo / "README.md").write_text(
@@ -76,7 +76,7 @@ Commercial use requires separate permission.
 
 - Next work.
 
-## 0.1.14-alpha - 2026-06-20
+## 0.1.15-alpha - 2026-06-20
 
 - Released work.
 """,
@@ -104,7 +104,7 @@ def test_release_readiness_report_passes_for_clean_release_repo(tmp_path: Path) 
     assert result["ok"] is True
     assert result["status"] == "ready"
     assert result["working_tree_dirty"] is False
-    assert result["project_version"] == "0.1.14a0"
+    assert result["project_version"] == "0.1.15a0"
     assert result["release_date"] == "2026-06-20"
     assert result["release_metadata"]["ok"] is True
     assert result["release_process"]["ok"] is True
