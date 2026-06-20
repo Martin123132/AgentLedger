@@ -253,7 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
     pack_alpha.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
     pack_alpha.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
     pack_alpha.add_argument("--out", default=None, help="Evidence output directory.")
-    pack_alpha.add_argument("--output-dir", required=True, help="Directory to write the share-safe handoff packet.")
+    pack_alpha.add_argument(
+        "--output-dir",
+        default=None,
+        help="Directory to write the share-safe handoff packet. Defaults to a new temp directory.",
+    )
     pack_alpha.add_argument("--feedback-limit", type=int, default=20, help="Maximum feedback entries to include.")
     pack_alpha.add_argument("--history-limit", type=int, default=5, help="Recent runs to include for review context.")
     pack_alpha.add_argument("--strict", action="store_true", help="Return nonzero when the latest status has warnings.")
@@ -1769,7 +1773,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
             f'python -m agentledger feedback --out {out_arg} --note "First confusing thing: ..."',
             f"python -m agentledger feedback-summary --out {out_arg}",
             f"python -m agentledger feedback-export --out {out_arg} --output $env:TEMP\\agentledger-feedback.md",
-            f"python -m agentledger pack-alpha --out {out_arg} --output-dir $env:TEMP\\agentledger-alpha-packet",
+            f"python -m agentledger pack-alpha --out {out_arg}",
         ],
     }
     payload = {
@@ -4076,15 +4080,21 @@ def _pack_alpha_next_actions(handoff_payload: dict | None, validation: dict, han
     return deduped
 
 
+def _resolve_pack_alpha_output_dir(args: argparse.Namespace) -> Path:
+    if getattr(args, "output_dir", None):
+        return Path(args.output_dir).expanduser().resolve()
+    return Path(tempfile.mkdtemp(prefix="agentledger-alpha-packet-")).resolve()
+
+
 def _handle_pack_alpha(args: argparse.Namespace) -> int:
     repo = Path(args.repo or ".").resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    output_dir = _resolve_pack_alpha_output_dir(args)
     handoff_args = argparse.Namespace(
         command_name="alpha-handoff",
         repo=args.repo,
         config=args.config,
         out=args.out,
-        output_dir=args.output_dir,
+        output_dir=str(output_dir),
         feedback_limit=args.feedback_limit,
         history_limit=args.history_limit,
         strict=args.strict,

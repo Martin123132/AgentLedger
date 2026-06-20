@@ -343,7 +343,7 @@ python -m agentledger alpha-summary --out .agentledger --format json
 python -m agentledger alpha-summary $env:TEMP\agentledger-alpha-summary.json
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe
-python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
+python -m agentledger pack-alpha --out .agentledger
 ```
 
 `alpha-handoff` writes `agentledger-alpha-handoff.md` and
@@ -355,6 +355,8 @@ absolute paths with stable markers before sharing the packet.
 `pack-alpha` runs the share-safe handoff flow, validates the generated packet
 files for local absolute path leaks, writes `agentledger-alpha-issue.md` as a
 copy-ready GitHub issue/comment draft, and prints the files to review/share.
+By default it writes to a fresh temporary packet directory; pass `--output-dir`
+when you want a predictable folder.
 Both packet commands include a `Sharing` section with files to review/share and
 raw evidence to keep private. They also include `public_summary.text` and
 `public_summary.markdown` as path-free copy/paste starting points for GitHub
@@ -686,7 +688,7 @@ agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-fe
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.json --output-format json --format json
 agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe
-agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
+agentledger pack-alpha --out .agentledger
 ```
 
 `feedback` writes `alpha-feedback.jsonl` inside the selected run folder. It
@@ -706,6 +708,8 @@ local absolute paths are replaced with `[repo]`, `[agentledger-output]`,
 validates the written issue draft plus Markdown/JSON packet for local path
 leaks, then prints the files to review/share. `agentledger-alpha-issue.md` is a
 copy-ready GitHub issue/comment draft built from the path-free public summary.
+By default, the packet is isolated in a fresh temporary directory; use
+`--output-dir $env:TEMP\agentledger-alpha-packet` when you want a stable path.
 The generated packet includes a `Sharing` section naming the reviewed files and
 the raw evidence that should stay private, plus `public_summary.text` and
 `public_summary.markdown` snippets that omit local paths and raw evidence.
@@ -724,7 +728,7 @@ agentledger history --out .agentledger
 agentledger feedback --out .agentledger --note "First confusing thing: ..."
 agentledger feedback-summary --out .agentledger
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
-agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
+agentledger pack-alpha --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger inspect-report $run
 agentledger check --allow-warnings $run
@@ -748,7 +752,7 @@ agentledger history --repo .
 agentledger feedback --repo . --note "First confusing thing: ..."
 agentledger feedback-summary --repo .
 agentledger feedback-export --repo . --output $env:TEMP\agentledger-feedback.md
-agentledger pack-alpha --repo . --output-dir $env:TEMP\agentledger-alpha-packet
+agentledger pack-alpha --repo .
 $run = (Get-Content .agentledger\latest.txt).Trim()
 agentledger check $run
 ```

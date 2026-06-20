@@ -1063,6 +1063,7 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1" in output
     assert f"python -m agentledger alpha --repo {repo} --out {out}" in output
     assert f"python -m agentledger alpha-summary --out {out}" in output
+    assert f"python -m agentledger pack-alpha --out {out}" in output
     assert f"- Output root: {out.resolve()}" in output
     assert f"- Latest pointer: {out.resolve() / 'latest.txt'}" in output
     assert "Send back:" in output
@@ -1088,6 +1089,7 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
         "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1",
     ]
     assert payload["commands"]["run"][0] == f"python -m agentledger alpha --repo {repo} --out {out}"
+    assert payload["commands"]["feedback"][-1] == f"python -m agentledger pack-alpha --out {out}"
     assert payload["evidence"]["latest_pointer"] == str(out.resolve() / "latest.txt")
     assert payload["doctor"]["schema_version"] == "agentledger.doctor.v1"
     assert payload["doctor"]["status"] == "ready"
@@ -1860,6 +1862,69 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
         assert raw.replace("\\", "/") not in packet_text
     for raw in ("C:\\Users", "C:/Users", "D:\\Temp", "D:/Temp", "C:\\\\Users", "D:\\\\Temp"):
         assert raw not in packet_text
+
+
+def test_pack_alpha_defaults_to_isolated_temp_packet_dir(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    default_output_dir = tmp_path / "agentledger-alpha-packet-default"
+
+    def fake_mkdtemp(prefix: str) -> str:
+        assert prefix == "agentledger-alpha-packet-"
+        return str(default_output_dir)
+
+    monkeypatch.setattr(cli.tempfile, "mkdtemp", fake_mkdtemp)
+
+    assert (
+        cli.main(
+            [
+                "pack-alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    issue_path = default_output_dir / "agentledger-alpha-issue.md"
+    markdown_path = default_output_dir / "agentledger-alpha-handoff.md"
+    json_path = default_output_dir / "agentledger-alpha-handoff.json"
+
+    assert payload["schema_version"] == "agentledger.pack_alpha.v1"
+    assert payload["ok"] is True
+    assert payload["output_dir"] == str(default_output_dir.resolve())
+    assert payload["files"] == {"issue": str(issue_path), "markdown": str(markdown_path), "json": str(json_path)}
+    assert issue_path.exists()
+    assert markdown_path.exists()
+    assert json_path.exists()
+    assert payload["validation"]["ok"] is True
+    assert payload["raw_evidence_copied"] is False
 
 
 def test_pack_alpha_fails_when_packet_validation_finds_local_path(tmp_path: Path, capsys, monkeypatch) -> None:

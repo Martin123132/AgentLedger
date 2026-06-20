@@ -236,7 +236,7 @@ snippets. `public_summary.text` is capped at 280 characters for short-post
 workflows; `public_summary.markdown` is a longer GitHub issue/comment starting
 point. Both are still drafts for humans to review before posting.
 
-### `agentledger pack-alpha --format json --output-dir <dir>`
+### `agentledger pack-alpha --format json [--output-dir <dir>]`
 
 Schema: `agentledger.pack_alpha.v1`
 
@@ -244,6 +244,8 @@ Use this to create the share-safe alpha handoff packet and validate the written
 issue/comment draft plus Markdown/JSON before sharing. It wraps
 `alpha-handoff --share-safe`, checks the generated packet files for local
 absolute path leaks, and reports exactly which files should be reviewed/shared.
+By default it writes to a fresh temporary packet directory; pass `--output-dir`
+when you need a predictable local folder.
 
 Stable fields:
 
