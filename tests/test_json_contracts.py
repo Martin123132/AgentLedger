@@ -23,6 +23,7 @@ SCHEMAS = {
     "alpha_summary": "agentledger.alpha_summary.v1",
     "alpha_handoff": "agentledger.alpha_handoff.v1",
     "pack_alpha": "agentledger.pack_alpha.v1",
+    "open_packet": "agentledger.open_packet.v1",
     "feedback": "agentledger.feedback.v1",
     "feedback_summary": "agentledger.feedback_summary.v1",
     "feedback_export": "agentledger.feedback_export_result.v1",
@@ -222,6 +223,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
                 str(tmp_path / "pack-alpha"),
             ],
         ),
+        "open_packet": _run_json(capsys, ["open-packet", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "feedback": _run_json(
             capsys,
             [
@@ -327,6 +329,21 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "latest_run",
             "paths",
             "missing_reports",
+            "errors",
+        },
+        "open_packet": {
+            "schema_version",
+            "ok",
+            "repo",
+            "out",
+            "latest_packet",
+            "output_dir",
+            "status",
+            "summary",
+            "files",
+            "missing_files",
+            "raw_evidence_copied",
+            "packet",
             "errors",
         },
         "history": {"schema_version", "out", "runs"},
@@ -437,7 +454,9 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "generated_at",
             "agentledger_version",
             "repo",
+            "out",
             "output_dir",
+            "latest_packet",
             "files",
             "sharing",
             "raw_evidence_copied",
@@ -447,6 +466,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "validation",
             "next_actions",
             "errors",
+            "pointer_errors",
         },
         "feedback": {
             "schema_version",
@@ -756,6 +776,17 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert pack_alpha["validation"]["ok"] is True
     assert pack_alpha["validation"]["errors"] == []
     assert pack_alpha["next_actions"]
+    assert pack_alpha["latest_packet"]
+    assert pack_alpha["pointer_errors"] == []
+
+    open_packet = json_payloads["open_packet"]
+    assert open_packet["ok"] is True
+    assert open_packet["packet"]["schema_version"] == SCHEMAS["pack_alpha"]
+    assert open_packet["latest_packet"] == pack_alpha["latest_packet"]
+    assert open_packet["files"] == pack_alpha["files"]
+    assert open_packet["missing_files"] == []
+    assert open_packet["raw_evidence_copied"] is False
+    assert open_packet["errors"] == []
 
     feedback = json_payloads["feedback"]
     assert feedback["ok"] is True

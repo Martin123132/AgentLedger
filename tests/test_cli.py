@@ -1064,6 +1064,7 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert f"python -m agentledger alpha --repo {repo} --out {out}" in output
     assert f"python -m agentledger alpha-summary --out {out}" in output
     assert f"python -m agentledger pack-alpha --out {out}" in output
+    assert f"python -m agentledger open-packet --out {out}" in output
     assert f"- Output root: {out.resolve()}" in output
     assert f"- Latest pointer: {out.resolve() / 'latest.txt'}" in output
     assert "Send back:" in output
@@ -1089,7 +1090,8 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
         "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1",
     ]
     assert payload["commands"]["run"][0] == f"python -m agentledger alpha --repo {repo} --out {out}"
-    assert payload["commands"]["feedback"][-1] == f"python -m agentledger pack-alpha --out {out}"
+    assert payload["commands"]["feedback"][-2] == f"python -m agentledger pack-alpha --out {out}"
+    assert payload["commands"]["feedback"][-1] == f"python -m agentledger open-packet --out {out}"
     assert payload["evidence"]["latest_pointer"] == str(out.resolve() / "latest.txt")
     assert payload["doctor"]["schema_version"] == "agentledger.doctor.v1"
     assert payload["doctor"]["status"] == "ready"
@@ -1821,6 +1823,7 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     issue_path = output_dir / "agentledger-alpha-issue.md"
     markdown_path = output_dir / "agentledger-alpha-handoff.md"
     json_path = output_dir / "agentledger-alpha-handoff.json"
+    latest_packet_path = out / "latest-alpha-packet.json"
     issue_markdown = issue_path.read_text(encoding="utf-8")
     packet_json = json_path.read_text(encoding="utf-8")
     packet_markdown = markdown_path.read_text(encoding="utf-8")
@@ -1829,6 +1832,9 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     assert payload["schema_version"] == "agentledger.pack_alpha.v1"
     assert payload["ok"] is True
     assert payload["status"] == "warn"
+    assert payload["out"] == str(out.resolve())
+    assert payload["latest_packet"] == str(latest_packet_path.resolve())
+    assert payload["pointer_errors"] == []
     assert payload["files"] == {"issue": str(issue_path), "markdown": str(markdown_path), "json": str(json_path)}
     assert payload["sharing"]["review_required"] is True
     assert payload["sharing"]["share_safe"] is True
@@ -1849,6 +1855,7 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     assert payload["public_summary"] == payload["handoff"]["public_summary"]
     assert payload["public_summary"]["share_safe"] is True
     assert "AgentLedger alpha check: warn." in payload["public_summary"]["text"]
+    assert json.loads(latest_packet_path.read_text(encoding="utf-8")) == payload
     assert "### AgentLedger alpha check" in issue_markdown
     assert "Reviewed public summary only." in issue_markdown
     assert json.loads(packet_json) == payload["handoff"]
@@ -1919,12 +1926,139 @@ def test_pack_alpha_defaults_to_isolated_temp_packet_dir(tmp_path: Path, capsys,
     assert payload["schema_version"] == "agentledger.pack_alpha.v1"
     assert payload["ok"] is True
     assert payload["output_dir"] == str(default_output_dir.resolve())
+    assert payload["latest_packet"] == str((out / "latest-alpha-packet.json").resolve())
+    assert payload["pointer_errors"] == []
     assert payload["files"] == {"issue": str(issue_path), "markdown": str(markdown_path), "json": str(json_path)}
     assert issue_path.exists()
     assert markdown_path.exists()
     assert json_path.exists()
     assert payload["validation"]["ok"] is True
     assert payload["raw_evidence_copied"] is False
+
+
+def test_open_packet_prints_latest_alpha_packet_paths(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    output_dir = tmp_path / "pack-alpha"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "pack-alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--output-dir",
+                str(output_dir),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert cli.main(["open-packet", "--repo", str(repo), "--out", str(out)]) == 0
+    output = capsys.readouterr().out
+    assert f"Latest alpha packet: {output_dir.resolve()}" in output
+    assert f"Pointer: {(out / 'latest-alpha-packet.json').resolve()}" in output
+    assert f"Issue/comment draft: {output_dir / 'agentledger-alpha-issue.md'}" in output
+    assert f"Markdown to share: {output_dir / 'agentledger-alpha-handoff.md'}" in output
+    assert f"JSON to share: {output_dir / 'agentledger-alpha-handoff.json'}" in output
+    assert "Raw evidence copied: no" in output
+
+
+def test_open_packet_json_output(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    output_dir = tmp_path / "pack-alpha"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('hello')",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert (
+        cli.main(
+            [
+                "pack-alpha",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--output-dir",
+                str(output_dir),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert cli.main(["open-packet", "--format", "json", "--repo", str(repo), "--out", str(out)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+
+    assert payload["schema_version"] == "agentledger.open_packet.v1"
+    assert payload["ok"] is True
+    assert payload["out"] == str(out.resolve())
+    assert payload["latest_packet"] == str((out / "latest-alpha-packet.json").resolve())
+    assert payload["output_dir"] == str(output_dir.resolve())
+    assert payload["files"]["issue"] == str(output_dir / "agentledger-alpha-issue.md")
+    assert payload["missing_files"] == []
+    assert payload["raw_evidence_copied"] is False
+    assert payload["packet"]["schema_version"] == "agentledger.pack_alpha.v1"
+    assert payload["errors"] == []
+
+
+def test_open_packet_missing_pointer_prints_hint(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    out.mkdir()
+
+    assert cli.main(["open-packet", "--format", "json", "--repo", str(repo), "--out", str(out)]) == 2
+    payload = _parse_json_output(capsys.readouterr().out)
+
+    assert payload["schema_version"] == "agentledger.open_packet.v1"
+    assert payload["ok"] is False
+    assert payload["latest_packet"] == str((out / "latest-alpha-packet.json").resolve())
+    assert payload["packet"] is None
+    assert "No latest alpha packet pointer found:" in payload["errors"][0]
+    assert "python -m agentledger pack-alpha" in payload["errors"][1]
 
 
 def test_pack_alpha_fails_when_packet_validation_finds_local_path(tmp_path: Path, capsys, monkeypatch) -> None:

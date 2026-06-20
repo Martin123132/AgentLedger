@@ -101,6 +101,7 @@ Expected result:
   - `python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff`
   - `python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe`
   - `python -m agentledger pack-alpha --out .agentledger`
+  - `python -m agentledger open-packet --out .agentledger`
 - Inspect a specific run report:
   - `python -m agentledger inspect-report .agentledger\<run-id>`
 - Check a specific run report:
@@ -150,6 +151,8 @@ Expected result:
   for the exact files to share and what stays private.
 - `pack-alpha` writes to a fresh temporary packet directory by default; pass
   `--output-dir $env:TEMP\agentledger-alpha-packet` for a predictable folder.
+- `open-packet` reads `.agentledger/latest-alpha-packet.json` and reprints the
+  latest issue, Markdown, and JSON packet paths.
 - Do not commit `.agentledger-signing-key` or any shared signing key.
 - Do not commit temporary `Temp/agentledger-smoke-*` folders.
 - Keep only source/config/docs files in git history.

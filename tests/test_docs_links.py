@@ -190,6 +190,7 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     alpha_summary_help = _help_output(capsys, "alpha-summary")
     alpha_handoff_help = _help_output(capsys, "alpha-handoff")
     pack_alpha_help = _help_output(capsys, "pack-alpha")
+    open_packet_help = _help_output(capsys, "open-packet")
     normalized_alpha_help = " ".join(alpha_help.split())
     normalized_alpha_summary_help = " ".join(alpha_summary_help.split())
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -214,6 +215,8 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     assert "--redact-local-paths" in alpha_handoff_help
     assert "--output-dir OUTPUT_DIR" in pack_alpha_help
     assert "--strict" in pack_alpha_help
+    assert "--out OUT" in open_packet_help
+    assert "--format" in open_packet_help
 
     for documented in [
         "--json-output <path>",
@@ -224,8 +227,10 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
         "alpha-handoff --out .agentledger",
         "alpha-handoff --out .agentledger --output-dir $env:TEMP\\agentledger-alpha-handoff-safe --share-safe",
         "pack-alpha --out .agentledger",
+        "open-packet --out .agentledger",
         "--redact-local-paths",
         "agentledger.alpha_handoff.v1",
         "agentledger.pack_alpha.v1",
+        "agentledger.open_packet.v1",
     ]:
         assert documented in docs_text
