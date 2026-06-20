@@ -69,7 +69,7 @@ Install the current alpha tag from GitHub and run the safe demo before pointing
 AgentLedger at a real repository:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.15-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.16-alpha"
 python -m agentledger demo
 ```
 
@@ -302,7 +302,7 @@ temporary environment when it finishes.
 `scripts/install-source-check.ps1` installs AgentLedger from a pip source spec
 into a temporary virtual environment, verifies `python -m agentledger --version`,
 runs `python -m agentledger demo --format json`, and removes the temporary
-workspace when it finishes. Pass `-Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.15-alpha"`
+workspace when it finishes. Pass `-Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.16-alpha"`
 to verify the public GitHub tag path.
 
 Alpha one-command pass:
