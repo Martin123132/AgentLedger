@@ -63,5 +63,6 @@ Do not commit or upload:
 - signing keys
 - full reports or transcripts unless reviewed and requested
 
-Use `python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet`
-when you need a reviewed, share-safe packet.
+Use `python -m agentledger pack-alpha --out .agentledger` when you need a
+reviewed, share-safe packet. It writes to a fresh temporary packet directory by
+default.

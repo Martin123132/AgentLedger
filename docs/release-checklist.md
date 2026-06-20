@@ -57,12 +57,13 @@ For a tester handoff after a successful local alpha run:
 
 ```powershell
 python -m agentledger alpha --repo . --out .agentledger
-python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
+python -m agentledger pack-alpha --out .agentledger
 ```
 
 Share only the reviewed files printed by `pack-alpha`. Do not share or commit
 raw `.agentledger/` run folders, zip bundles, command transcripts, signing
-keys, or temporary release artifacts.
+keys, or temporary release artifacts. Pass `--output-dir` only when a
+predictable packet folder is useful.
 
 ## Do Not Commit
 
