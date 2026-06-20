@@ -58,6 +58,7 @@ For a tester handoff after a successful local alpha run:
 ```powershell
 python -m agentledger alpha --repo . --out .agentledger
 python -m agentledger pack-alpha --out .agentledger
+python -m agentledger open-packet --out .agentledger
 ```
 
 Share only the reviewed files printed by `pack-alpha`. Do not share or commit

@@ -245,7 +245,9 @@ issue/comment draft plus Markdown/JSON before sharing. It wraps
 `alpha-handoff --share-safe`, checks the generated packet files for local
 absolute path leaks, and reports exactly which files should be reviewed/shared.
 By default it writes to a fresh temporary packet directory; pass `--output-dir`
-when you need a predictable local folder.
+when you need a predictable local folder. It also writes
+`.agentledger/latest-alpha-packet.json` so `open-packet` can find the packet
+again.
 
 Stable fields:
 
@@ -256,7 +258,9 @@ Stable fields:
 - `generated_at`
 - `agentledger_version`
 - `repo`: local repository path used to generate the packet
+- `out`: resolved AgentLedger output directory used for the latest packet pointer
 - `output_dir`: local directory containing the packet files
+- `latest_packet`: local pointer file written under the AgentLedger output directory
 - `files`: generated `issue`, `markdown`, and `json` packet files to review/share
 - `sharing`: explicit review/share file list and keep-private reminders
 - `raw_evidence_copied`: always false
@@ -266,12 +270,37 @@ Stable fields:
 - `validation`: file existence and local absolute path leak checks
 - `next_actions`
 - `errors`
+- `pointer_errors`: non-fatal errors encountered while writing the latest packet pointer
 
 The `pack-alpha` command output is a local operator summary and may contain
 local output paths so the operator can find the files.
 `agentledger-alpha-issue.md` is a copy-ready GitHub issue/comment draft built
 from `public_summary.markdown`; the generated handoff packet files remain the
 deeper share-safe artifacts intended for review.
+
+### `agentledger open-packet --format json`
+
+Schema: `agentledger.open_packet.v1`
+
+Use this to locate the latest share-safe alpha packet without parsing terminal
+output from `pack-alpha`. The command reads
+`.agentledger/latest-alpha-packet.json`, verifies the packet files still exist,
+and prints the issue/comment draft plus Markdown/JSON packet paths.
+
+Stable fields:
+
+- `ok`: boolean, true when the pointer is readable and packet files exist
+- `repo`: local repository path used for config lookup
+- `out`: resolved AgentLedger output directory
+- `latest_packet`: local pointer file read by the command
+- `output_dir`: local directory containing the packet files
+- `status`: latest pass/warn/block status from the packet
+- `summary`
+- `files`: generated `issue`, `markdown`, and `json` packet files to review/share
+- `missing_files`: packet files named by the pointer that no longer exist
+- `raw_evidence_copied`: always false for `pack-alpha` packets
+- `packet`: embedded `agentledger.pack_alpha.v1` payload
+- `errors`
 
 ### `agentledger feedback-summary --format json`
 

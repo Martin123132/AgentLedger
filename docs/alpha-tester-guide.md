@@ -119,6 +119,7 @@ python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agen
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe
 python -m agentledger pack-alpha --out .agentledger
+python -m agentledger open-packet --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
 python -m agentledger inspect-report $run
 python -m agentledger check --repo . $run
@@ -141,11 +142,12 @@ Expected result:
 - `alpha-handoff --share-safe` writes a compact Markdown/JSON handoff packet without copying raw evidence or exposing local absolute paths
 - `pack-alpha` validates the share-safe packet, writes `agentledger-alpha-issue.md` as a copy-ready GitHub issue/comment draft, and includes a `Sharing` section with keep-private reminders plus `public_summary` snippets for short updates
 - `pack-alpha` defaults to a fresh temporary packet directory; pass `--output-dir` when you want a predictable folder
+- `open-packet` reprints the latest packet paths from `.agentledger/latest-alpha-packet.json`
 - `inspect-report` summarizes command, exit code, test framework, changed files, and artifacts
 - `check` evaluates the run using `.agentledger.toml`
 - `inspect-bundle` summarizes manifest, signature presence, reports, command outcome, and pass/warn/block review status without needing a signing key
 - `verify-bundle` prints `Bundle OK` after validating the bundle manifest and checksums
-- `review --format json`, `status --format json`, `open-latest --format json`, `inspect-bundle --format json`, and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
+- `review --format json`, `status --format json`, `open-latest --format json`, `open-packet --format json`, `inspect-bundle --format json`, and `verify-bundle --format json` produce machine-readable status for CI or agent handoffs
 - Optional: `signing-key` checks shared-key file hygiene before `sign-bundle` adds an HMAC signature that `verify-bundle --signature-key-file --require-signature` can verify
 
 ## Evidence location

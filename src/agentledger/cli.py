@@ -79,6 +79,8 @@ ALPHA_HANDOFF_MARKDOWN = "agentledger-alpha-handoff.md"
 ALPHA_HANDOFF_JSON = "agentledger-alpha-handoff.json"
 ALPHA_ISSUE_MARKDOWN = "agentledger-alpha-issue.md"
 PACK_ALPHA_SCHEMA = "agentledger.pack_alpha.v1"
+OPEN_PACKET_SCHEMA = "agentledger.open_packet.v1"
+LATEST_ALPHA_PACKET_JSON = "latest-alpha-packet.json"
 PUBLIC_SUMMARY_TEXT_LIMIT = 280
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
     "Choose a writable alpha summary path, then run agentledger alpha again."
@@ -180,6 +182,12 @@ def build_parser() -> argparse.ArgumentParser:
     latest.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
     latest.add_argument("--out", default=None, help="Evidence output directory.")
     latest.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    open_packet = sub.add_parser("open-packet", help="Print latest alpha packet paths from an output directory.")
+    open_packet.add_argument("--repo", default=".", help="Target git repository for config lookup.")
+    open_packet.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    open_packet.add_argument("--out", default=None, help="Evidence output directory.")
+    open_packet.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     history = sub.add_parser("history", help="List recent AgentLedger runs from a run output directory.")
     history.add_argument("--repo", default=".", help="Target git repository for config lookup.")
@@ -1489,6 +1497,151 @@ def _handle_open_latest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _packet_hint(out_root: Path) -> str:
+    return f"Run an alpha packet first: python -m agentledger pack-alpha --out {out_root}"
+
+
+def _latest_alpha_packet_path(out_root: Path) -> Path:
+    return out_root / LATEST_ALPHA_PACKET_JSON
+
+
+def _packet_file_paths(packet: dict) -> dict[str, str]:
+    files = packet.get("files") if isinstance(packet.get("files"), dict) else {}
+    return {key: str(value) for key, value in files.items() if value}
+
+
+def _missing_packet_files(files: dict[str, str]) -> list[str]:
+    missing: list[str] = []
+    for value in files.values():
+        path = Path(value)
+        if not path.exists():
+            missing.append(str(path))
+    return missing
+
+
+def _open_packet_payload(
+    *,
+    repo: Path,
+    out_root: Path | None,
+    latest_packet: Path | None,
+    packet: dict | None,
+    errors: list[str],
+) -> dict:
+    files = _packet_file_paths(packet) if isinstance(packet, dict) else {}
+    missing_files = _missing_packet_files(files)
+    all_errors = errors + [f"Missing expected packet file: {path}" for path in missing_files]
+    return {
+        "schema_version": OPEN_PACKET_SCHEMA,
+        "ok": isinstance(packet, dict) and not all_errors,
+        "repo": str(repo),
+        "out": str(out_root) if out_root is not None else None,
+        "latest_packet": str(latest_packet) if latest_packet is not None else None,
+        "output_dir": str(packet.get("output_dir")) if isinstance(packet, dict) and packet.get("output_dir") else None,
+        "status": str(packet.get("status")) if isinstance(packet, dict) and packet.get("status") else None,
+        "summary": str(packet.get("summary")) if isinstance(packet, dict) and packet.get("summary") else None,
+        "files": files,
+        "missing_files": missing_files,
+        "raw_evidence_copied": packet.get("raw_evidence_copied") if isinstance(packet, dict) else None,
+        "packet": packet,
+        "errors": all_errors,
+    }
+
+
+def _handle_open_packet(args: argparse.Namespace) -> int:
+    repo = Path(args.repo or ".").resolve()
+    output_format = getattr(args, "format", "text")
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        payload = _open_packet_payload(
+            repo=repo,
+            out_root=None,
+            latest_packet=None,
+            packet=None,
+            errors=[f"Config error: {exc}"],
+        )
+        if output_format == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            print(payload["errors"][0])
+        return 2
+
+    out_root = _resolve_out_root(args, repo, config)
+    latest_packet = _latest_alpha_packet_path(out_root)
+    if not latest_packet.exists():
+        payload = _open_packet_payload(
+            repo=repo,
+            out_root=out_root,
+            latest_packet=latest_packet,
+            packet=None,
+            errors=[f"No latest alpha packet pointer found: {latest_packet}", _packet_hint(out_root)],
+        )
+        if output_format == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            for message in payload["errors"]:
+                print(message)
+        return 2
+
+    try:
+        packet = json.loads(latest_packet.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        payload = _open_packet_payload(
+            repo=repo,
+            out_root=out_root,
+            latest_packet=latest_packet,
+            packet=None,
+            errors=[f"Unable to read latest alpha packet pointer {latest_packet}: {exc}"],
+        )
+    else:
+        errors = []
+        if not isinstance(packet, dict):
+            packet = None
+            errors.append(f"Latest alpha packet pointer is not a JSON object: {latest_packet}")
+        elif packet.get("schema_version") != PACK_ALPHA_SCHEMA:
+            errors.append(
+                f"Expected schema_version {PACK_ALPHA_SCHEMA}, got {packet.get('schema_version')!r}."
+            )
+        payload = _open_packet_payload(
+            repo=repo,
+            out_root=out_root,
+            latest_packet=latest_packet,
+            packet=packet,
+            errors=errors,
+        )
+
+    if output_format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0 if payload["ok"] else 2
+
+    if payload["packet"] is None:
+        for message in payload["errors"]:
+            print(message)
+        return 2
+
+    print(f"Latest alpha packet: {payload['output_dir']}")
+    print(f"Status: {payload['status']}")
+    print(f"Summary: {payload['summary']}")
+    print(f"Pointer: {payload['latest_packet']}")
+    files = payload["files"]
+    if files.get("issue"):
+        print(f"Issue/comment draft: {files['issue']}")
+    if files.get("markdown"):
+        print(f"Markdown to share: {files['markdown']}")
+    if files.get("json"):
+        print(f"JSON to share: {files['json']}")
+    print(f"Raw evidence copied: {'yes' if payload['raw_evidence_copied'] else 'no'}")
+    if payload["missing_files"]:
+        print("Missing expected packet files:")
+        for path in payload["missing_files"]:
+            print(f"- {path}")
+    if payload["errors"]:
+        print("Errors:")
+        for error in payload["errors"]:
+            print(f"- {error}")
+    return 0 if payload["ok"] else 2
+
+
 def _report_summary(run_dir: Path) -> dict:
     report = load_report(run_dir)
     passed, warned = artifact_status_counts([artifact for artifact in report.get("artifacts", []) if isinstance(artifact, dict)])
@@ -1774,6 +1927,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
             f"python -m agentledger feedback-summary --out {out_arg}",
             f"python -m agentledger feedback-export --out {out_arg} --output $env:TEMP\\agentledger-feedback.md",
             f"python -m agentledger pack-alpha --out {out_arg}",
+            f"python -m agentledger open-packet --out {out_arg}",
         ],
     }
     payload = {
@@ -4086,9 +4240,24 @@ def _resolve_pack_alpha_output_dir(args: argparse.Namespace) -> Path:
     return Path(tempfile.mkdtemp(prefix="agentledger-alpha-packet-")).resolve()
 
 
+def _resolve_alpha_packet_out_root(args: argparse.Namespace, repo: Path) -> tuple[Path | None, list[str]]:
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        return None, [f"Latest alpha packet pointer was not written because config could not be loaded: {exc}"]
+    return _resolve_out_root(args, repo, config), []
+
+
+def _write_latest_alpha_packet(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _write_rendered_output(path, json.dumps(payload, indent=2))
+
+
 def _handle_pack_alpha(args: argparse.Namespace) -> int:
     repo = Path(args.repo or ".").resolve()
     output_dir = _resolve_pack_alpha_output_dir(args)
+    out_root, pointer_errors = _resolve_alpha_packet_out_root(args, repo)
+    latest_packet_path = _latest_alpha_packet_path(out_root) if out_root is not None else None
     handoff_args = argparse.Namespace(
         command_name="alpha-handoff",
         repo=args.repo,
@@ -4145,7 +4314,9 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         "generated_at": utc_now_iso(),
         "agentledger_version": f"agentledger {__version__}",
         "repo": str(repo),
+        "out": str(out_root) if out_root is not None else None,
         "output_dir": str(output_dir),
+        "latest_packet": str(latest_packet_path) if latest_packet_path is not None else None,
         "files": files,
         "sharing": _alpha_packet_sharing(files, True),
         "raw_evidence_copied": False,
@@ -4155,7 +4326,13 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         "validation": validation,
         "next_actions": _pack_alpha_next_actions(handoff_payload, validation, handoff_exit_code),
         "errors": errors,
+        "pointer_errors": pointer_errors,
     }
+    if latest_packet_path is not None:
+        try:
+            _write_latest_alpha_packet(latest_packet_path, payload)
+        except OSError as exc:
+            payload["pointer_errors"].append(f"Unable to write latest alpha packet pointer {latest_packet_path}: {exc}")
 
     if getattr(args, "format", "text") == "json":
         print(json.dumps(payload, indent=2))
@@ -4165,6 +4342,8 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         print(f"Issue/comment draft: {issue_path}")
         print(f"Markdown to share: {markdown_path}")
         print(f"JSON to share: {json_path}")
+        if payload.get("latest_packet"):
+            print(f"Latest packet pointer: {payload['latest_packet']}")
         public_summary = payload.get("public_summary") if isinstance(payload.get("public_summary"), dict) else {}
         if public_summary.get("text"):
             print("Public summary:")
@@ -4185,6 +4364,10 @@ def _handle_pack_alpha(args: argparse.Namespace) -> int:
         if errors:
             print("Errors:")
             for error in errors:
+                print(f"- {error}")
+        if payload["pointer_errors"]:
+            print("Pointer warnings:")
+            for error in payload["pointer_errors"]:
                 print(f"- {error}")
         print("Next:")
         for action in payload["next_actions"]:
@@ -4702,6 +4885,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_inspect_report(args)
     if args.command_name == "open-latest":
         return _handle_open_latest(args)
+    if args.command_name == "open-packet":
+        return _handle_open_packet(args)
     if args.command_name == "history":
         return _handle_history(args)
     if args.command_name == "status":

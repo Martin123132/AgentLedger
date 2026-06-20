@@ -65,4 +65,5 @@ Do not commit or upload:
 
 Use `python -m agentledger pack-alpha --out .agentledger` when you need a
 reviewed, share-safe packet. It writes to a fresh temporary packet directory by
-default.
+default. Use `python -m agentledger open-packet --out .agentledger` to find that
+latest packet again.
