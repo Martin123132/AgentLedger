@@ -15,7 +15,9 @@ python -m agentledger demo
 `agentledger demo` creates a temporary git repository, runs a small
 standard-library `unittest` command through AgentLedger, and prints the evidence
 paths, a `Read first` cue, follow-up inspection commands, and a cleanup command.
-It does not touch your current repository.
+It does not touch your current repository. Add
+`--summary-output $env:TEMP\agentledger-demo-summary.md` when you want a
+path-free Markdown summary to review before sharing.
 For development checkouts, editable installs, source checks, and uninstall
 commands, see `docs/install.md`.
 
@@ -29,6 +31,7 @@ The demo output prints:
 - `Markdown report`: the easiest report to read first
 - `HTML report`: the same report in browser-friendly form
 - `Bundle`: the local zip evidence bundle
+- `Public summary`: the optional path-free Markdown summary written by `--summary-output`
 - `Read first`: the fastest way to understand the report and verdict
 - `Try next`: commands for latest paths, history, status, report inspection, and bundle verification
 - `Next real repo`: the read-only alpha-guide command to run from your own repository

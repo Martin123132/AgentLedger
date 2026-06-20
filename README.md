@@ -78,7 +78,9 @@ the Markdown/HTML/JSON report paths, and prints a `Read first` cue plus follow-u
 inspection commands. Open the Markdown report first, then run the printed
 `status` command for the pass/warn/block verdict. Use
 `python -m agentledger demo --format json` when another agent or wrapper needs
-the paths without scraping text.
+the paths without scraping text. Use
+`python -m agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md`
+when you want a path-free Markdown summary to review before sharing.
 
 When the demo makes sense, move into your real repository and run:
 
@@ -98,6 +100,7 @@ and uninstall commands.
 | Demo workspace | Temporary local folder printed by `agentledger demo` |
 | `agentledger-report.md` / `.html` / `.json` | Local evidence to inspect before sharing |
 | Zip evidence bundle | Local proof; do not commit or post by default |
+| Demo public summary | Path-free Markdown to review before sharing |
 | Handoff packet from `pack-alpha` | Review first, then share only when requested |
 
 ## Quick Start
@@ -118,6 +121,8 @@ python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')
 library `unittest` command through AgentLedger, and prints the Markdown report,
 JSON report, HTML report, bundle, follow-up commands, and cleanup command. Use
 `agentledger demo --format json` for machine-readable first-run evidence paths.
+Use `agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md`
+for a path-free Markdown summary you can review before sharing.
 It is the safest way to inspect a real local evidence run before pointing
 AgentLedger at your own repository.
 
@@ -499,13 +504,16 @@ Use a chosen empty workspace if you want predictable paths:
 ```powershell
 agentledger demo --output-dir $env:TEMP\agentledger-demo
 agentledger demo --format json
+agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md
 ```
 
 The demo creates `demo-repo/` and `agentledger-output/` under that workspace,
 runs `python -B -m unittest test_demo.py`, and prints the latest report, bundle,
 follow-up inspection commands, and cleanup command. JSON output uses
-`agentledger.demo.v1` for scripts and agent handoffs. It does not touch the
-current repository unless you explicitly choose an output directory inside it.
+`agentledger.demo.v1` for scripts and agent handoffs. `--summary-output` writes
+a path-free Markdown summary; raw evidence still stays local. It does not touch
+the current repository unless you explicitly choose an output directory inside
+it.
 
 Capture repository state only:
 

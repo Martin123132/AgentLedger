@@ -66,6 +66,8 @@ Stable fields:
 - `privacy_mode`: evidence detail level used for the demo capture
 - `command`: captured verification command as an argument list
 - `command_exit_code`: captured command exit code, or `null`
+- `summary_output`: requested public-safe Markdown summary path, or `null`
+- `summary_written`: boolean indicating whether `summary_output` was written
 - `try_next`: follow-up CLI commands for inspecting demo evidence
 - `cleanup`: command for removing the isolated workspace, or `null`
 - `errors`: human-readable error list
