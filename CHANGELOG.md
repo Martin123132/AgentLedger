@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.15-alpha - 2026-06-20
+
+- Made `agentledger pack-alpha` default to a fresh temporary packet directory,
+  while keeping `--output-dir` for predictable alpha handoffs.
+
 ## 0.1.14-alpha - 2026-06-20
 
 - Added `agentledger demo --summary-output` to write a path-free Markdown
