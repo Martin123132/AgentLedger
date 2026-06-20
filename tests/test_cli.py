@@ -1057,7 +1057,7 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert f"- Inspect latest status: python -m agentledger status --out {out} --allow-warnings" in output
     assert "- Read status first, then open the Markdown report from open-latest." in output
     assert "Verify:" in output
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.13-alpha"' in output
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.14-alpha"' in output
     assert "python -m agentledger demo" in output
     assert "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1" in output
     assert "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1" in output
@@ -1077,7 +1077,7 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert payload["repo"] == str(repo.resolve())
     assert payload["out"] == str(out.resolve())
     assert payload["commands"]["setup"] == [
-        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.13-alpha"',
+        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.14-alpha"',
         'python -m pip install -e ".[dev]"',
         "python -m agentledger --version",
         f"python -m agentledger doctor --repo {repo}",

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.14-alpha - 2026-06-20
+
+- Added `agentledger demo --summary-output` to write a path-free Markdown
+  summary for public demo posts and review handoffs.
+- Added `summary_output` and `summary_written` to the demo JSON contract.
+
 ## 0.1.13-alpha - 2026-06-19
 
 - Added clearer `agentledger demo` first-read guidance for Markdown reports,
