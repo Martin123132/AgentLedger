@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.16-alpha - 2026-06-20
+
+- Added `agentledger open-packet` and a latest alpha packet pointer so testers
+  can find the most recent `pack-alpha` handoff without scrolling terminal
+  output.
+
 ## 0.1.15-alpha - 2026-06-20
 
 - Made `agentledger pack-alpha` default to a fresh temporary packet directory,
