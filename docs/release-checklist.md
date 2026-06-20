@@ -29,7 +29,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\release-dry-run.ps1
 `scripts\release-dry-run.ps1` safely removes old local build output, builds a
 wheel into a temporary wheelhouse, installs that built wheel into a temporary
 virtual environment, and runs the main smoke flow from the installed package.
-It also runs `agentledger pack-alpha` in a temporary git repository.
+It also runs `agentledger pack-alpha` and `agentledger open-packet` in a
+temporary git repository.
 
 The temporary smoke evidence and alpha packet are isolated under `$env:TEMP`
 and are removed when the script exits.

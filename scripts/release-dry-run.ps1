@@ -137,6 +137,8 @@ try {
     Invoke-InstalledAgentLedger @("verify-bundle", "${run}.zip")
     Invoke-InstalledAgentLedger @("verify-bundle", "${run}.zip", "--format", "json")
     Invoke-InstalledAgentLedger @("pack-alpha", "--format", "json", "--out", $out, "--output-dir", $packAlphaDir)
+    Invoke-InstalledAgentLedger @("open-packet", "--out", $out)
+    Invoke-InstalledAgentLedger @("open-packet", "--format", "json", "--out", $out)
 
     Invoke-InstalledAgentLedger @(
         "run",
