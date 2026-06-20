@@ -65,11 +65,78 @@ print(f"AgentLedger check JSON: {payload['status']} - {payload['summary']}")
     }
 }
 
+function Invoke-AgentLedgerOpenPacketJsonCheck {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $OutRoot,
+        [Parameter(Mandatory = $true)]
+        [string] $OutputPath,
+        [Parameter(Mandatory = $true)]
+        [string] $ExpectedOutputDir
+    )
+
+    $json = & python -m agentledger open-packet --format json --out $OutRoot
+    $exitCode = $LASTEXITCODE
+    $json | Set-Content -LiteralPath $OutputPath -Encoding UTF8
+    if ($exitCode -ne 0) {
+        throw "agentledger open-packet --format json exited with code $exitCode"
+    }
+
+    @'
+import json
+import sys
+from pathlib import Path
+
+payload = json.load(open(sys.argv[1], encoding="utf-8-sig"))
+expected_output_dir = str(Path(sys.argv[2]).resolve())
+required = {
+    "schema_version",
+    "ok",
+    "latest_packet",
+    "output_dir",
+    "files",
+    "missing_files",
+    "raw_evidence_copied",
+    "packet",
+    "errors",
+}
+missing = sorted(required - payload.keys())
+if missing:
+    raise SystemExit(f"Missing open-packet JSON fields: {', '.join(missing)}")
+if payload["schema_version"] != "agentledger.open_packet.v1":
+    raise SystemExit(f"Unexpected open-packet schema: {payload['schema_version']}")
+if payload["ok"] is not True:
+    raise SystemExit(f"open-packet was not ok: {payload['errors']}")
+if payload["output_dir"] != expected_output_dir:
+    raise SystemExit(f"Unexpected packet output_dir: {payload['output_dir']}")
+if payload["missing_files"] != []:
+    raise SystemExit(f"open-packet reported missing files: {payload['missing_files']}")
+if payload["raw_evidence_copied"] is not False:
+    raise SystemExit("open-packet reported raw evidence copied")
+packet = payload["packet"]
+if packet["schema_version"] != "agentledger.pack_alpha.v1":
+    raise SystemExit(f"Unexpected nested packet schema: {packet['schema_version']}")
+if packet["validation"]["ok"] is not True:
+    raise SystemExit("pack-alpha validation did not pass")
+for name in ("issue", "markdown", "json"):
+    value = payload["files"].get(name)
+    if not value:
+        raise SystemExit(f"Missing open-packet file field: {name}")
+    if not Path(value).exists():
+        raise SystemExit(f"open-packet file does not exist: {value}")
+print(f"AgentLedger open-packet JSON: {payload['status']} - {payload['summary']}")
+'@ | python - $OutputPath $ExpectedOutputDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "open-packet JSON validation failed"
+    }
+}
+
 $root = Join-Path $env:TEMP "agentledger-smoke-$([guid]::NewGuid())"
 $originalLocation = Get-Location
 $repo = Join-Path $root "repo"
 $out = Join-Path $root "ledger"
 $checkJson = Join-Path $root "agentledger-check.json"
+$openPacketJson = Join-Path $root "agentledger-open-packet.json"
 $feedbackExportMarkdown = Join-Path $root "agentledger-feedback.md"
 $feedbackExportJson = Join-Path $root "agentledger-feedback.json"
 $reviewExportMarkdown = Join-Path $root "agentledger-review.md"
@@ -126,6 +193,8 @@ try {
     Invoke-AgentLedger @("alpha-handoff", "--format", "json", "--out", $out, "--output-dir", $alphaHandoffJsonDir)
     Invoke-AgentLedger @("alpha-handoff", "--format", "json", "--out", $out, "--output-dir", $alphaHandoffShareSafeDir, "--share-safe")
     Invoke-AgentLedger @("pack-alpha", "--format", "json", "--out", $out, "--output-dir", $packAlphaDir)
+    Invoke-AgentLedger @("open-packet", "--out", $out)
+    Invoke-AgentLedgerOpenPacketJsonCheck -OutRoot $out -OutputPath $openPacketJson -ExpectedOutputDir $packAlphaDir
 
     $run = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
     Invoke-AgentLedger @("inspect-report", "--format", "json", $run)

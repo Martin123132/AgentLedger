@@ -14,6 +14,7 @@ FEEDBACK_EXPORT_MD="$ROOT/agentledger-feedback.md"
 FEEDBACK_EXPORT_JSON="$ROOT/agentledger-feedback.json"
 REVIEW_EXPORT_MD="$ROOT/agentledger-review.md"
 REVIEW_EXPORT_JSON="$ROOT/agentledger-review.json"
+OPEN_PACKET_JSON="$ROOT/agentledger-open-packet.json"
 ALPHA_HANDOFF_DIR="$ROOT/agentledger-alpha-handoff"
 ALPHA_HANDOFF_JSON_DIR="$ROOT/agentledger-alpha-handoff-json"
 ALPHA_HANDOFF_SHARE_SAFE_DIR="$ROOT/agentledger-alpha-handoff-share-safe"
@@ -58,6 +59,52 @@ python -m agentledger alpha-handoff --out "$OUT" --output-dir "$ALPHA_HANDOFF_DI
 python -m agentledger alpha-handoff --format json --out "$OUT" --output-dir "$ALPHA_HANDOFF_JSON_DIR"
 python -m agentledger alpha-handoff --format json --out "$OUT" --output-dir "$ALPHA_HANDOFF_SHARE_SAFE_DIR" --share-safe
 python -m agentledger pack-alpha --format json --out "$OUT" --output-dir "$PACK_ALPHA_DIR"
+python -m agentledger open-packet --out "$OUT"
+python -m agentledger open-packet --format json --out "$OUT" > "$OPEN_PACKET_JSON"
+python - "$OPEN_PACKET_JSON" "$PACK_ALPHA_DIR" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.load(open(sys.argv[1], encoding="utf-8-sig"))
+expected_output_dir = str(Path(sys.argv[2]).resolve())
+required = {
+    "schema_version",
+    "ok",
+    "latest_packet",
+    "output_dir",
+    "files",
+    "missing_files",
+    "raw_evidence_copied",
+    "packet",
+    "errors",
+}
+missing = sorted(required - payload.keys())
+if missing:
+    raise SystemExit(f"Missing open-packet JSON fields: {', '.join(missing)}")
+if payload["schema_version"] != "agentledger.open_packet.v1":
+    raise SystemExit(f"Unexpected open-packet schema: {payload['schema_version']}")
+if payload["ok"] is not True:
+    raise SystemExit(f"open-packet was not ok: {payload['errors']}")
+if payload["output_dir"] != expected_output_dir:
+    raise SystemExit(f"Unexpected packet output_dir: {payload['output_dir']}")
+if payload["missing_files"] != []:
+    raise SystemExit(f"open-packet reported missing files: {payload['missing_files']}")
+if payload["raw_evidence_copied"] is not False:
+    raise SystemExit("open-packet reported raw evidence copied")
+packet = payload["packet"]
+if packet["schema_version"] != "agentledger.pack_alpha.v1":
+    raise SystemExit(f"Unexpected nested packet schema: {packet['schema_version']}")
+if packet["validation"]["ok"] is not True:
+    raise SystemExit("pack-alpha validation did not pass")
+for name in ("issue", "markdown", "json"):
+    value = payload["files"].get(name)
+    if not value:
+        raise SystemExit(f"Missing open-packet file field: {name}")
+    if not Path(value).exists():
+        raise SystemExit(f"open-packet file does not exist: {value}")
+print(f"AgentLedger open-packet JSON: {payload['status']} - {payload['summary']}")
+PY
 
 RUN="$(cat "$OUT/latest.txt" | tr -d '\r\n')"
 python -m agentledger inspect-report --format json "$RUN"
