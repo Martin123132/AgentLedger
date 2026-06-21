@@ -36,6 +36,12 @@ review before sharing:
 python -m agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md
 ```
 
+Show the full share-safe handoff path without touching a real repo:
+
+```powershell
+python -m agentledger demo --packet
+```
+
 ## What It Does
 
 The command creates:
@@ -44,6 +50,7 @@ The command creates:
 - `agentledger-output/`: the local AgentLedger evidence directory
 - one timestamped run folder under `agentledger-output/`
 - a sibling `.zip` evidence bundle beside that run folder
+- `agentledger-alpha-packet/` when `--packet` is used
 
 The captured command is:
 
@@ -76,6 +83,9 @@ Bundle: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\
 Read first:
 - Open the Markdown report for the human summary.
 - Run status when you want the pass/warn/block verdict.
+Alpha packet:
+- Printed only when `--packet` is used.
+- Shows the issue/comment draft, Markdown packet, JSON packet, and latest packet pointer.
 Try next:
 - python -m agentledger open-latest --repo <demo-repo> --out <agentledger-output>
 - python -m agentledger history --repo <demo-repo> --out <agentledger-output>
@@ -109,7 +119,7 @@ diffs.
 
 With `--format json`, the payload uses schema `agentledger.demo.v1` and includes
 `workspace`, `repo`, `out`, `latest_run`, `paths`, `summary_output`,
-`summary_written`, `try_next`, `cleanup`, and `errors`.
+`summary_written`, optional `packet`, `try_next`, `cleanup`, and `errors`.
 
 ## Public Demo Summary
 
@@ -130,6 +140,7 @@ unless you intentionally choose to share them.
 | `agentledger-output/` | Yes | This is raw local evidence |
 | Run folder | Yes | Contains reports and artifacts |
 | Zip bundle | Yes | Useful for verification, but do not commit or post by default |
+| Demo alpha packet | Review first | Created only with `--packet`; share listed files only after review |
 | Public demo summary | Review first | Path-free by design, but still check before sharing |
 | Printed status summary | Usually safe | Review before sharing because paths may reveal local context |
 

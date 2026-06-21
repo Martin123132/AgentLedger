@@ -80,7 +80,9 @@ inspection commands. Open the Markdown report first, then run the printed
 `python -m agentledger demo --format json` when another agent or wrapper needs
 the paths without scraping text. Use
 `python -m agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md`
-when you want a path-free Markdown summary to review before sharing.
+when you want a path-free Markdown summary to review before sharing. Use
+`python -m agentledger demo --packet` to see the share-safe packet handoff
+without touching a real repository.
 
 When the demo makes sense, move into your real repository and run:
 
@@ -122,7 +124,9 @@ library `unittest` command through AgentLedger, and prints the Markdown report,
 JSON report, HTML report, bundle, follow-up commands, and cleanup command. Use
 `agentledger demo --format json` for machine-readable first-run evidence paths.
 Use `agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md`
-for a path-free Markdown summary you can review before sharing.
+for a path-free Markdown summary you can review before sharing. Use
+`agentledger demo --packet` to create and print the reviewed packet handoff
+paths from the isolated demo.
 It is the safest way to inspect a real local evidence run before pointing
 AgentLedger at your own repository.
 
@@ -510,15 +514,17 @@ Use a chosen empty workspace if you want predictable paths:
 agentledger demo --output-dir $env:TEMP\agentledger-demo
 agentledger demo --format json
 agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md
+agentledger demo --packet
 ```
 
 The demo creates `demo-repo/` and `agentledger-output/` under that workspace,
 runs `python -B -m unittest test_demo.py`, and prints the latest report, bundle,
 follow-up inspection commands, and cleanup command. JSON output uses
 `agentledger.demo.v1` for scripts and agent handoffs. `--summary-output` writes
-a path-free Markdown summary; raw evidence still stays local. It does not touch
-the current repository unless you explicitly choose an output directory inside
-it.
+a path-free Markdown summary; `--packet` also creates a share-safe alpha packet
+and prints the `open-packet` handoff paths. Raw evidence still stays local. It
+does not touch the current repository unless you explicitly choose an output
+directory inside it.
 
 Capture repository state only:
 

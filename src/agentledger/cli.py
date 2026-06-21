@@ -137,6 +137,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to write a public-safe Markdown demo summary.",
     )
+    demo.add_argument(
+        "--packet",
+        action="store_true",
+        help="Also generate a share-safe alpha packet and print open-packet handoff paths.",
+    )
     demo.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")
@@ -4463,7 +4468,7 @@ def _write_demo_repo(repo: Path) -> list[str]:
     return []
 
 
-def _demo_try_next_commands(repo: Path, out_root: Path, latest_dir: Path | None) -> list[str]:
+def _demo_try_next_commands(repo: Path, out_root: Path, latest_dir: Path | None, packet: dict | None) -> list[str]:
     commands = [
         f"python -m agentledger open-latest --repo {repo} --out {out_root}",
         f"python -m agentledger history --repo {repo} --out {out_root}",
@@ -4476,6 +4481,8 @@ def _demo_try_next_commands(repo: Path, out_root: Path, latest_dir: Path | None)
                 f"python -m agentledger verify-bundle {latest_dir.with_suffix('.zip')}",
             ]
         )
+    if isinstance(packet, dict) and packet.get("ok"):
+        commands.append(f"python -m agentledger open-packet --repo {repo} --out {out_root}")
     return commands
 
 
@@ -4483,6 +4490,78 @@ def _demo_summary_output_path(args: argparse.Namespace) -> Path | None:
     if not getattr(args, "summary_output", None):
         return None
     return Path(args.summary_output).expanduser().resolve()
+
+
+def _demo_alpha_packet(repo: Path, out_root: Path, workspace: Path) -> dict:
+    output_dir = workspace / "agentledger-alpha-packet"
+    pack_args = argparse.Namespace(
+        command_name="pack-alpha",
+        repo=str(repo),
+        config=None,
+        out=str(out_root),
+        output_dir=str(output_dir),
+        feedback_limit=20,
+        history_limit=5,
+        strict=False,
+        format="json",
+    )
+    pack_buffer = io.StringIO()
+    with contextlib.redirect_stdout(pack_buffer):
+        pack_exit_code = _handle_pack_alpha(pack_args)
+    pack_payload = _parse_json_object_from_output(pack_buffer.getvalue())
+
+    open_exit_code: int | None = None
+    open_payload: dict | None = None
+    errors: list[str] = []
+    if pack_payload is None:
+        errors.append("Unable to parse pack-alpha JSON output.")
+    else:
+        errors.extend(str(error) for error in pack_payload.get("errors") or [])
+        errors.extend(str(error) for error in pack_payload.get("pointer_errors") or [])
+        validation = pack_payload.get("validation") if isinstance(pack_payload.get("validation"), dict) else {}
+        errors.extend(str(error) for error in validation.get("errors") or [])
+
+        open_args = argparse.Namespace(
+            command_name="open-packet",
+            repo=str(repo),
+            config=None,
+            out=str(out_root),
+            format="json",
+        )
+        open_buffer = io.StringIO()
+        with contextlib.redirect_stdout(open_buffer):
+            open_exit_code = _handle_open_packet(open_args)
+        open_payload = _parse_json_object_from_output(open_buffer.getvalue())
+        if open_payload is None:
+            errors.append("Unable to parse open-packet JSON output.")
+        else:
+            errors.extend(str(error) for error in open_payload.get("errors") or [])
+
+    source = open_payload if isinstance(open_payload, dict) else pack_payload if isinstance(pack_payload, dict) else {}
+    files = source.get("files") if isinstance(source.get("files"), dict) else {}
+    raw_evidence_copied = source.get("raw_evidence_copied")
+    if raw_evidence_copied is None and isinstance(pack_payload, dict):
+        raw_evidence_copied = pack_payload.get("raw_evidence_copied")
+    ok = (
+        pack_exit_code == 0
+        and open_exit_code == 0
+        and not errors
+        and isinstance(open_payload, dict)
+        and open_payload.get("ok") is True
+    )
+    return {
+        "requested": True,
+        "ok": ok,
+        "status": source.get("status"),
+        "summary": source.get("summary"),
+        "output_dir": source.get("output_dir") or str(output_dir.resolve()),
+        "latest_packet": source.get("latest_packet"),
+        "files": files,
+        "raw_evidence_copied": raw_evidence_copied,
+        "pack_exit_code": pack_exit_code,
+        "open_exit_code": open_exit_code,
+        "errors": errors,
+    }
 
 
 def _demo_payload(
@@ -4498,6 +4577,7 @@ def _demo_payload(
     errors: list[str],
     summary_output: Path | None = None,
     summary_written: bool = False,
+    packet: dict | None = None,
 ) -> dict:
     return {
         "schema_version": DEMO_SCHEMA,
@@ -4513,7 +4593,12 @@ def _demo_payload(
         "command_exit_code": command_exit_code,
         "summary_output": str(summary_output) if summary_output is not None else None,
         "summary_written": summary_written,
-        "try_next": _demo_try_next_commands(repo, out_root, latest_dir) if repo is not None and out_root is not None else [],
+        "packet": packet,
+        "try_next": (
+            _demo_try_next_commands(repo, out_root, latest_dir, packet)
+            if repo is not None and out_root is not None
+            else []
+        ),
         "cleanup": _demo_cleanup_command(workspace) if workspace is not None else None,
         "errors": errors,
     }
@@ -4524,6 +4609,9 @@ def _format_demo_public_summary(payload: dict) -> str:
     evidence = ["Markdown report", "HTML report", "JSON report"]
     if paths.get("zip"):
         evidence.append("zip bundle")
+    packet = payload.get("packet") if isinstance(payload.get("packet"), dict) else None
+    if packet and packet.get("ok"):
+        evidence.append("share-safe alpha packet")
 
     lines = [
         "# AgentLedger Demo Summary",
@@ -4540,16 +4628,22 @@ def _format_demo_public_summary(payload: dict) -> str:
         "",
         "- Open the Markdown report locally for the human summary.",
         "- Run status locally when you want the pass/warn/block verdict.",
-        "",
-        "## Keep Private",
-        "",
-        "- Raw evidence folders such as .agentledger/ or agentledger-output/",
-        "- Run folders, zip bundles, signing keys, and temporary demo workspaces",
-        "",
-        "## Next Real Repo",
-        "",
-        "- python -m agentledger alpha-guide --repo . --out .agentledger",
     ]
+    if packet and packet.get("ok"):
+        lines.append("- Review the alpha packet locally before sharing the listed files.")
+    lines.extend(
+        [
+            "",
+            "## Keep Private",
+            "",
+            "- Raw evidence folders such as .agentledger/ or agentledger-output/",
+            "- Run folders, zip bundles, signing keys, and temporary demo workspaces",
+            "",
+            "## Next Real Repo",
+            "",
+            "- python -m agentledger alpha-guide --repo . --out .agentledger",
+        ]
+    )
     if not payload.get("ok"):
         errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
         lines.extend(
@@ -4590,6 +4684,9 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
             print(f"- Captured command: {command}")
         print("- Wrote local Markdown, HTML, JSON, and zip evidence.")
         print(f"- Privacy mode: {payload.get('privacy_mode') or 'n/a'}")
+        packet = payload.get("packet") if isinstance(payload.get("packet"), dict) else None
+        if packet and packet.get("ok"):
+            print("- Wrote a share-safe alpha packet for review.")
 
     latest_run = payload.get("latest_run")
     paths = payload.get("paths") if isinstance(payload.get("paths"), dict) else {}
@@ -4604,6 +4701,23 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
         print("Read first:")
         print("- Open the Markdown report for the human summary.")
         print("- Run status when you want the pass/warn/block verdict.")
+
+    packet = payload.get("packet") if isinstance(payload.get("packet"), dict) else None
+    if packet and packet.get("requested"):
+        print("Alpha packet:")
+        if packet.get("ok"):
+            files = packet.get("files") if isinstance(packet.get("files"), dict) else {}
+            print(f"Latest alpha packet: {packet.get('output_dir')}")
+            print(f"Packet pointer: {packet.get('latest_packet')}")
+            print(f"Issue/comment draft: {files.get('issue')}")
+            print(f"Markdown to share: {files.get('markdown')}")
+            print(f"JSON to share: {files.get('json')}")
+            print(f"Raw evidence copied: {'yes' if packet.get('raw_evidence_copied') else 'no'}")
+            print("Review before sharing:")
+            print("- Read the issue/comment draft and packet files first.")
+            print("- Do not attach raw .agentledger evidence.")
+        else:
+            print("- Packet was requested but failed.")
 
     errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
     if errors:
@@ -4690,6 +4804,14 @@ def _handle_demo(args: argparse.Namespace) -> int:
     latest_dir, latest_errors = _resolve_latest_run_dir(out_root)
 
     ok = capture_exit == 0 and latest_dir is not None
+    errors = list(latest_errors)
+    packet = None
+    if ok and getattr(args, "packet", False):
+        packet = _demo_alpha_packet(repo, out_root, workspace)
+        if not packet.get("ok"):
+            errors.extend(str(error) for error in packet.get("errors") or ["Alpha packet generation failed."])
+            ok = False
+
     payload = _demo_payload(
         ok=ok,
         workspace=workspace,
@@ -4699,8 +4821,9 @@ def _handle_demo(args: argparse.Namespace) -> int:
         privacy_mode=args.privacy_mode,
         command=task,
         command_exit_code=capture_exit,
-        errors=latest_errors,
+        errors=errors,
         summary_output=summary_output,
+        packet=packet,
     )
     summary_errors = _try_write_demo_summary(summary_output, payload) if ok else []
     if summary_errors:
