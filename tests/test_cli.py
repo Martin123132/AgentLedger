@@ -248,8 +248,60 @@ def test_demo_command_json_output_lists_evidence_paths(tmp_path: Path, capsys) -
     assert payload["command_exit_code"] == 0
     assert payload["summary_output"] is None
     assert payload["summary_written"] is False
+    assert payload["packet"] is None
     assert len(payload["try_next"]) == 5
     assert payload["cleanup"]
+    assert payload["errors"] == []
+
+
+def test_demo_command_packet_prints_open_packet_paths(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+
+    assert cli.main(["demo", "--packet", "--output-dir", str(workspace)]) == 0
+
+    output = capsys.readouterr().out
+    repo = workspace / "demo-repo"
+    out = workspace / "agentledger-output"
+    packet_dir = workspace / "agentledger-alpha-packet"
+
+    assert "Alpha packet:" in output
+    assert "- Wrote a share-safe alpha packet for review." in output
+    assert f"Latest alpha packet: {packet_dir.resolve()}" in output
+    assert f"Packet pointer: {(out / 'latest-alpha-packet.json').resolve()}" in output
+    assert f"Issue/comment draft: {packet_dir / 'agentledger-alpha-issue.md'}" in output
+    assert f"Markdown to share: {packet_dir / 'agentledger-alpha-handoff.md'}" in output
+    assert f"JSON to share: {packet_dir / 'agentledger-alpha-handoff.json'}" in output
+    assert "Raw evidence copied: no" in output
+    assert "- Do not attach raw .agentledger evidence." in output
+    assert f"python -m agentledger open-packet --repo {repo.resolve()} --out {out.resolve()}" in output
+    assert (out / "latest-alpha-packet.json").exists()
+    assert (packet_dir / "agentledger-alpha-issue.md").exists()
+    assert (packet_dir / "agentledger-alpha-handoff.md").exists()
+    assert (packet_dir / "agentledger-alpha-handoff.json").exists()
+
+
+def test_demo_command_packet_json_output(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+
+    assert cli.main(["demo", "--packet", "--format", "json", "--output-dir", str(workspace)]) == 0
+
+    payload = _parse_json_output(capsys.readouterr().out)
+    out = workspace / "agentledger-output"
+    packet_dir = workspace / "agentledger-alpha-packet"
+    packet = payload["packet"]
+
+    assert packet["requested"] is True
+    assert packet["ok"] is True
+    assert packet["output_dir"] == str(packet_dir.resolve())
+    assert packet["latest_packet"] == str((out / "latest-alpha-packet.json").resolve())
+    assert packet["files"]["issue"] == str(packet_dir / "agentledger-alpha-issue.md")
+    assert packet["files"]["markdown"] == str(packet_dir / "agentledger-alpha-handoff.md")
+    assert packet["files"]["json"] == str(packet_dir / "agentledger-alpha-handoff.json")
+    assert packet["raw_evidence_copied"] is False
+    assert packet["pack_exit_code"] == 0
+    assert packet["open_exit_code"] == 0
+    assert packet["errors"] == []
+    assert any("open-packet" in command for command in payload["try_next"])
     assert payload["errors"] == []
 
 
@@ -272,6 +324,21 @@ def test_demo_command_writes_public_safe_summary(tmp_path: Path, capsys) -> None
     assert "- Local paths: omitted from this summary" in content
     assert "- Raw evidence copied: no" in content
     assert "- python -m agentledger alpha-guide --repo . --out .agentledger" in content
+    assert str(workspace.resolve()) not in content
+    assert str(summary.resolve()) not in content
+
+
+def test_demo_command_packet_summary_stays_path_free(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "demo-workspace"
+    summary = tmp_path / "demo-summary.md"
+
+    assert cli.main(["demo", "--packet", "--output-dir", str(workspace), "--summary-output", str(summary)]) == 0
+
+    capsys.readouterr()
+    content = summary.read_text(encoding="utf-8")
+
+    assert "share-safe alpha packet" in content
+    assert "- Review the alpha packet locally before sharing the listed files." in content
     assert str(workspace.resolve()) not in content
     assert str(summary.resolve()) not in content
 

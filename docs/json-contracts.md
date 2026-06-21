@@ -52,7 +52,9 @@ Stable fields:
 Schema: `agentledger.demo.v1`
 
 Use this for automated first-run smoke checks and onboarding wrappers that need
-the demo evidence paths without scraping text output.
+the demo evidence paths without scraping text output. Add `--packet` when the
+wrapper should also produce a share-safe alpha packet and return the
+`open-packet` handoff paths.
 
 Stable fields:
 
@@ -68,6 +70,10 @@ Stable fields:
 - `command_exit_code`: captured command exit code, or `null`
 - `summary_output`: requested public-safe Markdown summary path, or `null`
 - `summary_written`: boolean indicating whether `summary_output` was written
+- `packet`: `null` unless `--packet` was requested; when present it includes
+  `requested`, `ok`, `status`, `summary`, `output_dir`, `latest_packet`,
+  `files`, `raw_evidence_copied`, `pack_exit_code`, `open_exit_code`, and
+  `errors`
 - `try_next`: follow-up CLI commands for inspecting demo evidence
 - `cleanup`: command for removing the isolated workspace, or `null`
 - `errors`: human-readable error list

@@ -316,6 +316,9 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "privacy_mode",
             "command",
             "command_exit_code",
+            "summary_output",
+            "summary_written",
+            "packet",
             "try_next",
             "cleanup",
             "errors",
@@ -620,6 +623,7 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert demo["ok"] is True
     assert demo["status"] == "pass"
     _assert_keys(demo["paths"], {"markdown", "json", "html", "zip"})
+    assert demo["packet"] is None
     assert demo["try_next"]
     assert demo["cleanup"]
     assert demo["errors"] == []

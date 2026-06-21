@@ -24,6 +24,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "command_exit_code",
             "summary_output",
             "summary_written",
+            "packet",
             "try_next",
             "cleanup",
             "errors",

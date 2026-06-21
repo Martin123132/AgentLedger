@@ -17,7 +17,9 @@ standard-library `unittest` command through AgentLedger, and prints the evidence
 paths, a `Read first` cue, follow-up inspection commands, and a cleanup command.
 It does not touch your current repository. Add
 `--summary-output $env:TEMP\agentledger-demo-summary.md` when you want a
-path-free Markdown summary to review before sharing.
+path-free Markdown summary to review before sharing. Add `--packet` when you
+also want the demo to produce a share-safe alpha packet and print the
+`open-packet` handoff paths.
 For development checkouts, editable installs, source checks, and uninstall
 commands, see `docs/install.md`.
 
@@ -32,6 +34,7 @@ The demo output prints:
 - `HTML report`: the same report in browser-friendly form
 - `Bundle`: the local zip evidence bundle
 - `Public summary`: the optional path-free Markdown summary written by `--summary-output`
+- `Alpha packet`: optional `--packet` issue/comment, Markdown, and JSON files
 - `Read first`: the fastest way to understand the report and verdict
 - `Try next`: commands for latest paths, history, status, report inspection, and bundle verification
 - `Next real repo`: the read-only alpha-guide command to run from your own repository
