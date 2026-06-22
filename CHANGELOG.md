@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.21-alpha - 2026-06-22
+
+- Added `agentledger support-packet --format markdown` to print a sanitized,
+  copy-ready alpha issue/comment body without writing files or copying raw
+  evidence.
+
 ## 0.1.20-alpha - 2026-06-22
 
 - Added `agentledger support-packet` to print a privacy-safe alpha support
