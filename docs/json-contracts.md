@@ -332,6 +332,10 @@ The command prints environment/version facts, the report checklist, reviewed
 files that may be shared after reading, commands to produce share-safe packets,
 and the evidence that stays private by default.
 
+Use `agentledger support-packet --format markdown` when a human needs the same
+guidance as a sanitized, copy-ready issue/comment body. It is read-only and
+does not copy raw `.agentledger` evidence.
+
 Stable fields:
 
 - `ok`: boolean
@@ -350,8 +354,8 @@ Stable fields:
 - `review_files`: packet/export files to review before sharing
 - `keep_private`: raw evidence, bundles, transcripts, temp workspaces, signing
   keys, private paths, source, credentials, tokens, and secrets to keep private
-- `suggested_commands`: safe try, inspect, share-safe packet, and
-  machine-readable checklist commands
+- `suggested_commands`: safe try, inspect, share-safe packet, copy-ready
+  Markdown, and machine-readable checklist commands
 - `issue_template`: copy/paste skeleton labels
 - `privacy_note`: short sharing reminder
 - `errors`: human-readable error list

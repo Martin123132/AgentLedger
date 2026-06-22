@@ -86,7 +86,8 @@ generated review/share files, and redacted error text or the first confusing
 message. Keep raw `.agentledger/` evidence, zip bundles, command transcripts,
 signing keys, and temporary demo workspaces private by default.
 Run `python -m agentledger support-packet` any time you want the exact
-copy/paste checklist without creating or exposing new evidence.
+checklist, or `python -m agentledger support-packet --format markdown` when
+you want a sanitized issue/comment body to paste after review.
 
 Use `python -m agentledger demo` when you only want the local report path tour.
 Use `python -m agentledger demo --format json` when another agent or wrapper
@@ -183,6 +184,7 @@ python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 python -m agentledger support-packet
+python -m agentledger support-packet --format markdown
 python -m agentledger support-packet --format json
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 $run = (Get-Content .agentledger\latest.txt).Trim()
@@ -715,6 +717,7 @@ agentledger feedback-summary --out .agentledger --category docs --format json
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.json --output-format json --format json
 agentledger support-packet
+agentledger support-packet --format markdown
 agentledger support-packet --format json
 agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe
@@ -730,9 +733,10 @@ so tester friction can be reviewed without opening each run directory.
 `feedback-export` writes a reviewed Markdown or JSON export that omits local
 run directories and feedback file paths. Review the exported notes before
 sharing because redaction is best-effort.
-`support-packet` prints the exact alpha support report checklist and JSON
-contract without writing files, copying evidence, or including local paths by
-default.
+`support-packet` prints the exact alpha support report checklist, a sanitized
+Markdown issue/comment body with `--format markdown`, and a JSON contract with
+`--format json` without writing files, copying evidence, or including local
+paths by default.
 `alpha-handoff` writes a compact Markdown/JSON packet that combines latest
 review, status, feedback summary, and optional alpha summary without copying raw
 evidence files. Use `--share-safe` before sharing outside your own machine so
@@ -766,6 +770,7 @@ agentledger feedback --out .agentledger --note "First confusing thing: ..."
 agentledger feedback-summary --out .agentledger
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 agentledger support-packet
+agentledger support-packet --format markdown
 agentledger pack-alpha --out .agentledger
 agentledger open-packet --out .agentledger
 $run = (Get-Content .agentledger\latest.txt).Trim()
@@ -792,6 +797,7 @@ agentledger feedback --repo . --note "First confusing thing: ..."
 agentledger feedback-summary --repo .
 agentledger feedback-export --repo . --output $env:TEMP\agentledger-feedback.md
 agentledger support-packet
+agentledger support-packet --format markdown
 agentledger pack-alpha --repo .
 agentledger open-packet --repo .
 $run = (Get-Content .agentledger\latest.txt).Trim()

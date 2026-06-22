@@ -208,7 +208,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     support_packet = sub.add_parser("support-packet", help="Print a privacy-safe alpha support report checklist.")
     support_packet.add_argument("--out", default=DEFAULT_OUT, help="Evidence output directory label for example commands.")
-    support_packet.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    support_packet.add_argument(
+        "--format",
+        choices=["text", "json", "markdown"],
+        default="text",
+        help="Output format.",
+    )
 
     history = sub.add_parser("history", help="List recent AgentLedger runs from a run output directory.")
     history.add_argument("--repo", default=".", help="Target git repository for config lookup.")
@@ -3954,6 +3959,9 @@ def _support_packet_commands(out_arg: str) -> dict[str, list[str]]:
         "machine_readable": [
             "python -m agentledger support-packet --format json",
         ],
+        "copy_ready": [
+            "python -m agentledger support-packet --format markdown",
+        ],
     }
 
 
@@ -4016,7 +4024,7 @@ def _format_support_packet(payload: dict) -> str:
     lines.extend(f"- {item}" for item in payload.get("keep_private") or [])
     lines.extend(["", "Suggested commands:"])
     commands = payload.get("suggested_commands") if isinstance(payload.get("suggested_commands"), dict) else {}
-    for group in ("safe_try", "inspect", "share_safe", "machine_readable"):
+    for group in ("safe_try", "inspect", "share_safe", "copy_ready", "machine_readable"):
         for command in commands.get(group) or []:
             lines.append(f"- {command}")
     lines.extend(["", "Copy/paste skeleton:"])
@@ -4025,10 +4033,72 @@ def _format_support_packet(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _support_packet_markdown_value(value: object, fallback: str = "unknown") -> str:
+    text = str(value or fallback).replace("\r", " ").replace("\n", " ").strip()
+    return text or fallback
+
+
+def _format_support_packet_markdown(payload: dict) -> str:
+    commands = _support_packet_commands("<agentledger-output>")
+    lines = [
+        "## AgentLedger alpha support report",
+        "",
+        "### Summary",
+        "- Result: pass / warn / block / failed / not sure",
+        f"- AgentLedger version: `{_support_packet_markdown_value(payload.get('agentledger_version'))}`",
+        f"- Platform: `{_support_packet_markdown_value(payload.get('platform'))}`",
+        f"- Python: `{_support_packet_markdown_value(payload.get('python_version'))}`",
+        f"- Shell: `{_support_packet_markdown_value(payload.get('shell'))}`",
+        "- Raw evidence copied: no",
+        "- Local paths included: no",
+        "- Raw evidence kept private: yes",
+        "",
+        "### Command used",
+        "",
+        "Paste the command you ran, for example `python -m agentledger try`.",
+        "",
+        "### Generated review/share files reviewed",
+    ]
+    lines.extend(f"- [ ] {item}" for item in payload.get("review_files") or [])
+    lines.extend(
+        [
+            "",
+            "### Redacted error text or first confusing message",
+            "",
+            "Paste only reviewed, redacted text. Remove secrets, private source, private URLs, and local paths.",
+            "",
+            "### Expected",
+            "",
+            "Describe what you expected to happen.",
+            "",
+            "### Actual",
+            "",
+            "Describe what happened instead.",
+            "",
+            "### Useful commands",
+        ]
+    )
+    for group in ("safe_try", "inspect", "share_safe", "copy_ready", "machine_readable"):
+        for command in commands.get(group) or []:
+            lines.append(f"- `{command}`")
+    lines.extend(["", "### Keep private by default"])
+    lines.extend(f"- {item}" for item in payload.get("keep_private") or [])
+    lines.extend(
+        [
+            "",
+            "Privacy note: Paste only reviewed packet/export text or redacted errors. "
+            "Do not attach raw AgentLedger evidence by default.",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _handle_support_packet(args: argparse.Namespace) -> int:
     payload = _support_packet_payload(args)
     if args.format == "json":
         print(json.dumps(payload, indent=2))
+    elif args.format == "markdown":
+        print(_format_support_packet_markdown(payload))
     else:
         print(_format_support_packet(payload))
     return 0

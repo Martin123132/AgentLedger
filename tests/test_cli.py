@@ -352,6 +352,7 @@ def test_support_packet_prints_privacy_safe_checklist(capsys) -> None:
     assert "Keep private by default:" in output
     assert "private repo paths, private URLs, non-public source, credentials, tokens, and secrets" in output
     assert "python -m agentledger pack-alpha --out .agentledger" in output
+    assert "python -m agentledger support-packet --format markdown" in output
     assert "python -m agentledger support-packet --format json" in output
 
 
@@ -375,8 +376,33 @@ def test_support_packet_json_redacts_absolute_out_path(tmp_path: Path, capsys) -
     assert payload["suggested_commands"]["machine_readable"] == [
         "python -m agentledger support-packet --format json"
     ]
+    assert payload["suggested_commands"]["copy_ready"] == [
+        "python -m agentledger support-packet --format markdown"
+    ]
     assert payload["issue_template"][-1] == "Raw evidence kept private: yes"
     assert payload["errors"] == []
+    assert str(private_out) not in output
+
+
+def test_support_packet_markdown_is_copy_ready_and_path_redacted(tmp_path: Path, capsys) -> None:
+    private_out = tmp_path / "private-ledger"
+
+    assert cli.main(["support-packet", "--format", "markdown", "--out", str(private_out)]) == 0
+
+    output = capsys.readouterr().out
+
+    assert output.startswith("## AgentLedger alpha support report")
+    assert "### Command used" in output
+    assert "### Generated review/share files reviewed" in output
+    assert "### Redacted error text or first confusing message" in output
+    assert "### Keep private by default" in output
+    assert "- Raw evidence copied: no" in output
+    assert "- Local paths included: no" in output
+    assert "- Raw evidence kept private: yes" in output
+    assert "`python -m agentledger support-packet --format markdown`" in output
+    assert "`python -m agentledger support-packet --format json`" in output
+    assert "private repo paths, private URLs, non-public source, credentials, tokens, and secrets" in output
+    assert "<agentledger-output>" in output
     assert str(private_out) not in output
 
 
