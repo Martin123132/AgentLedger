@@ -87,7 +87,9 @@ message. Keep raw `.agentledger/` evidence, zip bundles, command transcripts,
 signing keys, and temporary demo workspaces private by default.
 Run `python -m agentledger support-packet` any time you want the exact
 checklist, or `python -m agentledger support-packet --format markdown` when
-you want a sanitized issue/comment body to paste after review.
+you want a sanitized issue/comment body to paste after review. See
+[docs/support-packet-markdown-example.md](docs/support-packet-markdown-example.md)
+for the checked output shape.
 
 Use `python -m agentledger demo` when you only want the local report path tour.
 Use `python -m agentledger demo --format json` when another agent or wrapper

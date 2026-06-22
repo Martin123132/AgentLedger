@@ -59,6 +59,8 @@ ALPHA_DOCS = [
     ROOT / "docs" / "alpha-tester-guide.md",
 ]
 
+SUPPORT_PACKET_MARKDOWN_EXAMPLE = ROOT / "docs" / "support-packet-markdown-example.md"
+
 
 def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
     with pytest.raises(SystemExit) as exc:
@@ -246,3 +248,40 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
         "agentledger.support_packet.v1",
     ]:
         assert documented in docs_text
+
+
+def test_support_packet_markdown_example_command_is_checked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    example = SUPPORT_PACKET_MARKDOWN_EXAMPLE.read_text(encoding="utf-8")
+    match = re.search(
+        r"```powershell\n(?P<command>python -m agentledger support-packet --format markdown --out <private-output-dir>)\n```",
+        example,
+    )
+    assert match is not None, "support-packet Markdown example should document the checked command"
+
+    private_out = tmp_path / "private-output" / "private-client-ledger"
+    documented_command = match.group("command").replace("<private-output-dir>", str(private_out))
+    assert documented_command.startswith("python -m agentledger support-packet --format markdown --out ")
+
+    assert cli.main(["support-packet", "--format", "markdown", "--out", str(private_out)]) == 0
+    output = capsys.readouterr().out
+
+    expected_markers = [
+        "## AgentLedger alpha support report",
+        "### Summary",
+        "- Raw evidence copied: no",
+        "- Local paths included: no",
+        "- Raw evidence kept private: yes",
+        "### Useful commands",
+        "python -m agentledger status --out <agentledger-output> --allow-warnings",
+        "### Keep private by default",
+        "private repo paths, private URLs, non-public source, credentials, tokens, and secrets",
+    ]
+    for marker in expected_markers:
+        assert marker in example
+        assert marker in output
+
+    assert "<agentledger-output>" in output
+    assert str(private_out) not in output
+    assert private_out.name not in output
