@@ -110,7 +110,8 @@ prints the files to review/share and keeps raw evidence, bundles, command
 transcripts, signing keys, and temporary workspaces private by default.
 Use `support-packet` when you only need the exact report checklist and privacy
 reminders. Use `support-packet --format markdown` for a sanitized issue/comment
-body. Neither mode writes files or copies evidence.
+body. `docs/support-packet-markdown-example.md` shows the checked output shape.
+Neither mode writes files or copies evidence.
 
 ## Overall readiness
 
