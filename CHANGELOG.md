@@ -2,11 +2,13 @@
 
 ## Unreleased
 
+## 0.1.18-alpha - 2026-06-22
+
 - Added `agentledger try` as a shorthand for the packet-enabled safe demo path.
 - Clarified demo packet output so new users can distinguish review/share files
   from raw evidence that should stay local.
-- Updated first-run docs to keep the current `v0.1.17-alpha` install command
-  compatible while documenting the new shorthand for master and the next alpha.
+- Updated first-run docs so the current alpha install path can start from the
+  new `agentledger try` shorthand.
 
 ## 0.1.17-alpha - 2026-06-22
 
