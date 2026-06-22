@@ -95,6 +95,12 @@ signing keys.
 
 ## 3. Validate before PR
 
+Before treating public alpha feedback as a release signal, review
+`docs/alpha-feedback-readiness.md`. Only carry feedback into the next alpha
+release plan when it includes sanitized Markdown snippets, installed
+version/method, copy-ready headings, redaction confirmation, and no raw
+evidence bundles, private paths, secrets, or customer data.
+
 ```powershell
 python scripts/check_release_metadata.py
 python scripts/release_readiness_report.py --format markdown --output $env:TEMP\agentledger-release-readiness-report.md
