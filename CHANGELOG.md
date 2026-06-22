@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.20-alpha - 2026-06-22
+
+- Added `agentledger support-packet` to print a privacy-safe alpha support
+  report checklist and JSON contract without writing files or copying evidence.
+
 ## 0.1.19-alpha - 2026-06-22
 
 - Added alpha feedback capture guidance, issue template updates, and reviewed
