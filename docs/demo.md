@@ -1,20 +1,18 @@
 # AgentLedger Demo
 
-`agentledger demo --packet` is the shortest safe first run available from the
-current alpha tag. It creates a tiny temporary git repository, captures a real
+`agentledger try` is the shortest safe first run available from the current
+alpha tag. It creates a tiny temporary git repository, captures a real
 verification command, prints the report paths, and generates the share-safe
 packet handoff without touching the current repository. `agentledger demo` is
 the same isolated walkthrough without the packet unless `--packet` is supplied.
-On master and the next alpha tag, `agentledger try` is the shorter alias for the
-packet-enabled demo.
 
 ## Run It
 
 From any shell with Python and Git:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
-python -m agentledger demo --packet
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"
+python -m agentledger try
 ```
 
 Use the report-only walkthrough when you do not need the packet:
@@ -26,7 +24,7 @@ python -m agentledger demo
 Use an empty directory when you want predictable paths:
 
 ```powershell
-python -m agentledger demo --packet --output-dir $env:TEMP\agentledger-demo
+python -m agentledger try --output-dir $env:TEMP\agentledger-demo
 ```
 
 The chosen `--output-dir` must be empty. This avoids mixing demo evidence with
@@ -49,13 +47,8 @@ python -m agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.m
 Show the full share-safe handoff path without touching a real repo:
 
 ```powershell
-python -m agentledger demo --packet
-```
-
-From master or the next alpha tag, the shorthand is:
-
-```powershell
 python -m agentledger try
+python -m agentledger demo --packet
 ```
 
 ## What It Does

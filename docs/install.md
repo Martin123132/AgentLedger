@@ -9,9 +9,9 @@ review reports before sharing them.
 Use the tagged alpha when you want the most reproducible public install:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"
 python -m agentledger --version
-python -m agentledger demo --packet
+python -m agentledger try
 ```
 
 ## From Latest Master
@@ -50,7 +50,7 @@ URL:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1 -Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1 -Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"
 ```
 
 The source install check creates a temporary virtual environment, installs

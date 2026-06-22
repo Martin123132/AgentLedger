@@ -8,20 +8,18 @@ project.
 Install the current alpha tag from GitHub:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
-python -m agentledger demo --packet
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"
+python -m agentledger try
 ```
 
-`agentledger demo --packet` creates a temporary git repository, runs a small
+`agentledger try` creates a temporary git repository, runs a small
 standard-library `unittest` command through AgentLedger, prints the evidence
 paths, writes a share-safe alpha packet, labels what to review/share versus
 what to keep local, and gives a cleanup command. It does not touch your current
 repository. Use `python -m agentledger demo` when you only want the local report
-path tour. On master and the next alpha tag, `python -m agentledger try` is the
-shorter alias for the same packet-enabled safe demo. Add
+path tour. Add
 `--summary-output $env:TEMP\agentledger-demo-summary.md` when you want a
-path-free Markdown summary to review before sharing. `try` is equivalent to the
-packet-enabled demo path.
+path-free Markdown summary to review before sharing.
 For development checkouts, editable installs, source checks, and uninstall
 commands, see `docs/install.md`.
 
