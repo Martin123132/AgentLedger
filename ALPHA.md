@@ -53,6 +53,9 @@ Send back this summary:
 Send back:
 
 - the final summary printed by `agentledger alpha` or `scripts/alpha.ps1`
+- the command used, platform, shell, Python version, and AgentLedger version
+- generated review/share files you reviewed, especially the issue/comment draft and handoff packet from `agentledger try` or `pack-alpha`
+- redacted error text or the first confusing message, with secrets and private source removed
 - notes from `docs/alpha-feedback-template.md`
 - a GitHub issue using `.github/ISSUE_TEMPLATE/alpha-feedback.md` when feedback is tracked in the repo
 - optional local `agentledger feedback --out .agentledger --note "..."` entries
@@ -67,11 +70,15 @@ Do not send or commit:
 
 - `.agentledger/`
 - zip evidence bundles
+- command transcripts
+- temporary demo workspaces
+- signing keys
 - non-public source code
 - secrets, tokens, or credentials
 - full evidence reports unless explicitly requested
 
-Generated evidence is local proof for you first. We only need your summary and notes for this pass.
+Generated evidence is local proof for you first. We only need your reviewed
+summary, packet/export text, and notes for this pass.
 
 ## More detail
 
