@@ -35,13 +35,15 @@ The example uses sanitized demo inputs only.
 
 When reporting a problem, paste only reviewed snippets into
 [.github/ISSUE_TEMPLATE/alpha-feedback.md](../.github/ISSUE_TEMPLATE/alpha-feedback.md)
-or `docs/alpha-feedback-template.md`.
+using its `Support-packet Markdown feedback` section, or record local notes in
+`docs/alpha-feedback-template.md`.
 
 Useful feedback includes:
 
 - whether the headings are easy to copy into an issue or comment
 - whether the `<agentledger-output>` placeholder was clear
 - whether a private output path appeared anywhere in the generated Markdown
+- the install method and `python -m agentledger --version` output
 - the exact redacted line that was confusing, with private paths and secrets
   removed
 

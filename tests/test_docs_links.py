@@ -61,6 +61,7 @@ ALPHA_DOCS = [
 
 SUPPORT_PACKET_MARKDOWN_EXAMPLE = ROOT / "docs" / "support-packet-markdown-example.md"
 SUPPORT_PACKET_MARKDOWN_QA = ROOT / "docs" / "support-packet-markdown-qa.md"
+ALPHA_FEEDBACK_ISSUE_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "alpha-feedback.md"
 
 
 def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
@@ -335,6 +336,67 @@ def test_support_packet_markdown_qa_note_is_checked(
     ]:
         assert marker in qa_note
         assert marker in output
+
+    assert "<agentledger-output>" in output
+    assert str(private_out) not in output
+    assert private_out.name not in output
+
+
+def test_support_packet_markdown_issue_template_is_checked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    issue_template = ALPHA_FEEDBACK_ISSUE_TEMPLATE.read_text(encoding="utf-8")
+    qa_note = SUPPORT_PACKET_MARKDOWN_QA.read_text(encoding="utf-8")
+    feedback_template = (ROOT / "docs" / "alpha-feedback-template.md").read_text(encoding="utf-8")
+
+    assert "Support-packet Markdown feedback" in issue_template
+    assert "Support-packet Markdown feedback" in qa_note
+    assert "Support-packet Markdown feedback" in feedback_template
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"' in issue_template
+    assert "python -m agentledger --version" in issue_template
+    assert "v0.1.22-alpha" in issue_template
+
+    match = re.search(
+        r"```powershell\n(?P<command>python -m agentledger support-packet --format markdown --out <private-output-dir>)\n```",
+        issue_template,
+    )
+    assert match is not None, "alpha feedback issue template should document the checked support-packet command"
+
+    private_out = tmp_path / "issue-private-output" / "customer-ledger"
+    documented_command = match.group("command").replace("<private-output-dir>", str(private_out))
+    assert documented_command.startswith("python -m agentledger support-packet --format markdown --out ")
+
+    assert cli.main(["support-packet", "--format", "markdown", "--out", str(private_out)]) == 0
+    output = capsys.readouterr().out
+
+    expected_headings = [
+        "## AgentLedger alpha support report",
+        "### Summary",
+        "### Command used",
+        "### Generated review/share files reviewed",
+        "### Redacted error text or first confusing message",
+        "### Useful commands",
+        "### Keep private by default",
+    ]
+    for heading in expected_headings:
+        assert heading in issue_template
+        assert heading in output
+
+    for marker in [
+        "<agentledger-output>",
+        "supplied private output path",
+        "private repo paths",
+        "private URLs",
+        "credentials",
+        "secrets",
+        "customer data",
+        "raw `.agentledger/` folders",
+        "zip bundles",
+        "transcripts",
+        "signing keys",
+        "temp workspaces",
+    ]:
+        assert marker in issue_template
 
     assert "<agentledger-output>" in output
     assert str(private_out) not in output

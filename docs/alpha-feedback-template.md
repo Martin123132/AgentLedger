@@ -112,7 +112,9 @@ Use `support-packet` when you only need the exact report checklist and privacy
 reminders. Use `support-packet --format markdown` for a sanitized issue/comment
 body. `docs/support-packet-markdown-example.md` shows the checked output shape.
 `docs/support-packet-markdown-qa.md` lists what to verify before reporting a
-Markdown support-packet problem.
+Markdown support-packet problem. GitHub issue reports should use the
+`Support-packet Markdown feedback` section in
+`.github/ISSUE_TEMPLATE/alpha-feedback.md`.
 Neither mode writes files or copies evidence.
 
 ## Overall readiness
