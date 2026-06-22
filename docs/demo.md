@@ -9,7 +9,7 @@ report paths without touching the current repository.
 From any shell with Python and Git:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.16-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
 python -m agentledger demo
 ```
 

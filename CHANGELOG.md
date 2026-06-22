@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.1.17-alpha - 2026-06-22
+
+- Added `agentledger demo --packet` so new users can see the share-safe alpha
+  packet handoff from an isolated demo workspace before touching a real repo.
+- Added `open-packet` coverage to smoke automation and the release dry run so
+  CI proves the latest packet pointer can be read after `pack-alpha`.
+- Aligned README release-readiness command examples with the current alpha
+  release process.
+- Ignored local `temp-agentledger-smoke*/` scratch folders.
+
 ## 0.1.16-alpha - 2026-06-20
 
 - Added `agentledger open-packet` and a latest alpha packet pointer so testers

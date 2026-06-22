@@ -8,6 +8,7 @@ dist/
 *.egg-info/
 .agentledger/
 agentledger-evidence/
+temp-agentledger-smoke*/
 agentledger-release-rehearsal*/
 *.zip
 .agentledger-signing-key*
