@@ -5,8 +5,10 @@
 - Install once from this checkout (editable + dev dependencies):
   - `python -m pip install -e ".[dev]"`
   - `agentledger --version`
-- Optional safe first demo before touching your own repo:
-  - `python -m agentledger demo`
+- Optional safe first run before touching your own repo:
+  - `python -m agentledger demo --packet`
+  - Use `python -m agentledger try` from master or the next alpha tag.
+  - Use `python -m agentledger demo` for the report-only walkthrough.
   - See [demo.md](demo.md) for expected output and cleanup.
 - Confirm branch and remote are correct:
   - `git status --short --branch`

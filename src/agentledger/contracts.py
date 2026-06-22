@@ -6,29 +6,39 @@ from typing import Any
 CONTRACTS_SCHEMA = "agentledger.contracts.v1"
 CONTRACTS_DOC = "docs/json-contracts.md"
 
+DEMO_STABLE_FIELDS = [
+    "ok",
+    "status",
+    "entrypoint",
+    "workspace",
+    "repo",
+    "out",
+    "latest_run",
+    "paths",
+    "privacy_mode",
+    "command",
+    "command_exit_code",
+    "summary_output",
+    "summary_written",
+    "packet",
+    "try_next",
+    "cleanup",
+    "errors",
+]
+
 JSON_CONTRACTS: list[dict[str, Any]] = [
     {
         "command": "demo --format json",
         "schema_version": "agentledger.demo.v1",
         "purpose": "Run a safe temporary demo and return machine-readable evidence paths.",
-        "stable_fields": [
-            "ok",
-            "status",
-            "workspace",
-            "repo",
-            "out",
-            "latest_run",
-            "paths",
-            "privacy_mode",
-            "command",
-            "command_exit_code",
-            "summary_output",
-            "summary_written",
-            "packet",
-            "try_next",
-            "cleanup",
-            "errors",
-        ],
+        "stable_fields": DEMO_STABLE_FIELDS,
+        "exit_codes": {"0": "demo run captured", "2": "demo setup or capture failed"},
+    },
+    {
+        "command": "try --format json",
+        "schema_version": "agentledger.demo.v1",
+        "purpose": "Run the quickest safe first-run demo with a share-safe packet handoff.",
+        "stable_fields": DEMO_STABLE_FIELDS,
         "exit_codes": {"0": "demo run captured", "2": "demo setup or capture failed"},
     },
     {

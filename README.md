@@ -65,24 +65,28 @@ execution evidence, and eval gates.
 
 ## Try It In 60 Seconds
 
-Install the current alpha tag from GitHub and run the safe demo before pointing
-AgentLedger at a real repository:
+Install the current alpha tag from GitHub and run the packet-enabled safe demo
+before pointing AgentLedger at a real repository:
 
 ```powershell
 python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
-python -m agentledger demo
+python -m agentledger demo --packet
 ```
 
-The demo creates a temporary git repo, captures a small `unittest` run, prints
-the Markdown/HTML/JSON report paths, and prints a `Read first` cue plus follow-up
-inspection commands. Open the Markdown report first, then run the printed
-`status` command for the pass/warn/block verdict. Use
-`python -m agentledger demo --format json` when another agent or wrapper needs
-the paths without scraping text. Use
+`agentledger demo --packet` creates a temporary git repo, captures a small
+`unittest` run, prints the Markdown/HTML/JSON report paths, and creates the
+share-safe packet handoff from that isolated demo. Open the Markdown report
+first, then run the printed `status` command for the pass/warn/block verdict.
+The output clearly separates packet files to review/share from raw evidence
+that stays local.
+
+Use `python -m agentledger demo` when you only want the local report path tour.
+Use `python -m agentledger demo --format json` when another agent or wrapper
+needs paths without scraping text. Use
 `python -m agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md`
-when you want a path-free Markdown summary to review before sharing. Use
-`python -m agentledger demo --packet` to see the share-safe packet handoff
-without touching a real repository.
+when you want a path-free Markdown summary to review before sharing.
+On master and the next alpha tag, `python -m agentledger try` is the shorter
+alias for this packet-enabled safe demo.
 
 When the demo makes sense, move into your real repository and run:
 
@@ -99,7 +103,7 @@ and uninstall commands.
 
 | Output | Default handling |
 | --- | --- |
-| Demo workspace | Temporary local folder printed by `agentledger demo` |
+| Demo workspace | Temporary local folder printed by `agentledger demo --packet` or `agentledger try` |
 | `agentledger-report.md` / `.html` / `.json` | Local evidence to inspect before sharing |
 | Zip evidence bundle | Local proof; do not commit or post by default |
 | Demo public summary | Path-free Markdown to review before sharing |
@@ -112,23 +116,22 @@ From a development checkout:
 ```powershell
 python -m pip install -e ".[dev]"
 agentledger --version
-python -m agentledger demo
+python -m agentledger try
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1
 python -m agentledger doctor --repo .
 python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
 ```
 
-`agentledger demo` creates a tiny temporary git repository, runs a standard
-library `unittest` command through AgentLedger, and prints the Markdown report,
-JSON report, HTML report, bundle, follow-up commands, and cleanup command. Use
-`agentledger demo --format json` for machine-readable first-run evidence paths.
-Use `agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md`
-for a path-free Markdown summary you can review before sharing. Use
-`agentledger demo --packet` to create and print the reviewed packet handoff
-paths from the isolated demo.
-It is the safest way to inspect a real local evidence run before pointing
-AgentLedger at your own repository.
+`agentledger try` is the quickest safe first run. It creates a tiny temporary
+git repository, runs a standard library `unittest` command through AgentLedger,
+prints the Markdown report, JSON report, HTML report, bundle, follow-up
+commands, cleanup command, and the reviewed packet handoff paths from the
+isolated demo. Use `agentledger demo` when you only want the local evidence
+tour, `agentledger demo --format json` for machine-readable first-run evidence
+paths, and
+`agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md` for a
+path-free Markdown summary you can review before sharing.
 
 After a run:
 
@@ -502,29 +505,33 @@ Open a pull request for review rather than pushing directly to `master`.
 
 ## Commands
 
-Run a safe first demo in an isolated temporary workspace:
+Run the safe first-run path in an isolated temporary workspace:
 
 ```powershell
-agentledger demo
+agentledger try
 ```
 
-Use a chosen empty workspace if you want predictable paths:
+It runs the isolated demo and generates the share-safe packet handoff. Use
+`agentledger demo` when you only want the local report path tour. Use a chosen
+empty workspace if you want predictable paths:
 
 ```powershell
+agentledger try --output-dir $env:TEMP\agentledger-demo
 agentledger demo --output-dir $env:TEMP\agentledger-demo
 agentledger demo --format json
 agentledger demo --summary-output $env:TEMP\agentledger-demo-summary.md
 agentledger demo --packet
 ```
 
-The demo creates `demo-repo/` and `agentledger-output/` under that workspace,
-runs `python -B -m unittest test_demo.py`, and prints the latest report, bundle,
-follow-up inspection commands, and cleanup command. JSON output uses
-`agentledger.demo.v1` for scripts and agent handoffs. `--summary-output` writes
-a path-free Markdown summary; `--packet` also creates a share-safe alpha packet
-and prints the `open-packet` handoff paths. Raw evidence still stays local. It
-does not touch the current repository unless you explicitly choose an output
-directory inside it.
+The safe try/demo flow creates `demo-repo/` and `agentledger-output/` under that
+workspace, runs `python -B -m unittest test_demo.py`, and prints the latest
+report, bundle, follow-up inspection commands, and cleanup command. JSON output
+uses `agentledger.demo.v1` for scripts and agent handoffs. `try` behaves like
+`demo --packet`: it creates a share-safe alpha packet, prints the `open-packet`
+handoff paths, and labels what to review/share versus what to keep local.
+`--summary-output` writes a path-free Markdown summary. Raw evidence still stays
+local. It does not touch the current repository unless you explicitly choose an
+output directory inside it.
 
 Capture repository state only:
 

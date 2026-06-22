@@ -22,7 +22,7 @@ From the repository root:
 ```powershell
 python -m pip install -e ".[dev]"
 agentledger --version
-python -m agentledger demo
+python -m agentledger try
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1
 python -m agentledger doctor --repo .
 python -m agentledger alpha-guide --repo . --out .agentledger
@@ -31,8 +31,9 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 Expected result:
 
 - `agentledger --version` prints the installed AgentLedger version
-- `agentledger demo` creates an isolated temporary demo repo, prints report and
-  bundle paths, and gives a cleanup command
+- `agentledger try` creates an isolated temporary demo repo, prints report,
+  bundle, and packet handoff paths, labels what to review/share versus keep
+  local, and gives a cleanup command
 - `scripts/install-check.ps1` installs AgentLedger into a temporary environment,
   prints each verification step, checks both CLI entry points, and cleans up
 - `doctor` should say `ready` when required checks pass

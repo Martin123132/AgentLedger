@@ -1,8 +1,12 @@
 # AgentLedger Demo
 
-`agentledger demo` is the safest first run for a new user. It creates a tiny
-temporary git repository, captures a real verification command, and prints the
-report paths without touching the current repository.
+`agentledger demo --packet` is the shortest safe first run available from the
+current alpha tag. It creates a tiny temporary git repository, captures a real
+verification command, prints the report paths, and generates the share-safe
+packet handoff without touching the current repository. `agentledger demo` is
+the same isolated walkthrough without the packet unless `--packet` is supplied.
+On master and the next alpha tag, `agentledger try` is the shorter alias for the
+packet-enabled demo.
 
 ## Run It
 
@@ -10,13 +14,19 @@ From any shell with Python and Git:
 
 ```powershell
 python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
+python -m agentledger demo --packet
+```
+
+Use the report-only walkthrough when you do not need the packet:
+
+```powershell
 python -m agentledger demo
 ```
 
 Use an empty directory when you want predictable paths:
 
 ```powershell
-python -m agentledger demo --output-dir $env:TEMP\agentledger-demo
+python -m agentledger demo --packet --output-dir $env:TEMP\agentledger-demo
 ```
 
 The chosen `--output-dir` must be empty. This avoids mixing demo evidence with
@@ -42,6 +52,12 @@ Show the full share-safe handoff path without touching a real repo:
 python -m agentledger demo --packet
 ```
 
+From master or the next alpha tag, the shorthand is:
+
+```powershell
+python -m agentledger try
+```
+
 ## What It Does
 
 The command creates:
@@ -50,7 +66,7 @@ The command creates:
 - `agentledger-output/`: the local AgentLedger evidence directory
 - one timestamped run folder under `agentledger-output/`
 - a sibling `.zip` evidence bundle beside that run folder
-- `agentledger-alpha-packet/` when `--packet` is used
+- `agentledger-alpha-packet/` when `try` or `demo --packet` is used
 
 The captured command is:
 
@@ -84,8 +100,17 @@ Read first:
 - Open the Markdown report for the human summary.
 - Run status when you want the pass/warn/block verdict.
 Alpha packet:
-- Printed only when `--packet` is used.
+- Printed when `try` or `demo --packet` is used.
 - Shows the issue/comment draft, Markdown packet, JSON packet, and latest packet pointer.
+Review/share after reading:
+- Issue/comment draft: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-issue.md
+- Markdown packet: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-handoff.md
+- JSON packet: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-handoff.json
+Keep local:
+- Demo workspace: C:\Users\you\AppData\Local\Temp\agentledger-demo-...
+- Raw evidence output: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output
+- Zip bundle: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
+- Raw AgentLedger evidence unless someone explicitly asks for it.
 Try next:
 - python -m agentledger open-latest --repo <demo-repo> --out <agentledger-output>
 - python -m agentledger history --repo <demo-repo> --out <agentledger-output>
@@ -101,7 +126,8 @@ Cleanup:
 
 ## Inspect The Demo Evidence
 
-Run the `Try next:` commands printed by `agentledger demo`. They show:
+Run the `Try next:` commands printed by `agentledger try` or `agentledger demo`.
+They show:
 
 - latest report paths
 - recent run history

@@ -9,17 +9,19 @@ Install the current alpha tag from GitHub:
 
 ```powershell
 python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
-python -m agentledger demo
+python -m agentledger demo --packet
 ```
 
-`agentledger demo` creates a temporary git repository, runs a small
-standard-library `unittest` command through AgentLedger, and prints the evidence
-paths, a `Read first` cue, follow-up inspection commands, and a cleanup command.
-It does not touch your current repository. Add
+`agentledger demo --packet` creates a temporary git repository, runs a small
+standard-library `unittest` command through AgentLedger, prints the evidence
+paths, writes a share-safe alpha packet, labels what to review/share versus
+what to keep local, and gives a cleanup command. It does not touch your current
+repository. Use `python -m agentledger demo` when you only want the local report
+path tour. On master and the next alpha tag, `python -m agentledger try` is the
+shorter alias for the same packet-enabled safe demo. Add
 `--summary-output $env:TEMP\agentledger-demo-summary.md` when you want a
-path-free Markdown summary to review before sharing. Add `--packet` when you
-also want the demo to produce a share-safe alpha packet and print the
-`open-packet` handoff paths.
+path-free Markdown summary to review before sharing. `try` is equivalent to the
+packet-enabled demo path.
 For development checkouts, editable installs, source checks, and uninstall
 commands, see `docs/install.md`.
 
@@ -34,7 +36,9 @@ The demo output prints:
 - `HTML report`: the same report in browser-friendly form
 - `Bundle`: the local zip evidence bundle
 - `Public summary`: the optional path-free Markdown summary written by `--summary-output`
-- `Alpha packet`: optional `--packet` issue/comment, Markdown, and JSON files
+- `Alpha packet`: issue/comment, Markdown, and JSON files from `try` or `demo --packet`
+- `Review/share after reading`: packet files that can be shared only after review
+- `Keep local`: raw demo evidence, bundles, and temporary workspace paths
 - `Read first`: the fastest way to understand the report and verdict
 - `Try next`: commands for latest paths, history, status, report inspection, and bundle verification
 - `Next real repo`: the read-only alpha-guide command to run from your own repository
