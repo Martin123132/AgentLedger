@@ -1,4 +1,4 @@
-﻿# Install AgentLedger
+# Install AgentLedger
 
 AgentLedger is source-available for non-commercial use under the PolyForm
 Noncommercial License 1.0.0. Install it locally, inspect evidence locally, and
@@ -9,7 +9,7 @@ review reports before sharing them.
 Use the tagged alpha when you want the most reproducible public install:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"
 python -m agentledger --version
 python -m agentledger try
 ```
@@ -50,7 +50,7 @@ URL:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1 -Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1 -Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"
 ```
 
 The source install check creates a temporary virtual environment, installs

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
@@ -116,7 +116,7 @@ def test_release_process_documents_required_release_gates() -> None:
         "git push origin v",
         "gh release view v",
         "python scripts/post_release_check.py",
-        "agentledger-post-release-0.1.22-alpha",
+        "agentledger-post-release-0.1.23-alpha",
         "agentledger-post-release-check.json",
         "agentledger-post-release-check.md",
         "agentledger.post_release_check.v1",

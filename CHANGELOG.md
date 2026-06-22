@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.23-alpha - 2026-06-22
+
 - Added a checked GitHub alpha feedback issue-template path for
   `agentledger support-packet --format markdown`, including sanitized Markdown
   snippets, install/version details, heading checks, redaction confirmation,
