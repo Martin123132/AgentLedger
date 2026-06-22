@@ -16,7 +16,7 @@ Use this when `agentledger` is not found, `--version` fails, Python is wrong, or
 Git is missing:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.21-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"
 python -m agentledger --version
 python -m agentledger doctor --repo .
 ```

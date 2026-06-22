@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.1.22-alpha - 2026-06-22
+
+- Added a checked `agentledger support-packet --format markdown` example that
+  shows sanitized, copy-ready output without exposing private output paths.
+- Added a support-packet Markdown QA checklist so alpha testers can verify
+  copy-ready headings, sanitized placeholders, and privacy-safe feedback
+  snippets.
+
 ## 0.1.21-alpha - 2026-06-22
 
 - Added `agentledger support-packet --format markdown` to print a sanitized,

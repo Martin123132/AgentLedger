@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from pathlib import Path
@@ -156,7 +156,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
     assert "[docs/first-run.md](docs/first-run.md)" in readme
     assert "[docs/install.md](docs/install.md)" in readme
     assert "[docs/alpha-troubleshooting.md](docs/alpha-troubleshooting.md)" in readme
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.21-alpha"' in readme
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"' in readme
     assert "python -m agentledger try" in first_run
     assert "python -m agentledger demo" in first_run
     assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
@@ -168,7 +168,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
 def test_install_doc_covers_public_tag_and_source_check() -> None:
     install_doc = (ROOT / "docs" / "install.md").read_text(encoding="utf-8")
 
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.21-alpha"' in install_doc
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"' in install_doc
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@master"' in install_doc
     assert 'python -m pip install -e ".[dev]"' in install_doc
     assert "scripts/install-source-check.ps1" in install_doc
