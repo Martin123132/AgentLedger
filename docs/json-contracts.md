@@ -322,6 +322,40 @@ Stable fields:
 - `packet`: embedded `agentledger.pack_alpha.v1` payload
 - `errors`
 
+### `agentledger support-packet --format json`
+
+Schema: `agentledger.support_packet.v1`
+
+Use this when a tester or wrapper needs to show exactly what to include in an
+alpha support report without creating files or exposing raw local evidence.
+The command prints environment/version facts, the report checklist, reviewed
+files that may be shared after reading, commands to produce share-safe packets,
+and the evidence that stays private by default.
+
+Stable fields:
+
+- `ok`: boolean
+- `generated_at`
+- `agentledger_version`
+- `platform`
+- `python_version`
+- `shell`
+- `out`: relative output label used in example commands, or
+  `<agentledger-output>` when an absolute path was supplied
+- `out_redacted`: whether the requested output label was replaced
+- `local_paths_included`: always false
+- `raw_evidence_copied`: always false
+- `include`: report fields to include, such as command used, platform/version
+  details, reviewed files, and redacted errors
+- `review_files`: packet/export files to review before sharing
+- `keep_private`: raw evidence, bundles, transcripts, temp workspaces, signing
+  keys, private paths, source, credentials, tokens, and secrets to keep private
+- `suggested_commands`: safe try, inspect, share-safe packet, and
+  machine-readable checklist commands
+- `issue_template`: copy/paste skeleton labels
+- `privacy_note`: short sharing reminder
+- `errors`: human-readable error list
+
 ### `agentledger feedback-summary --format json`
 
 Schema: `agentledger.feedback_summary.v1`

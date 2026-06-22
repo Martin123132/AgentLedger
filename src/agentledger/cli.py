@@ -5,6 +5,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import platform
 import re
 import subprocess
@@ -80,6 +81,7 @@ ALPHA_HANDOFF_JSON = "agentledger-alpha-handoff.json"
 ALPHA_ISSUE_MARKDOWN = "agentledger-alpha-issue.md"
 PACK_ALPHA_SCHEMA = "agentledger.pack_alpha.v1"
 OPEN_PACKET_SCHEMA = "agentledger.open_packet.v1"
+SUPPORT_PACKET_SCHEMA = "agentledger.support_packet.v1"
 LATEST_ALPHA_PACKET_JSON = "latest-alpha-packet.json"
 PUBLIC_SUMMARY_TEXT_LIMIT = 280
 ALPHA_SUMMARY_WRITE_NEXT_ACTION = (
@@ -203,6 +205,10 @@ def build_parser() -> argparse.ArgumentParser:
     open_packet.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
     open_packet.add_argument("--out", default=None, help="Evidence output directory.")
     open_packet.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    support_packet = sub.add_parser("support-packet", help="Print a privacy-safe alpha support report checklist.")
+    support_packet.add_argument("--out", default=DEFAULT_OUT, help="Evidence output directory label for example commands.")
+    support_packet.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     history = sub.add_parser("history", help="List recent AgentLedger runs from a run output directory.")
     history.add_argument("--repo", default=".", help="Target git repository for config lookup.")
@@ -3888,6 +3894,146 @@ def _format_alpha_issue_markdown(public_summary: dict | None) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _support_packet_out_label(out_arg: str | None) -> tuple[str, bool]:
+    raw = out_arg or DEFAULT_OUT
+    try:
+        path = Path(raw)
+    except (OSError, ValueError):
+        return DEFAULT_OUT, False
+    if path.is_absolute():
+        return "<agentledger-output>", True
+    return raw, False
+
+
+def _support_packet_shell_name() -> str:
+    for name in ("SHELL", "COMSPEC", "TERM_PROGRAM"):
+        value = os.environ.get(name)
+        if value:
+            return Path(value).name or value
+    if os.environ.get("PSModulePath"):
+        return "PowerShell"
+    return "unknown"
+
+
+def _support_packet_review_files() -> list[str]:
+    return [
+        "agentledger-alpha-issue.md from agentledger try or pack-alpha after review.",
+        "agentledger-alpha-handoff.md after review.",
+        "agentledger-alpha-handoff.json after review, when a maintainer asks for JSON.",
+        "A reviewed feedback-export Markdown or JSON file, if you created one.",
+        "A path-free demo summary from demo --summary-output, if that is easier to share.",
+    ]
+
+
+def _support_packet_keep_private() -> list[str]:
+    return [
+        "raw .agentledger/ run folders and local agentledger-output/ folders",
+        "zip evidence bundles",
+        "command transcripts, terminal logs, full reports, and raw diffs",
+        "temporary demo workspaces",
+        "signing keys",
+        "private repo paths, private URLs, non-public source, credentials, tokens, and secrets",
+        "unreviewed alpha-feedback.jsonl files or feedback exports",
+    ]
+
+
+def _support_packet_commands(out_arg: str) -> dict[str, list[str]]:
+    return {
+        "safe_try": [
+            "python -m agentledger try",
+            "python -m agentledger support-packet",
+        ],
+        "inspect": [
+            f"python -m agentledger status --out {out_arg} --allow-warnings",
+            f"python -m agentledger open-packet --out {out_arg}",
+        ],
+        "share_safe": [
+            f"python -m agentledger pack-alpha --out {out_arg}",
+            f"python -m agentledger feedback-export --out {out_arg} --output $env:TEMP\\agentledger-feedback.md",
+        ],
+        "machine_readable": [
+            "python -m agentledger support-packet --format json",
+        ],
+    }
+
+
+def _support_packet_issue_template() -> list[str]:
+    return [
+        "Command used:",
+        "Result: pass / warn / block / failed / not sure",
+        "Platform, shell, Python version, and AgentLedger version:",
+        "Generated review/share files reviewed:",
+        "Redacted error text or first confusing message:",
+        "What you expected:",
+        "What happened instead:",
+        "Raw evidence kept private: yes",
+    ]
+
+
+def _support_packet_payload(args: argparse.Namespace) -> dict:
+    out_label, out_redacted = _support_packet_out_label(getattr(args, "out", None))
+    return {
+        "schema_version": SUPPORT_PACKET_SCHEMA,
+        "ok": True,
+        "generated_at": utc_now_iso(),
+        "agentledger_version": __version__,
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "shell": _support_packet_shell_name(),
+        "out": out_label,
+        "out_redacted": out_redacted,
+        "local_paths_included": False,
+        "raw_evidence_copied": False,
+        "include": _alpha_feedback_report_fields(),
+        "review_files": _support_packet_review_files(),
+        "keep_private": _support_packet_keep_private(),
+        "suggested_commands": _support_packet_commands(out_label),
+        "issue_template": _support_packet_issue_template(),
+        "privacy_note": (
+            "Paste only reviewed packet/export text or redacted errors. "
+            "Do not attach raw AgentLedger evidence by default."
+        ),
+        "errors": [],
+    }
+
+
+def _format_support_packet(payload: dict) -> str:
+    lines = [
+        "AgentLedger support packet checklist",
+        f"AgentLedger: {payload.get('agentledger_version')}",
+        f"Platform: {payload.get('platform')}",
+        f"Python: {payload.get('python_version')}",
+        f"Shell: {payload.get('shell')}",
+        "Raw evidence copied: no",
+        "Local paths included: no",
+        "",
+        "Include in the report:",
+    ]
+    lines.extend(f"- {item}" for item in payload.get("include") or [])
+    lines.extend(["", "Review/share only after reading:"])
+    lines.extend(f"- {item}" for item in payload.get("review_files") or [])
+    lines.extend(["", "Keep private by default:"])
+    lines.extend(f"- {item}" for item in payload.get("keep_private") or [])
+    lines.extend(["", "Suggested commands:"])
+    commands = payload.get("suggested_commands") if isinstance(payload.get("suggested_commands"), dict) else {}
+    for group in ("safe_try", "inspect", "share_safe", "machine_readable"):
+        for command in commands.get(group) or []:
+            lines.append(f"- {command}")
+    lines.extend(["", "Copy/paste skeleton:"])
+    lines.extend(f"- {item}" for item in payload.get("issue_template") or [])
+    lines.extend(["", f"Privacy note: {payload.get('privacy_note')}"])
+    return "\n".join(lines)
+
+
+def _handle_support_packet(args: argparse.Namespace) -> int:
+    payload = _support_packet_payload(args)
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        print(_format_support_packet(payload))
+    return 0
+
+
 def _alpha_summary_for_handoff(out_root: Path) -> dict:
     summary_path = (out_root / ALPHA_SUMMARY_FILENAME).resolve()
     if not summary_path.exists():
@@ -5121,6 +5267,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_open_latest(args)
     if args.command_name == "open-packet":
         return _handle_open_packet(args)
+    if args.command_name == "support-packet":
+        return _handle_support_packet(args)
     if args.command_name == "history":
         return _handle_history(args)
     if args.command_name == "status":

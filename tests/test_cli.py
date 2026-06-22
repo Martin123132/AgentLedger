@@ -337,6 +337,49 @@ def test_demo_command_packet_json_output(tmp_path: Path, capsys) -> None:
     assert payload["errors"] == []
 
 
+def test_support_packet_prints_privacy_safe_checklist(capsys) -> None:
+    assert cli.main(["support-packet"]) == 0
+
+    output = capsys.readouterr().out
+
+    assert "AgentLedger support packet checklist" in output
+    assert "Raw evidence copied: no" in output
+    assert "Local paths included: no" in output
+    assert "Include in the report:" in output
+    assert "Command used, such as python -m agentledger try" in output
+    assert "Review/share only after reading:" in output
+    assert "agentledger-alpha-issue.md" in output
+    assert "Keep private by default:" in output
+    assert "private repo paths, private URLs, non-public source, credentials, tokens, and secrets" in output
+    assert "python -m agentledger pack-alpha --out .agentledger" in output
+    assert "python -m agentledger support-packet --format json" in output
+
+
+def test_support_packet_json_redacts_absolute_out_path(tmp_path: Path, capsys) -> None:
+    private_out = tmp_path / "ledger"
+
+    assert cli.main(["support-packet", "--format", "json", "--out", str(private_out)]) == 0
+
+    output = capsys.readouterr().out
+    payload = _parse_json_output(output)
+
+    assert payload["schema_version"] == "agentledger.support_packet.v1"
+    assert payload["ok"] is True
+    assert payload["out"] == "<agentledger-output>"
+    assert payload["out_redacted"] is True
+    assert payload["local_paths_included"] is False
+    assert payload["raw_evidence_copied"] is False
+    assert payload["include"][0].startswith("Command used")
+    assert payload["review_files"]
+    assert any("private repo paths" in item for item in payload["keep_private"])
+    assert payload["suggested_commands"]["machine_readable"] == [
+        "python -m agentledger support-packet --format json"
+    ]
+    assert payload["issue_template"][-1] == "Raw evidence kept private: yes"
+    assert payload["errors"] == []
+    assert str(private_out) not in output
+
+
 def test_demo_command_writes_public_safe_summary(tmp_path: Path, capsys) -> None:
     workspace = tmp_path / "demo-workspace"
     summary = tmp_path / "demo-summary.md"

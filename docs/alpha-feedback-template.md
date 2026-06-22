@@ -96,6 +96,7 @@ python -m agentledger feedback --out .agentledger --category friction --severity
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
+python -m agentledger support-packet
 ```
 
 Feedback is stored in `alpha-feedback.jsonl` beside the run reports. Do not
@@ -106,6 +107,8 @@ directories and feedback file paths.
 Use `pack-alpha` when you need a copy-ready GitHub issue/comment draft. It
 prints the files to review/share and keeps raw evidence, bundles, command
 transcripts, signing keys, and temporary workspaces private by default.
+Use `support-packet` when you only need the exact report checklist and privacy
+reminders; it does not write files or copy evidence.
 
 ## Overall readiness
 
