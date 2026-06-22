@@ -1,4 +1,4 @@
-﻿# Alpha Feedback Template
+# Alpha Feedback Template
 
 Use this file for local notes. When feedback belongs in GitHub, use
 `.github/ISSUE_TEMPLATE/alpha-feedback.md` and paste only reviewed summary
@@ -20,7 +20,7 @@ Environment:
 Commands run:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"
 agentledger --version
 python -m agentledger try
 python -m agentledger doctor --repo .
