@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.19-alpha - 2026-06-22
+
+- Added alpha feedback capture guidance, issue template updates, and reviewed
+  feedback handoff reminders for testers.
 - Added `alpha-guide` troubleshooting guidance for install failures, command
   failures, packet-output confusion, and privacy-safe alpha reporting.
 

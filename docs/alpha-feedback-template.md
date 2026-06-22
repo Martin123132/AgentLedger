@@ -20,7 +20,7 @@ Environment:
 Commands run:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.19-alpha"
 agentledger --version
 python -m agentledger try
 python -m agentledger doctor --repo .
