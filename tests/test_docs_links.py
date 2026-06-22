@@ -153,6 +153,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
     assert "[docs/first-run.md](docs/first-run.md)" in readme
     assert "[docs/install.md](docs/install.md)" in readme
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"' in readme
+    assert "python -m agentledger try" in first_run
     assert "python -m agentledger demo" in first_run
     assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
     assert "docs/install.md" in first_run

@@ -56,10 +56,19 @@ the demo evidence paths without scraping text output. Add `--packet` when the
 wrapper should also produce a share-safe alpha packet and return the
 `open-packet` handoff paths.
 
-Stable fields:
+### `agentledger try --format json`
+
+Schema: `agentledger.demo.v1`
+
+Use this for the quickest public-alpha onboarding wrapper. It runs the same
+isolated demo as `demo --packet`, returns packet handoff paths, and keeps raw
+evidence local.
+
+Both commands use the same stable fields:
 
 - `ok`: boolean
 - `status`: `pass` or `failed`
+- `entrypoint`: `demo` or `try`
 - `workspace`: isolated demo workspace, or `null` when setup failed early
 - `repo`: demo git repository path, or `null`
 - `out`: demo evidence output directory, or `null`

@@ -268,12 +268,39 @@ def test_demo_command_packet_prints_open_packet_paths(tmp_path: Path, capsys) ->
     assert "- Wrote a share-safe alpha packet for review." in output
     assert f"Latest alpha packet: {packet_dir.resolve()}" in output
     assert f"Packet pointer: {(out / 'latest-alpha-packet.json').resolve()}" in output
-    assert f"Issue/comment draft: {packet_dir / 'agentledger-alpha-issue.md'}" in output
-    assert f"Markdown to share: {packet_dir / 'agentledger-alpha-handoff.md'}" in output
-    assert f"JSON to share: {packet_dir / 'agentledger-alpha-handoff.json'}" in output
     assert "Raw evidence copied: no" in output
+    assert "Review/share after reading:" in output
+    assert f"- Issue/comment draft: {packet_dir / 'agentledger-alpha-issue.md'}" in output
+    assert f"- Markdown packet: {packet_dir / 'agentledger-alpha-handoff.md'}" in output
+    assert f"- JSON packet: {packet_dir / 'agentledger-alpha-handoff.json'}" in output
+    assert "Keep local:" in output
+    assert f"- Demo workspace: {workspace.resolve()}" in output
+    assert f"- Raw evidence output: {out.resolve()}" in output
+    assert "- Raw AgentLedger evidence unless someone explicitly asks for it." in output
     assert "- Do not attach raw .agentledger evidence." in output
     assert f"python -m agentledger open-packet --repo {repo.resolve()} --out {out.resolve()}" in output
+    assert (out / "latest-alpha-packet.json").exists()
+    assert (packet_dir / "agentledger-alpha-issue.md").exists()
+    assert (packet_dir / "agentledger-alpha-handoff.md").exists()
+    assert (packet_dir / "agentledger-alpha-handoff.json").exists()
+
+
+def test_try_command_runs_packet_demo(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "try-workspace"
+
+    assert cli.main(["try", "--output-dir", str(workspace)]) == 0
+
+    output = capsys.readouterr().out
+    out = workspace / "agentledger-output"
+    packet_dir = workspace / "agentledger-alpha-packet"
+
+    assert "AgentLedger try: pass" in output
+    assert "- Used the one-command safe try path: isolated demo plus packet handoff." in output
+    assert "Alpha packet:" in output
+    assert f"Latest alpha packet: {packet_dir.resolve()}" in output
+    assert "Review/share after reading:" in output
+    assert "Keep local:" in output
+    assert f"- Raw evidence output: {out.resolve()}" in output
     assert (out / "latest-alpha-packet.json").exists()
     assert (packet_dir / "agentledger-alpha-issue.md").exists()
     assert (packet_dir / "agentledger-alpha-handoff.md").exists()
@@ -1119,13 +1146,13 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert "Doctor: AgentLedger doctor: ready" in output
     assert "Optional integrations:" in output
     assert "Fast path:" in output
-    assert "- Safe demo: python -m agentledger demo" in output
+    assert "- Safe demo: python -m agentledger try" in output
     assert f"- First alpha pass: python -m agentledger alpha --repo {repo} --out {out}" in output
     assert f"- Inspect latest status: python -m agentledger status --out {out} --allow-warnings" in output
     assert "- Read status first, then open the Markdown report from open-latest." in output
     assert "Verify:" in output
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"' in output
-    assert "python -m agentledger demo" in output
+    assert "python -m agentledger try" in output
     assert "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1" in output
     assert "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1" in output
     assert f"python -m agentledger alpha --repo {repo} --out {out}" in output
@@ -1152,7 +1179,7 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
         f"python -m agentledger doctor --repo {repo}",
     ]
     assert payload["commands"]["verify"] == [
-        "python -m agentledger demo",
+        "python -m agentledger try",
         "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1",
         "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1",
     ]

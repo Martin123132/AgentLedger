@@ -11,7 +11,7 @@ Use the tagged alpha when you want the most reproducible public install:
 ```powershell
 python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.17-alpha"
 python -m agentledger --version
-python -m agentledger demo
+python -m agentledger demo --packet
 ```
 
 ## From Latest Master
@@ -21,7 +21,7 @@ Use `master` when you want the newest unreleased docs and CLI polish:
 ```powershell
 python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@master"
 python -m agentledger --version
-python -m agentledger demo
+python -m agentledger try
 ```
 
 ## From A Development Checkout
@@ -33,7 +33,7 @@ git clone https://github.com/Martin123132/AgentLedger.git
 cd AgentLedger
 python -m pip install -e ".[dev]"
 python -m pytest
-python -m agentledger demo
+python -m agentledger try
 ```
 
 ## Verify An Install

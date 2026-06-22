@@ -109,6 +109,34 @@ ALPHA_SUMMARY_REQUIRED_FIELDS = {
 }
 
 
+def _add_demo_arguments(command: argparse.ArgumentParser, *, include_packet_option: bool) -> None:
+    command.add_argument(
+        "--output-dir",
+        default=None,
+        help="Directory for the isolated demo workspace. Defaults to a new temp directory.",
+    )
+    command.add_argument(
+        "--privacy-mode",
+        choices=["standard", "summary"],
+        default="summary",
+        help="Evidence detail level for the demo capture.",
+    )
+    command.add_argument(
+        "--summary-output",
+        default=None,
+        help="Path to write a public-safe Markdown demo summary.",
+    )
+    if include_packet_option:
+        command.add_argument(
+            "--packet",
+            action="store_true",
+            help="Also generate a share-safe alpha packet and print open-packet handoff paths.",
+        )
+    else:
+        command.set_defaults(packet=True)
+    command.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="agentledger",
@@ -121,28 +149,10 @@ def build_parser() -> argparse.ArgumentParser:
     contracts.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     demo = sub.add_parser("demo", help="Run a safe temporary AgentLedger demo.")
-    demo.add_argument(
-        "--output-dir",
-        default=None,
-        help="Directory for the isolated demo workspace. Defaults to a new temp directory.",
-    )
-    demo.add_argument(
-        "--privacy-mode",
-        choices=["standard", "summary"],
-        default="summary",
-        help="Evidence detail level for the demo capture.",
-    )
-    demo.add_argument(
-        "--summary-output",
-        default=None,
-        help="Path to write a public-safe Markdown demo summary.",
-    )
-    demo.add_argument(
-        "--packet",
-        action="store_true",
-        help="Also generate a share-safe alpha packet and print open-packet handoff paths.",
-    )
-    demo.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    _add_demo_arguments(demo, include_packet_option=True)
+
+    safe_try = sub.add_parser("try", help="Run the quickest safe first-run demo with packet handoff.")
+    _add_demo_arguments(safe_try, include_packet_option=False)
 
     run = sub.add_parser("run", help="Capture before/after repo state around a command.")
     run.add_argument("--repo", default=".", help="Target git repository.")
@@ -1914,7 +1924,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
             f"python -m agentledger doctor --repo {repo_arg}",
         ],
         "verify": [
-            "python -m agentledger demo",
+            "python -m agentledger try",
             "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-source-check.ps1",
             "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1",
         ],
@@ -4578,11 +4588,13 @@ def _demo_payload(
     summary_output: Path | None = None,
     summary_written: bool = False,
     packet: dict | None = None,
+    entrypoint: str = "demo",
 ) -> dict:
     return {
         "schema_version": DEMO_SCHEMA,
         "ok": ok,
         "status": "pass" if ok else "failed",
+        "entrypoint": entrypoint,
         "workspace": str(workspace) if workspace is not None else None,
         "repo": str(repo) if repo is not None else None,
         "out": str(out_root) if out_root is not None else None,
@@ -4669,7 +4681,9 @@ def _try_write_demo_summary(path: Path | None, payload: dict) -> list[str]:
 
 
 def _print_demo_text(payload: dict, capture_output: str = "") -> None:
-    print(f"AgentLedger demo: {payload['status']}")
+    entrypoint = payload.get("entrypoint") or "demo"
+    label = "AgentLedger try" if entrypoint == "try" else "AgentLedger demo"
+    print(f"{label}: {payload['status']}")
     if payload.get("workspace"):
         print(f"Workspace: {payload['workspace']}")
     if payload.get("repo"):
@@ -4687,6 +4701,8 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
         packet = payload.get("packet") if isinstance(payload.get("packet"), dict) else None
         if packet and packet.get("ok"):
             print("- Wrote a share-safe alpha packet for review.")
+        if entrypoint == "try":
+            print("- Used the one-command safe try path: isolated demo plus packet handoff.")
 
     latest_run = payload.get("latest_run")
     paths = payload.get("paths") if isinstance(payload.get("paths"), dict) else {}
@@ -4709,10 +4725,19 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
             files = packet.get("files") if isinstance(packet.get("files"), dict) else {}
             print(f"Latest alpha packet: {packet.get('output_dir')}")
             print(f"Packet pointer: {packet.get('latest_packet')}")
-            print(f"Issue/comment draft: {files.get('issue')}")
-            print(f"Markdown to share: {files.get('markdown')}")
-            print(f"JSON to share: {files.get('json')}")
             print(f"Raw evidence copied: {'yes' if packet.get('raw_evidence_copied') else 'no'}")
+            print("Review/share after reading:")
+            print(f"- Issue/comment draft: {files.get('issue')}")
+            print(f"- Markdown packet: {files.get('markdown')}")
+            print(f"- JSON packet: {files.get('json')}")
+            print("Keep local:")
+            if payload.get("workspace"):
+                print(f"- Demo workspace: {payload['workspace']}")
+            if payload.get("out"):
+                print(f"- Raw evidence output: {payload['out']}")
+            if paths.get("zip"):
+                print(f"- Zip bundle: {paths.get('zip')}")
+            print("- Raw AgentLedger evidence unless someone explicitly asks for it.")
             print("Review before sharing:")
             print("- Read the issue/comment draft and packet files first.")
             print("- Do not attach raw .agentledger evidence.")
@@ -4758,6 +4783,7 @@ def _handle_demo(args: argparse.Namespace) -> int:
             command_exit_code=None,
             errors=errors,
             summary_output=summary_output,
+            entrypoint=getattr(args, "command_name", "demo"),
         )
         if args.format == "json":
             print(json.dumps(payload, indent=2))
@@ -4780,6 +4806,7 @@ def _handle_demo(args: argparse.Namespace) -> int:
             command_exit_code=None,
             errors=errors,
             summary_output=summary_output,
+            entrypoint=getattr(args, "command_name", "demo"),
         )
         if args.format == "json":
             print(json.dumps(payload, indent=2))
@@ -4824,6 +4851,7 @@ def _handle_demo(args: argparse.Namespace) -> int:
         errors=errors,
         summary_output=summary_output,
         packet=packet,
+        entrypoint=getattr(args, "command_name", "demo"),
     )
     summary_errors = _try_write_demo_summary(summary_output, payload) if ok else []
     if summary_errors:
@@ -4994,7 +5022,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(format_contracts_text(__version__))
         return 0
-    if args.command_name == "demo":
+    if args.command_name in {"demo", "try"}:
         return _handle_demo(args)
     if args.command_name == "run":
         return _capture(args, args.task)

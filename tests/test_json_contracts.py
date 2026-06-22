@@ -14,6 +14,7 @@ from agentledger.contracts import CONTRACTS_DOC, CONTRACTS_SCHEMA, JSON_CONTRACT
 SCHEMAS = {
     "contracts": "agentledger.contracts.v1",
     "demo": "agentledger.demo.v1",
+    "try": "agentledger.demo.v1",
     "doctor": "agentledger.doctor.v1",
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
@@ -171,6 +172,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
     return {
         "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
         "demo": _run_json(capsys, ["demo", "--format", "json", "--output-dir", str(tmp_path / "demo-workspace")]),
+        "try": _run_json(capsys, ["try", "--format", "json", "--output-dir", str(tmp_path / "try-workspace")]),
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--repo", str(repo), "--out", str(out)]),
@@ -308,6 +310,27 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "schema_version",
             "ok",
             "status",
+            "entrypoint",
+            "workspace",
+            "repo",
+            "out",
+            "latest_run",
+            "paths",
+            "privacy_mode",
+            "command",
+            "command_exit_code",
+            "summary_output",
+            "summary_written",
+            "packet",
+            "try_next",
+            "cleanup",
+            "errors",
+        },
+        "try": {
+            "schema_version",
+            "ok",
+            "status",
+            "entrypoint",
             "workspace",
             "repo",
             "out",
@@ -622,11 +645,21 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     demo = json_payloads["demo"]
     assert demo["ok"] is True
     assert demo["status"] == "pass"
+    assert demo["entrypoint"] == "demo"
     _assert_keys(demo["paths"], {"markdown", "json", "html", "zip"})
     assert demo["packet"] is None
     assert demo["try_next"]
     assert demo["cleanup"]
     assert demo["errors"] == []
+
+    safe_try = json_payloads["try"]
+    assert safe_try["ok"] is True
+    assert safe_try["status"] == "pass"
+    assert safe_try["entrypoint"] == "try"
+    assert safe_try["packet"]["ok"] is True
+    assert safe_try["packet"]["raw_evidence_copied"] is False
+    assert any("open-packet" in command for command in safe_try["try_next"])
+    assert safe_try["errors"] == []
 
     doctor = json_payloads["doctor"]
     _assert_keys(doctor["optional"], {"configured", "total", "missing"})
