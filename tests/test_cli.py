@@ -1164,6 +1164,13 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert f"python -m agentledger alpha-summary --out {out}" in output
     assert f"python -m agentledger pack-alpha --out {out}" in output
     assert f"python -m agentledger open-packet --out {out}" in output
+    assert "Troubleshooting:" in output
+    assert "install: when agentledger is not found" in output
+    assert f"python -m agentledger doctor --repo {repo}" in output
+    assert "command: when agentledger alpha, run, or the captured command fails" in output
+    assert f"python -m agentledger status --out {out} --allow-warnings" in output
+    assert f"packet: when the packet paths or share files are confusing, run python -m agentledger open-packet --out {out}" in output
+    assert "reporting: when you need to open a feedback issue or send notes" in output
     assert f"- Output root: {out.resolve()}" in output
     assert f"- Latest pointer: {out.resolve() / 'latest.txt'}" in output
     assert "Send back:" in output
@@ -1191,6 +1198,16 @@ def test_alpha_guide_prints_first_run_loop(tmp_path: Path, capsys) -> None:
     assert payload["commands"]["run"][0] == f"python -m agentledger alpha --repo {repo} --out {out}"
     assert payload["commands"]["feedback"][-2] == f"python -m agentledger pack-alpha --out {out}"
     assert payload["commands"]["feedback"][-1] == f"python -m agentledger open-packet --out {out}"
+    assert [item["area"] for item in payload["troubleshooting"]] == [
+        "install",
+        "command",
+        "packet",
+        "reporting",
+    ]
+    assert f"python -m agentledger doctor --repo {repo}" in payload["troubleshooting"][0]["check"]
+    assert f"python -m agentledger status --out {out} --allow-warnings" in payload["troubleshooting"][1]["check"]
+    assert f"python -m agentledger open-packet --out {out}" == payload["troubleshooting"][2]["check"]
+    assert f"python -m agentledger pack-alpha --out {out}" == payload["troubleshooting"][3]["check"]
     assert payload["evidence"]["latest_pointer"] == str(out.resolve() / "latest.txt")
     assert payload["doctor"]["schema_version"] == "agentledger.doctor.v1"
     assert payload["doctor"]["status"] == "ready"

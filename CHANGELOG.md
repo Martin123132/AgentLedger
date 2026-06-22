@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added `alpha-guide` troubleshooting guidance for install failures, command
+  failures, packet-output confusion, and privacy-safe alpha reporting.
+
 ## 0.1.18-alpha - 2026-06-22
 
 - Added `agentledger try` as a shorthand for the packet-enabled safe demo path.

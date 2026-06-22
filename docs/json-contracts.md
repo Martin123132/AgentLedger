@@ -175,6 +175,8 @@ Stable fields:
   are ready
 - `commands`: setup, verify, run, inspect, and feedback command lists
 - `evidence`: output root, latest pointer, run folder contents, and bundle note
+- `troubleshooting`: install, command, packet, and reporting checks with next
+  actions for alpha testers
 - `send_back`: reviewed summary items a tester can report
 - `keep_private`: evidence and secret handling reminders
 - `known_limitations`: expected alpha limitations such as missing optional tools

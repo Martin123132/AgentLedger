@@ -39,11 +39,27 @@ Expected result:
 - `doctor` should say `ready` when required checks pass
 - If `doctor` reports a missing check, read the `Hint:` line directly below it
 - `alpha-guide` shows doctor readiness, optional integration counts, install
-  verification commands, the command loop, evidence paths, and privacy reminders
+  verification commands, the command loop, troubleshooting steps, evidence
+  paths, and privacy reminders
 - Missing RepoMori, Jester, or Tokometer warnings are OK for this alpha
 
 See [demo.md](demo.md) when you want the expected demo output before running
 the full alpha pass.
+
+## Troubleshooting
+
+Use [alpha-troubleshooting.md](alpha-troubleshooting.md) or rerun:
+
+```powershell
+python -m agentledger alpha-guide --repo . --out .agentledger
+```
+
+Use the guide to separate:
+
+- install problems: run `python -m agentledger doctor --repo .` and read any `Hint:` lines
+- command problems: run `python -m agentledger alpha-summary --out .agentledger` and `python -m agentledger status --out .agentledger --allow-warnings`
+- packet confusion: run `python -m agentledger open-packet --out .agentledger`
+- privacy-safe reporting: share reviewed packet/export text, not raw evidence
 
 ## One-command alpha pass
 
