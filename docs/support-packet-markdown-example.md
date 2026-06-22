@@ -63,3 +63,6 @@ Review the generated body before posting it. Do not attach `.agentledger/`
 folders, zip bundles, transcripts, signing keys, private paths, private URLs,
 credentials, or secrets unless a maintainer explicitly asks for reviewed
 evidence.
+
+For tester feedback about this mode, use
+[docs/support-packet-markdown-qa.md](support-packet-markdown-qa.md).
