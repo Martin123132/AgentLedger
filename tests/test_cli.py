@@ -278,6 +278,9 @@ def test_demo_command_packet_prints_open_packet_paths(tmp_path: Path, capsys) ->
     assert f"- Raw evidence output: {out.resolve()}" in output
     assert "- Raw AgentLedger evidence unless someone explicitly asks for it." in output
     assert "- Do not attach raw .agentledger evidence." in output
+    assert "Feedback to include:" in output
+    assert "- Platform, shell, Python version, and AgentLedger version." in output
+    assert "- Redacted error text or the first confusing message, with secrets and private source removed." in output
     assert f"python -m agentledger open-packet --repo {repo.resolve()} --out {out.resolve()}" in output
     assert (out / "latest-alpha-packet.json").exists()
     assert (packet_dir / "agentledger-alpha-issue.md").exists()
@@ -300,6 +303,8 @@ def test_try_command_runs_packet_demo(tmp_path: Path, capsys) -> None:
     assert f"Latest alpha packet: {packet_dir.resolve()}" in output
     assert "Review/share after reading:" in output
     assert "Keep local:" in output
+    assert "Feedback to include:" in output
+    assert "Generated review/share files from the alpha packet after you have reviewed them." in output
     assert f"- Raw evidence output: {out.resolve()}" in output
     assert (out / "latest-alpha-packet.json").exists()
     assert (packet_dir / "agentledger-alpha-issue.md").exists()
@@ -1933,6 +1938,8 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     assert payload["sharing"]["review_required"] is True
     assert payload["sharing"]["share_safe"] is True
     assert payload["sharing"]["share_files"] == [str(issue_path), str(markdown_path), str(json_path)]
+    assert "Command used" in payload["sharing"]["feedback_fields"][0]
+    assert "Platform, shell, Python version" in payload["sharing"]["feedback_fields"][1]
     assert "zip evidence bundles" in payload["sharing"]["keep_private"]
     assert payload["raw_evidence_copied"] is False
     assert payload["handoff_exit_code"] == 0
@@ -1951,6 +1958,10 @@ def test_pack_alpha_writes_validated_share_safe_packet(tmp_path: Path, capsys) -
     assert "AgentLedger alpha check: warn." in payload["public_summary"]["text"]
     assert json.loads(latest_packet_path.read_text(encoding="utf-8")) == payload
     assert "### AgentLedger alpha check" in issue_markdown
+    assert "## Feedback checklist" in issue_markdown
+    assert "Platform, shell, Python version, and AgentLedger version." in issue_markdown
+    assert "## Privacy check" in issue_markdown
+    assert "Do not attach raw .agentledger folders" in issue_markdown
     assert "Reviewed public summary only." in issue_markdown
     assert json.loads(packet_json) == payload["handoff"]
     assert "[latest-run]" in packet_markdown

@@ -104,6 +104,12 @@ Keep local:
 - Raw evidence output: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output
 - Zip bundle: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
 - Raw AgentLedger evidence unless someone explicitly asks for it.
+Feedback to include:
+- Command used, such as python -m agentledger try or python -m agentledger alpha --repo . --out .agentledger.
+- Platform, shell, Python version, and AgentLedger version.
+- Generated review/share files from the alpha packet after you have reviewed them.
+- Redacted error text or the first confusing message, with secrets and private source removed.
+- What you expected and what happened instead.
 Try next:
 - python -m agentledger open-latest --repo <demo-repo> --out <agentledger-output>
 - python -m agentledger history --repo <demo-repo> --out <agentledger-output>
@@ -150,6 +156,18 @@ keep private.
 The summary is meant as a starting point for short posts or GitHub comments.
 Review it before sharing, and keep the full run folder and zip bundle local
 unless you intentionally choose to share them.
+
+## Alpha Feedback
+
+`agentledger try` and `agentledger demo --packet` write
+`agentledger-alpha-issue.md` beside the handoff packet. Use that file as a
+copy-ready issue/comment draft after review. Good alpha feedback includes the
+command used, platform, shell, Python version, AgentLedger version, generated
+review/share files, redacted error text, and the first confusing message.
+
+Do not attach raw `agentledger-output/`, `.agentledger/` folders, zip bundles,
+command transcripts, signing keys, secrets, non-public source, or full reports
+unless they have been reviewed and explicitly requested.
 
 ## What Stays Local
 

@@ -3722,12 +3722,23 @@ def _alpha_packet_keep_private() -> list[str]:
     ]
 
 
+def _alpha_feedback_report_fields() -> list[str]:
+    return [
+        "Command used, such as python -m agentledger try or python -m agentledger alpha --repo . --out .agentledger.",
+        "Platform, shell, Python version, and AgentLedger version.",
+        "Generated review/share files from the alpha packet after you have reviewed them.",
+        "Redacted error text or the first confusing message, with secrets and private source removed.",
+        "What you expected and what happened instead.",
+    ]
+
+
 def _alpha_packet_sharing(files: dict[str, str], share_safe: bool) -> dict[str, object]:
     share_files = [files[label] for label in ("issue", "markdown", "json") if files.get(label)]
     return {
         "review_required": True,
         "share_safe": share_safe,
         "share_files": share_files,
+        "feedback_fields": _alpha_feedback_report_fields(),
         "keep_private": _alpha_packet_keep_private(),
         "note": "Review the listed packet files before sharing; do not attach raw AgentLedger evidence.",
     }
@@ -3800,11 +3811,31 @@ def _format_alpha_issue_markdown(public_summary: dict | None) -> str:
     lines = [
         markdown,
         "",
-        (
-            "Reviewed public summary only. Raw AgentLedger evidence stays private "
-            "unless explicitly requested."
-        ),
+        "## Feedback checklist",
+        "",
+        "Use this draft as the starting point for an alpha issue or comment. Include:",
+        "",
     ]
+    lines.extend(f"- {item}" for item in _alpha_feedback_report_fields())
+    lines.extend(
+        [
+            "",
+            "## Privacy check",
+            "",
+            "- Review the packet files before sharing.",
+            "- Do not attach raw .agentledger folders, zip bundles, command transcripts, signing keys, secrets, or non-public source.",
+            "- Paste only redacted errors or reviewed packet/export text.",
+            "",
+        ]
+    )
+    lines.extend(
+        [
+            (
+                "Reviewed public summary only. Raw AgentLedger evidence stays private "
+                "unless explicitly requested."
+            ),
+        ]
+    )
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -4741,6 +4772,9 @@ def _print_demo_text(payload: dict, capture_output: str = "") -> None:
             print("Review before sharing:")
             print("- Read the issue/comment draft and packet files first.")
             print("- Do not attach raw .agentledger evidence.")
+            print("Feedback to include:")
+            for item in _alpha_feedback_report_fields():
+                print(f"- {item}")
         else:
             print("- Packet was requested but failed.")
 

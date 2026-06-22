@@ -45,6 +45,15 @@ Open the Markdown report first, then run the printed `status` command for the
 pass/warn/block verdict. Evidence is local proof first. Review reports before
 sharing them.
 
+## Report Feedback
+
+After `agentledger try`, open the printed `agentledger-alpha-issue.md` draft if
+you want to report what happened. Include the command used, platform, shell,
+Python version, AgentLedger version, generated review/share files, and redacted
+error text or the first confusing message. Paste only reviewed packet/export
+text; keep raw `.agentledger/` evidence, zip bundles, command transcripts,
+signing keys, and temporary demo workspaces private by default.
+
 ## Next Real Repo
 
 After the demo makes sense, move to the repository you want to test and run:

@@ -20,8 +20,9 @@ Environment:
 Commands run:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"
 agentledger --version
+python -m agentledger try
 python -m agentledger doctor --repo .
 ```
 
@@ -29,8 +30,20 @@ Result:
 
 - Passed:
 - Failed:
+- AgentLedger version:
+- Platform / shell / Python version:
+- Try packet issue/comment draft:
 - Alpha summary JSON path:
 - Confusing:
+
+Redacted error text:
+
+Generated review/share files you reviewed:
+
+- Issue/comment draft:
+- Markdown packet:
+- JSON packet:
+- Feedback export:
 
 ## Smoke test
 
@@ -90,6 +103,10 @@ commit or upload it unless the contents have been reviewed. Use
 `feedback-export` when you need a Markdown or JSON handoff that omits local run
 directories and feedback file paths.
 
+Use `pack-alpha` when you need a copy-ready GitHub issue/comment draft. It
+prints the files to review/share and keeps raw evidence, bundles, command
+transcripts, signing keys, and temporary workspaces private by default.
+
 ## Overall readiness
 
 Would you trust this enough to use after an AI coding-agent session?
@@ -99,3 +116,5 @@ What one thing should be fixed before the next tester?
 ## Sensitive data reminder
 
 Do not paste non-public source code, secrets, tokens, zip bundles, `.agentledger/` folders, or full evidence reports into public channels.
+
+Paste only redacted errors or reviewed packet/export text.

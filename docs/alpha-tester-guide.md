@@ -175,11 +175,17 @@ Only share feedback exports or alpha handoff packets after reviewing their notes
 
 Please report:
 
+- the command used, starting with `python -m agentledger try` if you ran the safe first-run path
+- OS/platform, shell, Python version, and AgentLedger version
+- generated review/share files you reviewed, especially `agentledger-alpha-issue.md`, `agentledger-alpha-handoff.md`, and `agentledger-alpha-handoff.json`
 - the first command that felt confusing
-- any command that failed and the exact error
+- any command that failed and the redacted error text
 - whether the report was understandable
 - whether the status/latest/history/inspect/check/verify flow made sense
 - whether anything looked unsafe to share or too noisy
 
 Use `docs/alpha-feedback-template.md` for notes, or
 `.github/ISSUE_TEMPLATE/alpha-feedback.md` when opening an alpha feedback issue.
+Paste only reviewed packet/export text. Keep raw `.agentledger/` evidence, zip
+bundles, command transcripts, signing keys, temporary demo workspaces, secrets,
+and non-public source private by default.

@@ -80,6 +80,12 @@ the printed `status` command for the pass/warn/block verdict. The output
 clearly separates packet files to review/share from raw evidence that stays
 local.
 
+For alpha feedback, review the printed `agentledger-alpha-issue.md` draft and
+include the command used, platform, shell, Python version, AgentLedger version,
+generated review/share files, and redacted error text or the first confusing
+message. Keep raw `.agentledger/` evidence, zip bundles, command transcripts,
+signing keys, and temporary demo workspaces private by default.
+
 Use `python -m agentledger demo` when you only want the local report path tour.
 Use `python -m agentledger demo --format json` when another agent or wrapper
 needs paths without scraping text. Use
