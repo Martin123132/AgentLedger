@@ -97,6 +97,7 @@ python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 python -m agentledger support-packet
+python -m agentledger support-packet --format markdown
 ```
 
 Feedback is stored in `alpha-feedback.jsonl` beside the run reports. Do not
@@ -108,7 +109,8 @@ Use `pack-alpha` when you need a copy-ready GitHub issue/comment draft. It
 prints the files to review/share and keeps raw evidence, bundles, command
 transcripts, signing keys, and temporary workspaces private by default.
 Use `support-packet` when you only need the exact report checklist and privacy
-reminders; it does not write files or copy evidence.
+reminders. Use `support-packet --format markdown` for a sanitized issue/comment
+body. Neither mode writes files or copies evidence.
 
 ## Overall readiness
 

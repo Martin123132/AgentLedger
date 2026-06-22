@@ -101,6 +101,7 @@ Expected result:
   - `python -m agentledger feedback-summary --out .agentledger`
   - `python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md`
   - `python -m agentledger support-packet`
+  - `python -m agentledger support-packet --format markdown`
   - `python -m agentledger support-packet --format json`
   - `python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff`
   - `python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe`
@@ -146,8 +147,8 @@ Expected result:
   for reviewed feedback evidence.
 - Do not commit feedback exports unless they have been reviewed and are meant
   to be shared.
-- `support-packet` is read-only and safe to rerun, but still review copied
-  report text before posting it.
+- `support-packet --format markdown` is read-only and safe to rerun, but still
+  review copied report text before posting it.
 - Do not commit alpha handoff packet folders unless they have been reviewed
   and are meant to be shared.
 - Use `alpha-handoff --share-safe` before sharing a packet outside your own

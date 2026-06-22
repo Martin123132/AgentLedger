@@ -235,6 +235,7 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
         "alpha-handoff --out .agentledger --output-dir $env:TEMP\\agentledger-alpha-handoff-safe --share-safe",
         "pack-alpha --out .agentledger",
         "open-packet --out .agentledger",
+        "support-packet --format markdown",
         "support-packet --format json",
         "alpha-troubleshooting.md",
         "install, command, packet, and reporting checks",

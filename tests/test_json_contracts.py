@@ -865,7 +865,13 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert support_packet["include"]
     assert support_packet["review_files"]
     assert any("private repo paths" in item for item in support_packet["keep_private"])
-    _assert_keys(support_packet["suggested_commands"], {"safe_try", "inspect", "share_safe", "machine_readable"})
+    _assert_keys(
+        support_packet["suggested_commands"],
+        {"safe_try", "inspect", "share_safe", "copy_ready", "machine_readable"},
+    )
+    assert support_packet["suggested_commands"]["copy_ready"] == [
+        "python -m agentledger support-packet --format markdown"
+    ]
     assert support_packet["suggested_commands"]["machine_readable"] == [
         "python -m agentledger support-packet --format json"
     ]

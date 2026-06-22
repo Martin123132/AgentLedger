@@ -258,7 +258,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
     {
         "command": "support-packet --format json",
         "schema_version": "agentledger.support_packet.v1",
-        "purpose": "Print the privacy-safe alpha support report checklist without creating evidence.",
+        "purpose": "Print the privacy-safe alpha support report checklist and copy-ready guidance without creating evidence.",
         "stable_fields": [
             "ok",
             "generated_at",
