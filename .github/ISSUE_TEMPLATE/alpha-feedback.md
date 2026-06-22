@@ -65,10 +65,57 @@ python -m agentledger feedback --out .agentledger --note "First confusing thing:
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
 python -m agentledger support-packet
+python -m agentledger support-packet --format markdown --out <private-output-dir>
 python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
 ```
 
 Reviewed feedback export or packet attached: yes/no
+
+## Support-packet Markdown feedback
+
+Use this section for `agentledger support-packet --format markdown` feedback in
+`v0.1.22-alpha` or newer. Paste only a reviewed, sanitized snippet from the
+generated Markdown body.
+
+Install method:
+
+```powershell
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.22-alpha"
+python -m agentledger --version
+```
+
+Command run:
+
+```powershell
+python -m agentledger support-packet --format markdown --out <private-output-dir>
+```
+
+Checklist:
+
+- [ ] Output started with `## AgentLedger alpha support report`.
+- [ ] Copy-ready headings were present: `### Summary`, `### Command used`,
+  `### Generated review/share files reviewed`,
+  `### Redacted error text or first confusing message`, `### Useful commands`,
+  and `### Keep private by default`.
+- [ ] `<agentledger-output>` replaced the supplied private output path.
+- [ ] The generated Markdown did not include the supplied private output path,
+  private repo paths, private URLs, credentials, secrets, or customer data.
+- [ ] No raw `.agentledger/` folders, zip bundles, transcripts, signing keys,
+  full reports, or temp workspaces are attached or pasted here.
+
+Sanitized Markdown snippet:
+
+```markdown
+Paste a short reviewed snippet here. Remove private paths, URLs, credentials,
+secrets, customer data, and raw evidence before posting.
+```
+
+Reproduction notes:
+
+- What you expected:
+- What happened instead:
+- Redacted error or confusing line:
+- Platform / shell / Python version:
 
 ## Sensitive data check
 
