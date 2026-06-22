@@ -25,6 +25,7 @@ SCHEMAS = {
     "alpha_handoff": "agentledger.alpha_handoff.v1",
     "pack_alpha": "agentledger.pack_alpha.v1",
     "open_packet": "agentledger.open_packet.v1",
+    "support_packet": "agentledger.support_packet.v1",
     "feedback": "agentledger.feedback.v1",
     "feedback_summary": "agentledger.feedback_summary.v1",
     "feedback_export": "agentledger.feedback_export_result.v1",
@@ -226,6 +227,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
             ],
         ),
         "open_packet": _run_json(capsys, ["open-packet", "--format", "json", "--repo", str(repo), "--out", str(out)]),
+        "support_packet": _run_json(capsys, ["support-packet", "--format", "json", "--out", str(tmp_path / "private-ledger")]),
         "feedback": _run_json(
             capsys,
             [
@@ -370,6 +372,26 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "missing_files",
             "raw_evidence_copied",
             "packet",
+            "errors",
+        },
+        "support_packet": {
+            "schema_version",
+            "ok",
+            "generated_at",
+            "agentledger_version",
+            "platform",
+            "python_version",
+            "shell",
+            "out",
+            "out_redacted",
+            "local_paths_included",
+            "raw_evidence_copied",
+            "include",
+            "review_files",
+            "keep_private",
+            "suggested_commands",
+            "issue_template",
+            "privacy_note",
             "errors",
         },
         "history": {"schema_version", "out", "runs"},
@@ -833,6 +855,22 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert open_packet["missing_files"] == []
     assert open_packet["raw_evidence_copied"] is False
     assert open_packet["errors"] == []
+
+    support_packet = json_payloads["support_packet"]
+    assert support_packet["ok"] is True
+    assert support_packet["out"] == "<agentledger-output>"
+    assert support_packet["out_redacted"] is True
+    assert support_packet["local_paths_included"] is False
+    assert support_packet["raw_evidence_copied"] is False
+    assert support_packet["include"]
+    assert support_packet["review_files"]
+    assert any("private repo paths" in item for item in support_packet["keep_private"])
+    _assert_keys(support_packet["suggested_commands"], {"safe_try", "inspect", "share_safe", "machine_readable"})
+    assert support_packet["suggested_commands"]["machine_readable"] == [
+        "python -m agentledger support-packet --format json"
+    ]
+    assert support_packet["issue_template"][-1] == "Raw evidence kept private: yes"
+    assert support_packet["errors"] == []
 
     feedback = json_payloads["feedback"]
     assert feedback["ok"] is True

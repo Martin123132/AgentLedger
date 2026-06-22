@@ -164,6 +164,8 @@ unless you intentionally choose to share them.
 copy-ready issue/comment draft after review. Good alpha feedback includes the
 command used, platform, shell, Python version, AgentLedger version, generated
 review/share files, redacted error text, and the first confusing message.
+Run `python -m agentledger support-packet` when you want that checklist without
+writing files or copying evidence.
 
 Do not attach raw `agentledger-output/`, `.agentledger/` folders, zip bundles,
 command transcripts, signing keys, secrets, non-public source, or full reports

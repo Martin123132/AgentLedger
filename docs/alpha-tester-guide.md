@@ -133,6 +133,8 @@ python -m agentledger feedback --out .agentledger --note "First confusing thing:
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
+python -m agentledger support-packet
+python -m agentledger support-packet --format json
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff
 python -m agentledger alpha-handoff --out .agentledger --output-dir $env:TEMP\agentledger-alpha-handoff-safe --share-safe
 python -m agentledger pack-alpha --out .agentledger
@@ -156,6 +158,7 @@ Expected result:
 - `feedback` records local notes in the latest run folder and lists them back
 - `feedback-summary` rolls local notes up across run folders
 - `feedback-export` writes a reviewed Markdown or JSON feedback handoff without local evidence paths
+- `support-packet` prints the exact support report checklist without writing files, copying evidence, or including local paths by default
 - `alpha-handoff --share-safe` writes a compact Markdown/JSON handoff packet without copying raw evidence or exposing local absolute paths
 - `pack-alpha` validates the share-safe packet, writes `agentledger-alpha-issue.md` as a copy-ready GitHub issue/comment draft, and includes a `Sharing` section with keep-private reminders plus `public_summary` snippets for short updates
 - `pack-alpha` defaults to a fresh temporary packet directory; pass `--output-dir` when you want a predictable folder
@@ -202,6 +205,8 @@ Please report:
 
 Use `docs/alpha-feedback-template.md` for notes, or
 `.github/ISSUE_TEMPLATE/alpha-feedback.md` when opening an alpha feedback issue.
+Run `agentledger support-packet` when you want the copy/paste checklist before
+posting.
 Paste only reviewed packet/export text. Keep raw `.agentledger/` evidence, zip
 bundles, command transcripts, signing keys, temporary demo workspaces, secrets,
 and non-public source private by default.

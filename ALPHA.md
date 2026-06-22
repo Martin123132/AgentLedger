@@ -61,6 +61,8 @@ Send back:
 - optional local `agentledger feedback --out .agentledger --note "..."` entries
 - optional local `agentledger feedback-summary --out .agentledger` output
 - optional reviewed `agentledger feedback-export --out .agentledger --output <path>` file
+- `agentledger support-packet` output when you want the exact report checklist
+  without writing files
 - the first command or message that felt confusing
 - whether the generated report was clear enough to trust
 

@@ -64,3 +64,5 @@ Good alpha feedback includes:
 
 Use `.github/ISSUE_TEMPLATE/alpha-feedback.md` for GitHub issues, or
 `docs/alpha-feedback-template.md` for local notes.
+Run `python -m agentledger support-packet` to print the same checklist and
+privacy reminders without writing files or copying evidence.

@@ -64,6 +64,7 @@ Optional local commands run:
 python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
 python -m agentledger feedback-summary --out .agentledger
 python -m agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
+python -m agentledger support-packet
 python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agentledger-alpha-packet
 ```
 

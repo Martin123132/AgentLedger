@@ -54,6 +54,8 @@ Python version, AgentLedger version, generated review/share files, and redacted
 error text or the first confusing message. Paste only reviewed packet/export
 text; keep raw `.agentledger/` evidence, zip bundles, command transcripts,
 signing keys, and temporary demo workspaces private by default.
+Run `python -m agentledger support-packet` when you want the exact checklist
+without writing files or copying evidence.
 
 ## Next Real Repo
 
