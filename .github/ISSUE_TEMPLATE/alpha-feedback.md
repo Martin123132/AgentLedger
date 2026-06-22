@@ -99,7 +99,8 @@ Checklist:
   and `### Keep private by default`.
 - [ ] `<agentledger-output>` replaced the supplied private output path.
 - [ ] The generated Markdown did not include the supplied private output path,
-  private repo paths, private URLs, credentials, secrets, or customer data.
+  private repo paths, private URLs, credentials, tokens, secrets, or customer
+  data.
 - [ ] No raw `.agentledger/` folders, zip bundles, transcripts, signing keys,
   full reports, or temp workspaces are attached or pasted here.
 
@@ -107,7 +108,7 @@ Sanitized Markdown snippet:
 
 ```markdown
 Paste a short reviewed snippet here. Remove private paths, URLs, credentials,
-secrets, customer data, and raw evidence before posting.
+tokens, secrets, customer data, and raw evidence before posting.
 ```
 
 Reproduction notes:

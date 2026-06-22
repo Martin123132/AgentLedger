@@ -38,6 +38,10 @@ When reporting a problem, paste only reviewed snippets into
 using its `Support-packet Markdown feedback` section, or record local notes in
 `docs/alpha-feedback-template.md`.
 
+Maintainers should use
+[docs/alpha-feedback-readiness.md](alpha-feedback-readiness.md) before treating
+support-packet Markdown feedback as a next-alpha release-readiness signal.
+
 Useful feedback includes:
 
 - whether the headings are easy to copy into an issue or comment
