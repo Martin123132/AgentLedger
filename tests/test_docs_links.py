@@ -60,6 +60,7 @@ ALPHA_DOCS = [
 ]
 
 SUPPORT_PACKET_MARKDOWN_EXAMPLE = ROOT / "docs" / "support-packet-markdown-example.md"
+SUPPORT_PACKET_MARKDOWN_QA = ROOT / "docs" / "support-packet-markdown-qa.md"
 
 
 def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
@@ -280,6 +281,59 @@ def test_support_packet_markdown_example_command_is_checked(
     ]
     for marker in expected_markers:
         assert marker in example
+        assert marker in output
+
+    assert "<agentledger-output>" in output
+    assert str(private_out) not in output
+    assert private_out.name not in output
+
+
+def test_support_packet_markdown_qa_note_is_checked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    qa_note = SUPPORT_PACKET_MARKDOWN_QA.read_text(encoding="utf-8")
+    feedback_template = (ROOT / "docs" / "alpha-feedback-template.md").read_text(encoding="utf-8")
+    example = SUPPORT_PACKET_MARKDOWN_EXAMPLE.read_text(encoding="utf-8")
+
+    assert "docs/support-packet-markdown-qa.md" in feedback_template
+    assert "[docs/support-packet-markdown-qa.md](support-packet-markdown-qa.md)" in example
+    assert ".github/ISSUE_TEMPLATE/alpha-feedback.md" in qa_note
+    assert "docs/alpha-feedback-template.md" in qa_note
+    assert "sanitized demo inputs only" in qa_note
+    assert "private output path appeared anywhere" in qa_note
+
+    match = re.search(
+        r"```powershell\n(?P<command>python -m agentledger support-packet --format markdown --out <private-output-dir>)\n```",
+        qa_note,
+    )
+    assert match is not None, "support-packet Markdown QA note should document the checked command"
+
+    private_out = tmp_path / "qa-private-output" / "client-workspace-ledger"
+    documented_command = match.group("command").replace("<private-output-dir>", str(private_out))
+    assert documented_command.startswith("python -m agentledger support-packet --format markdown --out ")
+
+    assert cli.main(["support-packet", "--format", "markdown", "--out", str(private_out)]) == 0
+    output = capsys.readouterr().out
+
+    expected_headings = [
+        "## AgentLedger alpha support report",
+        "### Summary",
+        "### Command used",
+        "### Generated review/share files reviewed",
+        "### Redacted error text or first confusing message",
+        "### Useful commands",
+        "### Keep private by default",
+    ]
+    for heading in expected_headings:
+        assert heading in qa_note
+        assert heading in output
+
+    for marker in [
+        "Raw evidence copied: no",
+        "Local paths included: no",
+        "Raw evidence kept private: yes",
+    ]:
+        assert marker in qa_note
         assert marker in output
 
     assert "<agentledger-output>" in output

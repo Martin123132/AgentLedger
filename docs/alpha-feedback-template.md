@@ -111,6 +111,8 @@ transcripts, signing keys, and temporary workspaces private by default.
 Use `support-packet` when you only need the exact report checklist and privacy
 reminders. Use `support-packet --format markdown` for a sanitized issue/comment
 body. `docs/support-packet-markdown-example.md` shows the checked output shape.
+`docs/support-packet-markdown-qa.md` lists what to verify before reporting a
+Markdown support-packet problem.
 Neither mode writes files or copies evidence.
 
 ## Overall readiness
