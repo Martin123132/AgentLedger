@@ -86,5 +86,6 @@ summary, packet/export text, and notes for this pass.
 - First run: `docs/first-run.md`
 - Safe demo guide: `docs/demo.md`
 - Tester guide: `docs/alpha-tester-guide.md`
+- Troubleshooting: `docs/alpha-troubleshooting.md`
 - Checklist: `docs/alpha-checklist.md`
 - Feedback template: `docs/alpha-feedback-template.md`

@@ -21,7 +21,8 @@ path tour. Add
 `--summary-output $env:TEMP\agentledger-demo-summary.md` when you want a
 path-free Markdown summary to review before sharing.
 For development checkouts, editable installs, source checks, and uninstall
-commands, see `docs/install.md`.
+commands, see `docs/install.md`. If the install, command, packet, or reporting
+step is unclear, see `docs/alpha-troubleshooting.md`.
 
 ## What To Look At
 
@@ -66,7 +67,8 @@ python -m agentledger status --out .agentledger --allow-warnings
 
 `alpha-guide` is read-only. It shows setup checks, the fast path, evidence
 locations, what to read first after the alpha run, what to send back, and what
-to keep private.
+to keep private. It also prints a troubleshooting map for install problems,
+command failures, packet-output confusion, and privacy-safe reporting.
 
 ## Keep Private
 

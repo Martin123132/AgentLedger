@@ -152,11 +152,13 @@ def test_first_run_doc_is_linked_from_readme() -> None:
 
     assert "[docs/first-run.md](docs/first-run.md)" in readme
     assert "[docs/install.md](docs/install.md)" in readme
+    assert "[docs/alpha-troubleshooting.md](docs/alpha-troubleshooting.md)" in readme
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"' in readme
     assert "python -m agentledger try" in first_run
     assert "python -m agentledger demo" in first_run
     assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
     assert "docs/install.md" in first_run
+    assert "docs/alpha-troubleshooting.md" in first_run
     assert "Do not commit or upload:" in first_run
 
 
@@ -198,7 +200,8 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     checklist = (ROOT / "docs" / "alpha-checklist.md").read_text(encoding="utf-8")
     tester_guide = (ROOT / "docs" / "alpha-tester-guide.md").read_text(encoding="utf-8")
     contracts = (ROOT / "docs" / "json-contracts.md").read_text(encoding="utf-8")
-    docs_text = "\n".join([readme, checklist, tester_guide, contracts])
+    troubleshooting = (ROOT / "docs" / "alpha-troubleshooting.md").read_text(encoding="utf-8")
+    docs_text = "\n".join([readme, checklist, tester_guide, contracts, troubleshooting])
 
     for option in ["--json-output", "--privacy-mode", "--strict", "--format"]:
         assert option in alpha_help
@@ -229,6 +232,8 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
         "alpha-handoff --out .agentledger --output-dir $env:TEMP\\agentledger-alpha-handoff-safe --share-safe",
         "pack-alpha --out .agentledger",
         "open-packet --out .agentledger",
+        "alpha-troubleshooting.md",
+        "install, command, packet, and reporting checks",
         "--redact-local-paths",
         "agentledger.alpha_handoff.v1",
         "agentledger.pack_alpha.v1",

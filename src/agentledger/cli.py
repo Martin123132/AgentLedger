@@ -1884,10 +1884,46 @@ def _alpha_guide_doctor(doctor_report: dict) -> dict:
     }
 
 
+def _alpha_troubleshooting_steps(repo_arg: str, out_arg: str) -> list[dict[str, str]]:
+    return [
+        {
+            "area": "install",
+            "when": "agentledger is not found, --version fails, or Python/Git setup looks wrong",
+            "check": (
+                'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.18-alpha"; '
+                f"python -m agentledger doctor --repo {repo_arg}"
+            ),
+            "next": "Read any Doctor Hint lines first; optional RepoMori/Jester/Tokometer warnings are okay for alpha.",
+        },
+        {
+            "area": "command",
+            "when": "agentledger alpha, run, or the captured command fails",
+            "check": (
+                f"python -m agentledger alpha-summary --out {out_arg}; "
+                f"python -m agentledger status --out {out_arg} --allow-warnings"
+            ),
+            "next": "Copy the status summary and redacted error text, not raw transcripts or full reports.",
+        },
+        {
+            "area": "packet",
+            "when": "the packet paths or share files are confusing",
+            "check": f"python -m agentledger open-packet --out {out_arg}",
+            "next": "Share only the listed issue/comment, Markdown packet, or JSON packet after review.",
+        },
+        {
+            "area": "reporting",
+            "when": "you need to open a feedback issue or send notes",
+            "check": f"python -m agentledger pack-alpha --out {out_arg}",
+            "next": "Include command used, platform, versions, reviewed packet/export files, and redacted errors.",
+        },
+    ]
+
+
 def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
     repo = Path(args.repo or ".").resolve()
     doctor_report = run_doctor(repo)
     doctor = _alpha_guide_doctor(doctor_report)
+    repo_arg = str(args.repo or ".")
     try:
         config = _load_output_config(args, repo)
     except ConfigError as exc:
@@ -1903,6 +1939,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
                 "fix_first": fix_first,
                 "commands": {},
                 "evidence": {},
+                "troubleshooting": _alpha_troubleshooting_steps(repo_arg, DEFAULT_OUT),
                 "send_back": [],
                 "keep_private": [
                     "Do not commit or upload .agentledger folders, zip bundles, signing keys, or full reports unless reviewed and requested."
@@ -1914,7 +1951,6 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
         )
 
     out_root = _resolve_out_root(args, repo, config)
-    repo_arg = str(args.repo or ".")
     out_arg = _alpha_guide_out_arg(args, config)
     commands = {
         "setup": [
@@ -1963,6 +1999,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
             ],
             "bundle": "A sibling .zip bundle is written beside each run folder unless zip export is disabled.",
         },
+        "troubleshooting": _alpha_troubleshooting_steps(repo_arg, out_arg),
         "send_back": [
             "Final alpha summary text from agentledger alpha or alpha-summary.",
             "The first command or message that felt confusing.",
@@ -2039,6 +2076,18 @@ def _format_alpha_guide(payload: dict) -> str:
         lines.append(f"{title}:")
         for command in values:
             lines.append(f"- {command}")
+
+    troubleshooting = payload.get("troubleshooting")
+    if isinstance(troubleshooting, list) and troubleshooting:
+        lines.append("Troubleshooting:")
+        for item in troubleshooting:
+            if not isinstance(item, dict):
+                continue
+            area = item.get("area") or "issue"
+            when = item.get("when") or "something is unclear"
+            check = item.get("check") or "run alpha-guide again"
+            next_step = item.get("next") or "review output before sharing"
+            lines.append(f"- {area}: when {when}, run {check}. Next: {next_step}")
 
     evidence = payload.get("evidence") if isinstance(payload.get("evidence"), dict) else {}
     lines.extend(

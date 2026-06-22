@@ -106,6 +106,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "fix_first",
             "commands",
             "evidence",
+            "troubleshooting",
             "send_back",
             "keep_private",
             "known_limitations",
