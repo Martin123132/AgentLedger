@@ -24,7 +24,7 @@ run commands, touch repositories, and claim work is done:
 The first product wedge is intentionally simple:
 
 ```powershell
-agentledger run --repo C:\path\to\repo -- npm test
+agentledger run --repo D:\Projects\your-repo -- npm test
 ```
 
 That writes a timestamped evidence folder under `.agentledger/` with:
@@ -552,20 +552,20 @@ output directory inside it.
 Capture repository state only:
 
 ```powershell
-agentledger snapshot --repo C:\path\to\repo
+agentledger snapshot --repo D:\Projects\your-repo
 ```
 
 Capture state around a command:
 
 ```powershell
-agentledger run --repo C:\path\to\repo -- npm test
+agentledger run --repo D:\Projects\your-repo -- npm test
 ```
 
 Capture a lower-detail report:
 
 ```powershell
-agentledger run --repo C:\path\to\repo --privacy-mode summary -- npm test
-agentledger snapshot --repo C:\path\to\repo --privacy-mode summary
+agentledger run --repo D:\Projects\your-repo --privacy-mode summary -- npm test
+agentledger snapshot --repo D:\Projects\your-repo --privacy-mode summary
 ```
 
 `--privacy-mode summary` omits command transcript content and full diffs from
@@ -575,7 +575,7 @@ add detailed local artifacts.
 Check local integration readiness:
 
 ```powershell
-agentledger doctor --repo C:\path\to\repo
+agentledger doctor --repo D:\Projects\your-repo
 agentledger doctor --json
 ```
 
@@ -593,14 +593,14 @@ python -m agentledger --version
 Write a starter policy config:
 
 ```powershell
-agentledger init-config --repo C:\path\to\repo
-agentledger init-config --repo C:\path\to\repo --force
+agentledger init-config --repo D:\Projects\your-repo
+agentledger init-config --repo D:\Projects\your-repo --force
 ```
 
 Skip optional integrations:
 
 ```powershell
-agentledger run --repo C:\path\to\repo --no-repomori --no-jester --no-tokometer -- pytest
+agentledger run --repo D:\Projects\your-repo --no-repomori --no-jester --no-tokometer -- pytest
 ```
 
 Inspect a specific run:
@@ -913,7 +913,7 @@ This is the cost and usage layer.
 Override the Tokometer checkout path when needed:
 
 ```powershell
-$env:AGENTLEDGER_TOKOMETER_ROOT='C:\path\to\codex-token-gauge'
+$env:AGENTLEDGER_TOKOMETER_ROOT='D:\Projects\codex-token-gauge'
 ```
 
 ## Product Shape

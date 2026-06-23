@@ -76,19 +76,19 @@ The exact timestamp and paths will differ, but the shape should look like this:
 
 ```text
 AgentLedger demo: pass
-Workspace: C:\Users\you\AppData\Local\Temp\agentledger-demo-...
-Demo repo: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\demo-repo
-Evidence output: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output
+Workspace: D:\Temp\agentledger-demo-...
+Demo repo: D:\Temp\agentledger-demo-...\demo-repo
+Evidence output: D:\Temp\agentledger-demo-...\agentledger-output
 What happened:
 - Created an isolated demo git repo.
-- Captured command: C:\path\to\python.exe -B -m unittest test_demo.py
+- Captured command: python -B -m unittest test_demo.py
 - Wrote local Markdown, HTML, JSON, and zip evidence.
 - Privacy mode: summary
-Latest run: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345
-Markdown report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.md
-JSON report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.json
-HTML report: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.html
-Bundle: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
+Latest run: D:\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345
+Markdown report: D:\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.md
+JSON report: D:\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.json
+HTML report: D:\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345\agentledger-report.html
+Bundle: D:\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
 Read first:
 - Open the Markdown report for the human summary.
 - Run status when you want the pass/warn/block verdict.
@@ -96,13 +96,13 @@ Alpha packet:
 - Printed when `try` or `demo --packet` is used.
 - Shows the issue/comment draft, Markdown packet, JSON packet, and latest packet pointer.
 Review/share after reading:
-- Issue/comment draft: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-issue.md
-- Markdown packet: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-handoff.md
-- JSON packet: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-handoff.json
+- Issue/comment draft: D:\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-issue.md
+- Markdown packet: D:\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-handoff.md
+- JSON packet: D:\Temp\agentledger-demo-...\agentledger-alpha-packet\agentledger-alpha-handoff.json
 Keep local:
-- Demo workspace: C:\Users\you\AppData\Local\Temp\agentledger-demo-...
-- Raw evidence output: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output
-- Zip bundle: C:\Users\you\AppData\Local\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
+- Demo workspace: D:\Temp\agentledger-demo-...
+- Raw evidence output: D:\Temp\agentledger-demo-...\agentledger-output
+- Zip bundle: D:\Temp\agentledger-demo-...\agentledger-output\2026-06-17T000000Z0000-abc12345.zip
 - Raw AgentLedger evidence unless someone explicitly asks for it.
 Feedback to include:
 - Command used, such as python -m agentledger try or python -m agentledger alpha --repo . --out .agentledger.

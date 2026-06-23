@@ -138,6 +138,26 @@ def test_code_spanned_repo_file_references_exist() -> None:
     assert not missing, "Missing documented repo file references:\n" + "\n".join(missing)
 
 
+def test_public_docs_do_not_suggest_c_drive_storage() -> None:
+    paths = sorted(
+        [
+            ROOT / "README.md",
+            *ROOT.joinpath("docs").glob("*.md"),
+            *ROOT.joinpath(".github", "ISSUE_TEMPLATE").glob("*.md"),
+        ]
+    )
+    forbidden = ("C:\\", "C:/", "C:\\Users", "OneDrive")
+    offenders = []
+
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        for token in forbidden:
+            if token in text:
+                offenders.append(f"{path.relative_to(ROOT)} contains {token!r}")
+
+    assert not offenders, "Public docs should avoid C-drive storage examples:\n" + "\n".join(offenders)
+
+
 def test_readme_public_alpha_config_matches_repository_config() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     config = (ROOT / ".agentledger.toml").read_text(encoding="utf-8")
