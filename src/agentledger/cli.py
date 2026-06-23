@@ -1901,7 +1901,7 @@ def _alpha_troubleshooting_steps(repo_arg: str, out_arg: str) -> list[dict[str, 
             "area": "install",
             "when": "agentledger is not found, --version fails, or Python/Git setup looks wrong",
             "check": (
-                'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"; '
+                'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"; '
                 f"python -m agentledger doctor --repo {repo_arg}"
             ),
             "next": "Read any Doctor Hint lines first; optional RepoMori/Jester/Tokometer warnings are okay for alpha.",
@@ -1965,7 +1965,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
     out_arg = _alpha_guide_out_arg(args, config)
     commands = {
         "setup": [
-            'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"',
+            'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"',
             'python -m pip install -e ".[dev]"',
             "python -m agentledger --version",
             f"python -m agentledger doctor --repo {repo_arg}",

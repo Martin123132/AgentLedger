@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.1.24-alpha - 2026-06-23
+
+- Carries forward the unpublished 0.1.23 alpha feedback readiness docs,
+  including the checked support-packet Markdown feedback path and maintainer
+  release-readiness checklist.
+- Replaced public C-drive examples with D-drive project/temp examples and added
+  a docs guard so README, docs, and issue templates do not suggest C-drive or
+  OneDrive storage paths.
+
 ## 0.1.23-alpha - 2026-06-22
 
 - Added a checked GitHub alpha feedback issue-template path for
