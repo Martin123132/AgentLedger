@@ -178,7 +178,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
     assert "[docs/first-run.md](docs/first-run.md)" in readme
     assert "[docs/install.md](docs/install.md)" in readme
     assert "[docs/alpha-troubleshooting.md](docs/alpha-troubleshooting.md)" in readme
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"' in readme
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"' in readme
     assert "python -m agentledger try" in first_run
     assert "python -m agentledger demo" in first_run
     assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
@@ -190,7 +190,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
 def test_install_doc_covers_public_tag_and_source_check() -> None:
     install_doc = (ROOT / "docs" / "install.md").read_text(encoding="utf-8")
 
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"' in install_doc
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"' in install_doc
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@master"' in install_doc
     assert 'python -m pip install -e ".[dev]"' in install_doc
     assert "scripts/install-source-check.ps1" in install_doc
@@ -373,9 +373,9 @@ def test_support_packet_markdown_issue_template_is_checked(
     assert "Support-packet Markdown feedback" in issue_template
     assert "Support-packet Markdown feedback" in qa_note
     assert "Support-packet Markdown feedback" in feedback_template
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"' in issue_template
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"' in issue_template
     assert "python -m agentledger --version" in issue_template
-    assert "v0.1.23-alpha" in issue_template
+    assert "v0.1.24-alpha" in issue_template
 
     match = re.search(
         r"```powershell\n(?P<command>python -m agentledger support-packet --format markdown --out <private-output-dir>)\n```",
@@ -438,7 +438,7 @@ def test_alpha_feedback_readiness_note_is_checked(
     assert ".github/ISSUE_TEMPLATE/alpha-feedback.md" in readiness
     assert "Support-packet Markdown feedback" in readiness
     assert "Support-packet Markdown feedback" in issue_template
-    assert "v0.1.23-alpha" in readiness
+    assert "v0.1.24-alpha" in readiness
     assert "installed version and install method" in readiness
     assert "sanitized Markdown snippets" in release_process
     assert "copy-ready headings" in release_process

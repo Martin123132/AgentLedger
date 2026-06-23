@@ -69,7 +69,7 @@ Install the current alpha tag from GitHub and run the safe try path before
 pointing AgentLedger at a real repository:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"
 python -m agentledger try
 ```
 
@@ -255,23 +255,23 @@ powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1
 powershell -ExecutionPolicy Bypass -File scripts/alpha.ps1 -JsonOutput $env:TEMP\agentledger-alpha-summary.json
 python -m agentledger alpha-summary --out .agentledger
 python -m agentledger alpha-summary --format json $env:TEMP\agentledger-alpha-summary.json
-python scripts/release_command_index.py --version 0.1.23a0 --date 2026-06-22 --format markdown --output $env:TEMP\agentledger-release-command-index.md
+python scripts/release_command_index.py --version 0.1.24a0 --date 2026-06-23 --format markdown --output $env:TEMP\agentledger-release-command-index.md
 python scripts/check_release_process.py
 python scripts/release_readiness_report.py --format markdown --output $env:TEMP\agentledger-release-readiness-report.md
-python scripts/rehearse_release.py --version 0.1.23a0 --date 2026-06-22 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha
-python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha\release-rehearsal-manifest.json
-python scripts/release_artifact_doctor.py --version 0.1.23a0 --stage rehearsal --rehearsal-manifest $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha\release-rehearsal-manifest.json
-python scripts/release_rehearsal_receipt.py $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha\release-rehearsal-manifest.json --format markdown --output $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha\release-rehearsal-receipt.md
+python scripts/rehearse_release.py --version 0.1.24a0 --date 2026-06-23 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha
+python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha\release-rehearsal-manifest.json
+python scripts/release_artifact_doctor.py --version 0.1.24a0 --stage rehearsal --rehearsal-manifest $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha\release-rehearsal-manifest.json
+python scripts/release_rehearsal_receipt.py $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha\release-rehearsal-manifest.json --format markdown --output $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha\release-rehearsal-receipt.md
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit -JsonOutput $env:TEMP\agentledger-release-check.json
 python scripts/release_check_summary.py $env:TEMP\agentledger-release-check.json --output $env:TEMP\agentledger-release-check-summary.md
-python scripts/release_artifact_doctor.py --version 0.1.23a0 --stage final-notes --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md
-python scripts/finalize_release_notes.py --version 0.1.23a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.23-alpha-release.md
-python scripts/check_github_release.py --version 0.1.23a0 --format json --output $env:TEMP\agentledger-github-release-check.json
-python scripts/check_github_release.py --version 0.1.23a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
-python scripts/release_evidence_packet.py --version 0.1.23a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.23-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json --output $env:TEMP\agentledger-release-evidence.md --json-output $env:TEMP\agentledger-release-evidence.json
-python scripts/release_artifact_doctor.py --version 0.1.23a0 --stage post-release --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.23-alpha-release.md
-python scripts/post_release_check.py --version 0.1.23a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.23-alpha-release.md --output-dir $env:TEMP\agentledger-post-release-0.1.23-alpha
+python scripts/release_artifact_doctor.py --version 0.1.24a0 --stage final-notes --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md
+python scripts/finalize_release_notes.py --version 0.1.24a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --pr-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<pr-run> --master-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<master-run> --release-readiness-url https://github.com/Martin123132/AgentLedger/actions/runs/<release-readiness-run> --tag-ci-url https://github.com/Martin123132/AgentLedger/actions/runs/<tag-run> --merge-sha <merge-sha> --output $env:TEMP\agentledger-0.1.24-alpha-release.md
+python scripts/check_github_release.py --version 0.1.24a0 --format json --output $env:TEMP\agentledger-github-release-check.json
+python scripts/check_github_release.py --version 0.1.24a0 --format markdown --output $env:TEMP\agentledger-github-release-check.md
+python scripts/release_evidence_packet.py --version 0.1.24a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.24-alpha-release.md --github-release-check-json $env:TEMP\agentledger-github-release-check.json --output $env:TEMP\agentledger-release-evidence.md --json-output $env:TEMP\agentledger-release-evidence.json
+python scripts/release_artifact_doctor.py --version 0.1.24a0 --stage post-release --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.24-alpha-release.md
+python scripts/post_release_check.py --version 0.1.24a0 --release-check-json $env:TEMP\agentledger-release-check.json --release-check-summary $env:TEMP\agentledger-release-check-summary.md --release-notes $env:TEMP\agentledger-0.1.24-alpha-release.md --output-dir $env:TEMP\agentledger-post-release-0.1.24-alpha
 ```
 
 ```bash
@@ -325,7 +325,7 @@ temporary environment when it finishes.
 `scripts/install-source-check.ps1` installs AgentLedger from a pip source spec
 into a temporary virtual environment, verifies `python -m agentledger --version`,
 runs `python -m agentledger demo --format json`, and removes the temporary
-workspace when it finishes. Pass `-Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.23-alpha"`
+workspace when it finishes. Pass `-Source "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"`
 to verify the public GitHub tag path.
 
 Alpha one-command pass:
@@ -391,20 +391,20 @@ issues, short posts, or alpha updates after review.
 Alpha release readiness:
 
 ```powershell
-python scripts/release_command_index.py --version 0.1.23a0 --date 2026-06-22
-python scripts/check_release_process.py --version 0.1.23a0 --date 2026-06-22
+python scripts/release_command_index.py --version 0.1.24a0 --date 2026-06-23
+python scripts/check_release_process.py --version 0.1.24a0 --date 2026-06-23
 python scripts/release_readiness_report.py --format markdown --output $env:TEMP\agentledger-release-readiness-report.md
-python scripts/rehearse_release.py --version 0.1.23a0 --date 2026-06-22 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha
-python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha\release-rehearsal-manifest.json
-python scripts/release_rehearsal_receipt.py $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha\release-rehearsal-manifest.json --format markdown --output $env:TEMP\agentledger-release-rehearsal-0.1.23-alpha\release-rehearsal-receipt.md
-python scripts/prepare_release.py --version 0.1.23a0 --date 2026-06-22 --dry-run
-python scripts/prepare_release.py --version 0.1.23a0 --date 2026-06-22 --release-notes-output $env:TEMP\agentledger-0.1.23-alpha-release.md
+python scripts/rehearse_release.py --version 0.1.24a0 --date 2026-06-23 --output-dir $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha
+python scripts/verify_release_rehearsal.py $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha\release-rehearsal-manifest.json
+python scripts/release_rehearsal_receipt.py $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha\release-rehearsal-manifest.json --format markdown --output $env:TEMP\agentledger-release-rehearsal-0.1.24-alpha\release-rehearsal-receipt.md
+python scripts/prepare_release.py --version 0.1.24a0 --date 2026-06-23 --dry-run
+python scripts/prepare_release.py --version 0.1.24a0 --date 2026-06-23 --release-notes-output $env:TEMP\agentledger-0.1.24-alpha-release.md
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1
 powershell -ExecutionPolicy Bypass -File scripts/release-check.ps1 -RequireCleanGit
 powershell -ExecutionPolicy Bypass -File scripts/release-dry-run.ps1
-python scripts/release_notes.py --version 0.1.23a0 --check
-python scripts/release_notes.py --version 0.1.23-alpha --output $env:TEMP\agentledger-0.1.23-alpha-release.md
-python scripts/release_notes.py --version 0.1.23a0 --notes-file $env:TEMP\agentledger-0.1.23-alpha-release.md --check-publish-ready
+python scripts/release_notes.py --version 0.1.24a0 --check
+python scripts/release_notes.py --version 0.1.24-alpha --output $env:TEMP\agentledger-0.1.24-alpha-release.md
+python scripts/release_notes.py --version 0.1.24a0 --notes-file $env:TEMP\agentledger-0.1.24-alpha-release.md --check-publish-ready
 ```
 
 That script checks version consistency, release-process documentation alignment,
