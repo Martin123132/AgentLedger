@@ -68,4 +68,5 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 ```
 
 The public license allows non-commercial use under `LICENSE`. Commercial use
-requires separate written permission; see `COMMERCIAL.md`.
+requires separate written permission; see `COMMERCIAL.md` and
+`COMMERCIAL-LICENSE.md`.
