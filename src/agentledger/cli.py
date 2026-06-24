@@ -2232,6 +2232,16 @@ def _handle_status(args: argparse.Namespace) -> int:
     print(f"HTML report: {paths['html']}")
     if paths["zip"]:
         print(f"Zip bundle: {paths['zip']}")
+    print("Read first:")
+    print(f"- Markdown report: {paths['markdown']}")
+    print(f"- Status verdict: {status} ({check['summary']})")
+    if check["blocking_rules"]:
+        print("- Fix blockers before accepting or sharing the run.")
+    elif check["warning_rules"]:
+        print("- Review warning rules before accepting the run.")
+    else:
+        print("- Keep or share only evidence you have reviewed.")
+    print("- Keep raw .agentledger evidence, zip bundles, and transcripts private by default.")
     if check["blocking_rules"]:
         print("Blockers:")
         for rule in check["blocking_rules"]:

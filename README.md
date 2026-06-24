@@ -654,7 +654,9 @@ agentledger status --out .agentledger --format json --allow-warnings
 ```
 
 `status` uses the same pass/warn/block policy as `review`, then adds local
-feedback counts so an alpha pass can start from one compact command.
+feedback counts so an alpha pass can start from one compact command. Text
+output includes a `Read first:` block with the Markdown report, verdict, and
+privacy reminder so testers know what to review before sharing notes.
 
 Inspect the latest one-command alpha pass summary:
 

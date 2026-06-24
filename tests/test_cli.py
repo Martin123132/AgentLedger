@@ -1116,6 +1116,11 @@ def test_status_summarizes_latest_run_and_feedback(tmp_path: Path, capsys) -> No
     assert f"Latest run: {latest_dir}" in output
     assert "Feedback: 1 total entries across 1 runs; latest run has 1" in output
     assert f"Markdown report: {latest_dir / 'agentledger-report.md'}" in output
+    assert "Read first:" in output
+    assert f"- Markdown report: {latest_dir / 'agentledger-report.md'}" in output
+    assert "- Status verdict: warn (2 warnings; review before accepting.)" in output
+    assert "- Review warning rules before accepting the run." in output
+    assert "- Keep raw .agentledger evidence, zip bundles, and transcripts private by default." in output
     assert "Use feedback-summary or feedback-export before sharing alpha notes." in output
 
     assert cli.main(["status", "--repo", str(repo), "--out", str(out), "--format", "json", "--allow-warnings"]) == 0

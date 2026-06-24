@@ -186,6 +186,8 @@ def test_first_run_doc_is_linked_from_readme() -> None:
     assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
     assert "docs/install.md" in first_run
     assert "docs/alpha-troubleshooting.md" in first_run
+    assert "`Read first:` block" in readme
+    assert "`Read first:` block" in first_run
     assert "Do not commit or upload:" in first_run
 
 

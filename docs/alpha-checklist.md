@@ -85,6 +85,8 @@ Expected result:
   - `python -m agentledger alpha-guide --out .agentledger --format json`
   - `python -m agentledger status --out .agentledger --allow-warnings`
   - `python -m agentledger status --out .agentledger --format json --allow-warnings`
+  - Text status output should include a `Read first:` block with the Markdown
+    report, verdict, and private-evidence reminder.
 - Inspect the one-command alpha summary if `agentledger alpha` or `scripts/alpha.ps1` was run:
   - `python -m agentledger alpha-summary --out .agentledger`
   - `python -m agentledger alpha-summary --out .agentledger --format json`
