@@ -104,6 +104,8 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 ```
 
 See [docs/first-run.md](docs/first-run.md) for the short walkthrough,
+[docs/public-alpha-trial.md](docs/public-alpha-trial.md) for the public alpha
+tester loop,
 [docs/demo.md](docs/demo.md) for expected output, and
 [docs/install.md](docs/install.md) for clone, editable install, source-check,
 and uninstall commands. If a tester gets stuck, use
