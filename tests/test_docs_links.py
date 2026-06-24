@@ -63,6 +63,7 @@ SUPPORT_PACKET_MARKDOWN_EXAMPLE = ROOT / "docs" / "support-packet-markdown-examp
 SUPPORT_PACKET_MARKDOWN_QA = ROOT / "docs" / "support-packet-markdown-qa.md"
 ALPHA_FEEDBACK_ISSUE_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "alpha-feedback.md"
 ALPHA_FEEDBACK_READINESS = ROOT / "docs" / "alpha-feedback-readiness.md"
+PUBLIC_ALPHA_TRIAL = ROOT / "docs" / "public-alpha-trial.md"
 
 
 def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
@@ -196,6 +197,43 @@ def test_install_doc_covers_public_tag_and_source_check() -> None:
     assert "scripts/install-source-check.ps1" in install_doc
     assert "python -m pip uninstall agentledger" in install_doc
     assert "Do not commit or upload `.agentledger/`" in install_doc
+
+
+def test_public_alpha_trial_doc_is_checked() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    trial = PUBLIC_ALPHA_TRIAL.read_text(encoding="utf-8")
+    compact_trial = " ".join(trial.split())
+    commercial = (ROOT / "COMMERCIAL.md").read_text(encoding="utf-8")
+
+    assert "[docs/public-alpha-trial.md](docs/public-alpha-trial.md)" in readme
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"' in trial
+    assert "agentledger 0.1.24a0" in trial
+
+    for command in [
+        "python -m agentledger --version",
+        "python -m agentledger try",
+        "python -m agentledger support-packet --format markdown",
+        "python -m agentledger alpha-guide --repo . --out .agentledger",
+    ]:
+        assert command in trial
+
+    for marker in [
+        "D:\\Projects\\your-repo",
+        "raw `.agentledger/` evidence folders",
+        "zip evidence bundles",
+        "command transcripts",
+        "signing keys",
+        "temp workspaces",
+        "private repo paths",
+        "private URLs",
+        "credentials, tokens, or secrets",
+        "customer data",
+    ]:
+        assert marker in trial
+
+    assert "The public license allows non-commercial use under `LICENSE`." in compact_trial
+    assert "Commercial use requires separate written permission; see `COMMERCIAL.md`." in compact_trial
+    assert "Commercial use is not granted by the public license." in commercial
 
 
 def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -> None:
