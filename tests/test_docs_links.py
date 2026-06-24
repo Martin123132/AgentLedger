@@ -34,6 +34,7 @@ REPO_FILE_NAMES = {
     ".gitignore",
     "ALPHA.md",
     "CHANGELOG.md",
+    "COMMERCIAL-LICENSE.md",
     "COMMERCIAL.md",
     "LICENSE",
     "README.md",
@@ -204,6 +205,7 @@ def test_public_alpha_trial_doc_is_checked() -> None:
     trial = PUBLIC_ALPHA_TRIAL.read_text(encoding="utf-8")
     compact_trial = " ".join(trial.split())
     commercial = (ROOT / "COMMERCIAL.md").read_text(encoding="utf-8")
+    commercial_license = (ROOT / "COMMERCIAL-LICENSE.md").read_text(encoding="utf-8")
 
     assert "[docs/public-alpha-trial.md](docs/public-alpha-trial.md)" in readme
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"' in trial
@@ -232,8 +234,12 @@ def test_public_alpha_trial_doc_is_checked() -> None:
         assert marker in trial
 
     assert "The public license allows non-commercial use under `LICENSE`." in compact_trial
-    assert "Commercial use requires separate written permission; see `COMMERCIAL.md`." in compact_trial
+    assert (
+        "Commercial use requires separate written permission; see `COMMERCIAL.md` and "
+        "`COMMERCIAL-LICENSE.md`."
+    ) in compact_trial
     assert "Commercial use is not granted by the public license." in commercial
+    assert "TWO HANDS NETWORK LTD" in commercial_license
 
 
 def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -> None:
