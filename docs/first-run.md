@@ -43,8 +43,9 @@ The demo output prints:
 - `Next real repo`: the read-only alpha-guide command to run from your own repository
 
 Open the Markdown report first, then run the printed `status` command for the
-pass/warn/block verdict. Evidence is local proof first. Review reports before
-sharing them.
+pass/warn/block verdict. The status output includes a `Read first:` block that
+repeats the Markdown report, verdict, and private-evidence reminder. Evidence
+is local proof first. Review reports before sharing them.
 
 ## Report Feedback
 
