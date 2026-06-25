@@ -104,6 +104,8 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 ```
 
 See [docs/first-run.md](docs/first-run.md) for the short walkthrough,
+[docs/alpha-install-confidence.md](docs/alpha-install-confidence.md) for the
+known-good public alpha install check,
 [docs/public-alpha-trial.md](docs/public-alpha-trial.md) for the public alpha
 tester loop,
 [docs/demo.md](docs/demo.md) for expected output, and
@@ -299,6 +301,7 @@ Alpha docs:
 - `ALPHA.md`
 - `.github/ISSUE_TEMPLATE/alpha-feedback.md`
 - `docs/install.md`
+- `docs/alpha-install-confidence.md`
 - `docs/first-run.md`
 - `docs/demo.md`
 - `docs/alpha-checklist.md`

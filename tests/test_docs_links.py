@@ -65,6 +65,7 @@ SUPPORT_PACKET_MARKDOWN_QA = ROOT / "docs" / "support-packet-markdown-qa.md"
 ALPHA_FEEDBACK_ISSUE_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "alpha-feedback.md"
 ALPHA_FEEDBACK_READINESS = ROOT / "docs" / "alpha-feedback-readiness.md"
 PUBLIC_ALPHA_TRIAL = ROOT / "docs" / "public-alpha-trial.md"
+ALPHA_INSTALL_CONFIDENCE = ROOT / "docs" / "alpha-install-confidence.md"
 
 
 def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
@@ -198,8 +199,52 @@ def test_install_doc_covers_public_tag_and_source_check() -> None:
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@master"' in install_doc
     assert 'python -m pip install -e ".[dev]"' in install_doc
     assert "scripts/install-source-check.ps1" in install_doc
+    assert "docs/alpha-install-confidence.md" in install_doc
     assert "python -m pip uninstall agentledger" in install_doc
     assert "Do not commit or upload `.agentledger/`" in install_doc
+
+
+def test_alpha_install_confidence_doc_is_checked() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    install_doc = (ROOT / "docs" / "install.md").read_text(encoding="utf-8")
+    first_run = (ROOT / "docs" / "first-run.md").read_text(encoding="utf-8")
+    trial = PUBLIC_ALPHA_TRIAL.read_text(encoding="utf-8")
+    confidence = ALPHA_INSTALL_CONFIDENCE.read_text(encoding="utf-8")
+
+    assert "[docs/alpha-install-confidence.md](docs/alpha-install-confidence.md)" in readme
+    assert "docs/alpha-install-confidence.md" in install_doc
+    assert "docs/alpha-install-confidence.md" in first_run
+    assert "docs/alpha-install-confidence.md" in trial
+    assert "`v0.1.25-alpha` is the current checked public alpha tag." in confidence
+    assert "agentledger 0.1.25a0" in confidence
+    assert "public install-from-tag smoke check" in confidence
+
+    for command in [
+        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.25-alpha"',
+        "python -m agentledger --version",
+        "python -m agentledger try",
+        "python -m agentledger alpha-guide --repo . --out .agentledger",
+        "python -m agentledger alpha --repo . --out .agentledger",
+        "python -m agentledger status --out .agentledger --allow-warnings",
+        "python -m agentledger support-packet --format markdown",
+    ]:
+        assert command in confidence
+
+    for marker in [
+        "Open the printed Markdown report first",
+        "printed `status` command",
+        "sanitized issue/comment body",
+        ".agentledger/` evidence folders",
+        "zip evidence bundles",
+        "command transcripts",
+        "signing keys",
+        "temporary workspaces",
+        "private repo paths",
+        "private URLs",
+        "credentials, tokens, or secrets",
+        "customer data",
+    ]:
+        assert marker in confidence
 
 
 def test_public_alpha_trial_doc_is_checked() -> None:

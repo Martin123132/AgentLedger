@@ -16,6 +16,9 @@ Expected version:
 agentledger 0.1.25a0
 ```
 
+For the checked install receipt and the shortest confidence loop, see
+`docs/alpha-install-confidence.md`.
+
 ## Safe First Run
 
 ```powershell

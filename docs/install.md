@@ -14,6 +14,9 @@ python -m agentledger --version
 python -m agentledger try
 ```
 
+For the current known-good tag, expected version, safe demo, real-repo loop, and
+privacy checklist, see `docs/alpha-install-confidence.md`.
+
 ## From Latest Master
 
 Use `master` when you want the newest unreleased docs and CLI polish:
