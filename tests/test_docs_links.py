@@ -244,6 +244,19 @@ def test_public_alpha_trial_doc_is_checked() -> None:
     assert "TWO HANDS NETWORK LTD" in commercial_license
 
 
+def test_license_contact_footer_is_present() -> None:
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    contact_block = """
+## Contact us
+
+For collaboration, information on existing products, or other enquiries, please contact (via Email):
+
+Glyn : glyn@twohandsnetwork.co.uk
+""".strip()
+
+    assert license_text.strip().endswith(contact_block)
+
+
 def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -> None:
     preferred_command = "python -m agentledger alpha --repo . --out .agentledger"
     guide_command = "python -m agentledger alpha-guide --repo . --out .agentledger"
