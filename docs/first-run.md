@@ -21,8 +21,9 @@ path tour. Add
 `--summary-output $env:TEMP\agentledger-demo-summary.md` when you want a
 path-free Markdown summary to review before sharing.
 For development checkouts, editable installs, source checks, and uninstall
-commands, see `docs/install.md`. If the install, command, packet, or reporting
-step is unclear, see `docs/alpha-troubleshooting.md`.
+commands, see `docs/install.md`. For the checked public alpha install receipt,
+see `docs/alpha-install-confidence.md`. If the install, command, packet, or
+reporting step is unclear, see `docs/alpha-troubleshooting.md`.
 
 ## What To Look At
 
