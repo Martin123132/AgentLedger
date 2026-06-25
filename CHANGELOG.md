@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.1.25-alpha - 2026-06-25
+
+- Added a `Read first:` block to text-mode `agentledger status` so alpha
+  testers can find the Markdown report, verdict, and private-evidence reminder
+  before sharing notes.
+- Added the requested collaboration/enquiries contact footer to the live
+  `LICENSE` file and pinned it with a docs check.
+
 ## 0.1.24-alpha - 2026-06-23
 
 - Carries forward the unpublished 0.1.23 alpha feedback readiness docs,
