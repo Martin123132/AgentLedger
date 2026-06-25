@@ -10,7 +10,7 @@ process in `docs/release-process.md`.
 - Issues filed with `.github/ISSUE_TEMPLATE/alpha-feedback.md`, especially the
   `Support-packet Markdown feedback` section.
 - Sanitized Markdown snippets only, not full reports or raw local evidence.
-- The installed version and install method, for example `v0.1.24-alpha` from
+- The installed version and install method, for example `v0.1.25-alpha` from
   the public GitHub tag.
 - The command the tester ran:
 

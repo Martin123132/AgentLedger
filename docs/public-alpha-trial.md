@@ -6,14 +6,14 @@ useful feedback without sharing raw evidence.
 ## Install
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.24-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.25-alpha"
 python -m agentledger --version
 ```
 
 Expected version:
 
 ```text
-agentledger 0.1.24a0
+agentledger 0.1.25a0
 ```
 
 ## Safe First Run
