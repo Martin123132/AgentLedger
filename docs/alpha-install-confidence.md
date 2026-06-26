@@ -64,4 +64,5 @@ Do not paste, upload, commit, or attach raw evidence by default:
 - customer data
 
 For troubleshooting, see `docs/alpha-troubleshooting.md`. For the wider tester
-loop, see `docs/public-alpha-trial.md`.
+loop, see `docs/public-alpha-trial.md`. For a short privacy-safe sharing script,
+see `docs/public-demo-script.md`.
