@@ -66,6 +66,7 @@ ALPHA_FEEDBACK_ISSUE_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "alpha-fee
 ALPHA_FEEDBACK_READINESS = ROOT / "docs" / "alpha-feedback-readiness.md"
 PUBLIC_ALPHA_TRIAL = ROOT / "docs" / "public-alpha-trial.md"
 ALPHA_INSTALL_CONFIDENCE = ROOT / "docs" / "alpha-install-confidence.md"
+PUBLIC_DEMO_SCRIPT = ROOT / "docs" / "public-demo-script.md"
 
 
 def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
@@ -245,6 +246,46 @@ def test_alpha_install_confidence_doc_is_checked() -> None:
         "customer data",
     ]:
         assert marker in confidence
+
+
+def test_public_demo_script_doc_is_checked() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    confidence = ALPHA_INSTALL_CONFIDENCE.read_text(encoding="utf-8")
+    demo_script = PUBLIC_DEMO_SCRIPT.read_text(encoding="utf-8")
+
+    assert "[docs/public-demo-script.md](docs/public-demo-script.md)" in readme
+    assert "docs/public-demo-script.md" in confidence
+    assert "Three Command Demo" in demo_script
+    assert "Share This" in demo_script
+    assert "Keep Private" in demo_script
+
+    for command in [
+        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.25-alpha"',
+        "python -m agentledger try",
+        "python -m agentledger support-packet --format markdown",
+        "python -m agentledger alpha-guide --repo . --out .agentledger",
+        "python -m agentledger alpha --repo . --out .agentledger",
+        "python -m agentledger status --out .agentledger --allow-warnings",
+    ]:
+        assert command in demo_script
+
+    for marker in [
+        "local-first black box recorder for AI coding agents",
+        "Raw evidence stays local by default.",
+        "support-packet Markdown headings",
+        "whether local paths and raw evidence stayed private",
+        "Share only reviewed snippets",
+        ".agentledger/` evidence folders",
+        "zip evidence bundles",
+        "command transcripts",
+        "signing keys",
+        "temporary workspaces",
+        "private repo paths",
+        "private URLs",
+        "credentials, tokens, or secrets",
+        "customer data",
+    ]:
+        assert marker in demo_script
 
 
 def test_public_alpha_trial_doc_is_checked() -> None:
