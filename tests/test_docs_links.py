@@ -193,6 +193,22 @@ def test_first_run_doc_is_linked_from_readme() -> None:
     assert "Do not commit or upload:" in first_run
 
 
+def test_readme_opening_has_safe_first_look_path() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    opening = "\n".join(readme.splitlines()[:35])
+
+    assert "## First Look" in opening
+    assert "Run the safe demo first" in opening
+    assert "temporary repo" in opening
+    assert "keeps raw evidence local by default" in opening
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.26-alpha"' in opening
+    assert "python -m agentledger try" in opening
+    assert "python -m agentledger support-packet --format markdown" in opening
+    assert "Markdown/HTML/JSON reports" in opening
+    assert "review/share candidates" in opening
+    assert "evidence folders and zip bundles should stay private" in opening
+
+
 def test_install_doc_covers_public_tag_and_source_check() -> None:
     install_doc = (ROOT / "docs" / "install.md").read_text(encoding="utf-8")
 
