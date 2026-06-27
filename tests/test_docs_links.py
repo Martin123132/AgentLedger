@@ -24,6 +24,7 @@ EXTERNAL_TARGET_PREFIXES = (
 REPO_FILE_PREFIXES = (
     ".github/",
     "docs/",
+    "examples/",
     "scripts/",
     "src/",
     "tests/",
@@ -67,6 +68,7 @@ ALPHA_FEEDBACK_READINESS = ROOT / "docs" / "alpha-feedback-readiness.md"
 PUBLIC_ALPHA_TRIAL = ROOT / "docs" / "public-alpha-trial.md"
 ALPHA_INSTALL_CONFIDENCE = ROOT / "docs" / "alpha-install-confidence.md"
 PUBLIC_DEMO_SCRIPT = ROOT / "docs" / "public-demo-script.md"
+SANITIZED_FIRST_RUN_OUTPUT = ROOT / "examples" / "sanitized-first-run-output.md"
 
 
 def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
@@ -77,7 +79,13 @@ def _help_output(capsys: pytest.CaptureFixture[str], *args: str) -> str:
 
 
 def _markdown_files() -> list[Path]:
-    return sorted([*ROOT.glob("*.md"), *ROOT.joinpath("docs").glob("*.md")])
+    return sorted(
+        [
+            *ROOT.glob("*.md"),
+            *ROOT.joinpath("docs").glob("*.md"),
+            *ROOT.joinpath("examples").glob("*.md"),
+        ]
+    )
 
 
 def _link_target_path(markdown_file: Path, raw_target: str) -> Path | None:
@@ -147,6 +155,7 @@ def test_public_docs_do_not_suggest_c_drive_storage() -> None:
         [
             ROOT / "README.md",
             *ROOT.joinpath("docs").glob("*.md"),
+            *ROOT.joinpath("examples").glob("*.md"),
             *ROOT.joinpath(".github", "ISSUE_TEMPLATE").glob("*.md"),
         ]
     )
@@ -195,7 +204,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
 
 def test_readme_opening_has_safe_first_look_path() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    opening = "\n".join(readme.splitlines()[:35])
+    opening = "\n".join(readme.splitlines()[:40])
 
     assert "## First Look" in opening
     assert "Run the safe demo first" in opening
@@ -207,6 +216,44 @@ def test_readme_opening_has_safe_first_look_path() -> None:
     assert "Markdown/HTML/JSON reports" in opening
     assert "review/share candidates" in opening
     assert "evidence folders and zip bundles should stay private" in opening
+    assert "[examples/sanitized-first-run-output.md](examples/sanitized-first-run-output.md)" in opening
+
+
+def test_sanitized_first_run_example_is_checked() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    example = SANITIZED_FIRST_RUN_OUTPUT.read_text(encoding="utf-8")
+
+    assert "[examples/sanitized-first-run-output.md](examples/sanitized-first-run-output.md)" in readme
+    assert "[docs/support-packet-markdown-example.md](../docs/support-packet-markdown-example.md)" in example
+    assert "[docs/public-demo-script.md](../docs/public-demo-script.md)" in example
+
+    for marker in [
+        "not a real evidence bundle",
+        "not a transcript",
+        "placeholders instead of local paths",
+        "python -m agentledger try",
+        "python -m agentledger support-packet --format markdown",
+        "Markdown report: <agentledger-output>/<run-id>/agentledger-report.md",
+        "JSON report: <agentledger-output>/<run-id>/agentledger-report.json",
+        "HTML report: <agentledger-output>/<run-id>/agentledger-report.html",
+        "Zip bundle: <agentledger-output>/<run-id>.zip",
+        "Share only reviewed packet snippets.",
+        "## AgentLedger alpha support report",
+        "Raw evidence copied: no",
+        "Local paths included: no",
+        "Raw evidence kept private: yes",
+        "Replace local paths with <agentledger-output>.",
+        "no supplied private output path appears anywhere",
+        "no raw `.agentledger/` folders or zip bundles are attached",
+        "private repo paths",
+        "private URLs",
+        "credentials",
+        "tokens",
+        "secrets",
+        "customer data",
+        "version and install method are included",
+    ]:
+        assert marker in example
 
 
 def test_install_doc_covers_public_tag_and_source_check() -> None:

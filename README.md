@@ -22,6 +22,9 @@ python -m agentledger support-packet --format markdown
 In the first minute you should see where the Markdown/HTML/JSON reports landed,
 which packet files are review/share candidates, and which `.agentledger/`
 evidence folders and zip bundles should stay private.
+Want to see the shape before running it? Open
+[examples/sanitized-first-run-output.md](examples/sanitized-first-run-output.md)
+for a public-safe report and support-packet excerpt.
 
 AgentLedger captures the boring evidence teams need when agents spend tokens,
 run commands, touch repositories, and claim work is done:
