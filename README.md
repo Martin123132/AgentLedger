@@ -8,6 +8,21 @@ Local-first black box recorder for AI coding agents.
 Source-available for non-commercial use under the PolyForm Noncommercial
 License 1.0.0. Commercial use requires separate permission.
 
+## First Look
+
+New here from GitHub? Run the safe demo first; it uses a temporary repo and
+keeps raw evidence local by default:
+
+```powershell
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.26-alpha"
+python -m agentledger try
+python -m agentledger support-packet --format markdown
+```
+
+In the first minute you should see where the Markdown/HTML/JSON reports landed,
+which packet files are review/share candidates, and which `.agentledger/`
+evidence folders and zip bundles should stay private.
+
 AgentLedger captures the boring evidence teams need when agents spend tokens,
 run commands, touch repositories, and claim work is done:
 
