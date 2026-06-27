@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.1.26-alpha - 2026-06-27
+
+- Added a checked alpha install confidence guide for `v0.1.25-alpha` so new
+  users can verify the known-good tag, expected version, quick demo, real-repo
+  loop, and private-evidence guardrails from one page.
+- Added a public demo script guide with a three-command shareable demo,
+  copy-ready public wording, and privacy reminders for sharing AgentLedger
+  without exposing raw evidence.
+
 ## 0.1.25-alpha - 2026-06-25
 
 - Added a `Read first:` block to text-mode `agentledger status` so alpha

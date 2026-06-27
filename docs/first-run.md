@@ -8,7 +8,7 @@ project.
 Install the current alpha tag from GitHub:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.25-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.26-alpha"
 python -m agentledger try
 ```
 
