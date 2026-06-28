@@ -67,6 +67,7 @@ ALPHA_FEEDBACK_ISSUE_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "alpha-fee
 ALPHA_FEEDBACK_READINESS = ROOT / "docs" / "alpha-feedback-readiness.md"
 PUBLIC_ALPHA_TRIAL = ROOT / "docs" / "public-alpha-trial.md"
 ALPHA_INSTALL_CONFIDENCE = ROOT / "docs" / "alpha-install-confidence.md"
+PUBLIC_ALPHA_RECIPES = ROOT / "docs" / "public-alpha-recipes.md"
 PUBLIC_DEMO_SCRIPT = ROOT / "docs" / "public-demo-script.md"
 SANITIZED_FIRST_RUN_OUTPUT = ROOT / "examples" / "sanitized-first-run-output.md"
 
@@ -349,6 +350,60 @@ def test_public_demo_script_doc_is_checked() -> None:
         "customer data",
     ]:
         assert marker in demo_script
+
+
+def test_public_alpha_recipes_doc_is_checked() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    recipes = PUBLIC_ALPHA_RECIPES.read_text(encoding="utf-8")
+
+    assert "[docs/public-alpha-recipes.md](docs/public-alpha-recipes.md)" in readme
+    assert "[first-run.md](first-run.md)" in recipes
+    assert "[../examples/sanitized-first-run-output.md](../examples/sanitized-first-run-output.md)" in recipes
+    assert "[public-demo-script.md](public-demo-script.md)" in recipes
+
+    for command in [
+        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.26-alpha"',
+        "python -m agentledger --version",
+        "python -m agentledger try",
+        "python -m agentledger run --repo . --out .agentledger -- python -m pytest",
+        "python -m agentledger run --repo . --out .agentledger -- python -m unittest discover",
+        "python -m agentledger run --repo . --out .agentledger -- npm test",
+        "python -m agentledger run --repo . --out .agentledger -- python -c \"print('hello from AgentLedger')\"",
+        "python -m agentledger run --repo . --out .agentledger --privacy-mode summary -- python -m pytest",
+        "python -m agentledger status --out .agentledger --allow-warnings",
+        "python -m agentledger open-latest --out .agentledger",
+        "python -m agentledger history --out .agentledger --limit 5",
+        "python -m agentledger inspect-report $run",
+        "python -m agentledger check --allow-warnings $run",
+        "python -m agentledger verify-bundle \"${run}.zip\"",
+        "python -m agentledger support-packet --format markdown",
+        "python -m agentledger pack-alpha --out .agentledger",
+        "python -m agentledger open-packet --out .agentledger",
+    ]:
+        assert command in recipes
+
+    for marker in [
+        "Capture Pytest",
+        "Capture Unittest",
+        "Capture Npm Test",
+        "Capture Any Command",
+        "Inspect The Latest Run",
+        "Share Feedback Safely",
+        "Keep Private",
+        "Open the printed Markdown report first.",
+        "Summary mode omits command transcript content and full diffs",
+        "Share only sanitized snippets",
+        "raw `.agentledger/` folders",
+        "zip evidence bundles",
+        "command transcripts",
+        "signing keys",
+        "temporary workspaces",
+        "private repo paths",
+        "private URLs",
+        "credentials, tokens, or secrets",
+        "customer data",
+    ]:
+        assert marker in recipes
 
 
 def test_public_alpha_trial_doc_is_checked() -> None:
