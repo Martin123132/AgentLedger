@@ -124,6 +124,9 @@ python -m agentledger alpha-guide --repo . --out .agentledger
 See [docs/first-run.md](docs/first-run.md) for the short walkthrough,
 [docs/alpha-install-confidence.md](docs/alpha-install-confidence.md) for the
 known-good public alpha install check,
+[docs/public-alpha-recipes.md](docs/public-alpha-recipes.md) for copy/paste
+recipes around `pytest`, `npm test`, generic commands, latest-report review,
+and safe feedback,
 [docs/public-demo-script.md](docs/public-demo-script.md) for a short
 privacy-safe sharing script,
 [docs/public-alpha-trial.md](docs/public-alpha-trial.md) for the public alpha
@@ -322,6 +325,7 @@ Alpha docs:
 - `.github/ISSUE_TEMPLATE/alpha-feedback.md`
 - `docs/install.md`
 - `docs/alpha-install-confidence.md`
+- `docs/public-alpha-recipes.md`
 - `docs/public-demo-script.md`
 - `docs/first-run.md`
 - `docs/demo.md`
