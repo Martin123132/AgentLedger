@@ -1,3 +1,3 @@
 """AgentLedger: local-first evidence capture for AI coding-agent work."""
 
-__version__ = "0.1.26a0"
+__version__ = "0.1.27a0"
