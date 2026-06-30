@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.1.27-alpha - 2026-06-30
+
+- Polished the README first-look path so new public-alpha users see the
+  install, `agentledger try`, and support-packet commands before the feature
+  list.
+- Added a sanitized first-run output example with placeholder report,
+  packet, and support-packet excerpts that are safe to inspect publicly.
+- Added checked public-alpha recipes for capturing `pytest`, `unittest`,
+  `npm test`, generic commands, latest-run inspection, and privacy-safe
+  feedback.
+
 ## 0.1.26-alpha - 2026-06-27
 
 - Added a checked alpha install confidence guide for `v0.1.25-alpha` so new

@@ -74,13 +74,13 @@ Reviewed feedback export or packet attached: yes/no
 ## Support-packet Markdown feedback
 
 Use this section for `agentledger support-packet --format markdown` feedback in
-`v0.1.26-alpha` or newer. Paste only a reviewed, sanitized snippet from the
+`v0.1.27-alpha` or newer. Paste only a reviewed, sanitized snippet from the
 generated Markdown body.
 
 Install method:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.26-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.27-alpha"
 python -m agentledger --version
 ```
 
