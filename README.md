@@ -157,7 +157,7 @@ python -m pip install -e ".[dev]"
 agentledger --version
 python -m agentledger try
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1
-python -m agentledger doctor --repo .
+python -m agentledger doctor --repo . --format markdown
 python -m agentledger alpha-guide --repo . --out .agentledger
 python -m agentledger run --repo . -- python -c "print('hello from AgentLedger')"
 ```
@@ -606,12 +606,14 @@ Check local integration readiness:
 
 ```powershell
 agentledger doctor --repo D:\Projects\your-repo
+agentledger doctor --repo D:\Projects\your-repo --format markdown
 agentledger doctor --json
 ```
 
 Doctor prints a `Hint:` line for missing required setup and optional
-integrations, so blocked alpha testers can usually fix the next step without
-reading the full guide.
+integrations. Use `--format markdown` when you want a copy-ready,
+path-redacted setup report for an issue or comment; it does not copy evidence
+or include raw local paths by default.
 
 Check the installed CLI version:
 

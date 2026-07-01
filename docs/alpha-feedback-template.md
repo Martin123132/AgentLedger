@@ -23,7 +23,7 @@ Commands run:
 python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.27-alpha"
 agentledger --version
 python -m agentledger try
-python -m agentledger doctor --repo .
+python -m agentledger doctor --repo . --format markdown
 ```
 
 Result:
@@ -33,6 +33,7 @@ Result:
 - AgentLedger version:
 - Platform / shell / Python version:
 - Try packet issue/comment draft:
+- Reviewed doctor Markdown, if setup failed:
 - Alpha summary JSON path:
 - Confusing:
 

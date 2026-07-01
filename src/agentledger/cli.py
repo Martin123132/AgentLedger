@@ -30,7 +30,7 @@ from .classify import detect_test_command
 from .check import CheckPolicy, build_check, check_exit_code, format_check
 from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_config
 from .contracts import build_contracts_payload, format_contracts_text
-from .doctor import doctor_json, format_doctor, run_doctor
+from .doctor import doctor_json, format_doctor, format_doctor_markdown, run_doctor
 from .export import write_html, write_json, write_markdown
 from .feedback import (
     FEEDBACK_CATEGORIES,
@@ -189,6 +189,12 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = sub.add_parser("doctor", help="Check local AgentLedger integration readiness.")
     doctor.add_argument("--repo", default=None, help="Optional target git repository to validate.")
     doctor.add_argument("--json", action="store_true", help="Print machine-readable doctor report.")
+    doctor.add_argument(
+        "--format",
+        choices=["text", "json", "markdown"],
+        default="text",
+        help="Output format. --json is kept as a shortcut for --format json.",
+    )
 
     inspect = sub.add_parser("inspect-report", help="Print a concise summary of an existing run report folder.")
     inspect.add_argument("run_dir", help="Path to run directory.")
@@ -5339,7 +5345,13 @@ def main(argv: list[str] | None = None) -> int:
         return _capture(args, None)
     if args.command_name == "doctor":
         report = run_doctor(Path(args.repo).resolve() if args.repo else None)
-        print(doctor_json(report) if args.json else format_doctor(report))
+        doctor_format = "json" if args.json else args.format
+        if doctor_format == "json":
+            print(doctor_json(report))
+        elif doctor_format == "markdown":
+            print(format_doctor_markdown(report))
+        else:
+            print(format_doctor(report))
         return 0 if report["status"] == "ready" else 2
     if args.command_name == "inspect-report":
         return _handle_inspect_report(args)

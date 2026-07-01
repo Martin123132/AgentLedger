@@ -16,7 +16,7 @@ from agentledger.bundle import (
     BUNDLE_SIGNATURE_SCHEMA,
 )
 from agentledger.config import load_config
-from agentledger.doctor import format_doctor, run_doctor
+from agentledger.doctor import format_doctor, format_doctor_markdown, run_doctor
 from agentledger import report_reader
 
 
@@ -957,6 +957,70 @@ def test_doctor_formats_missing_optional_as_ready() -> None:
     assert "- repomori: not configured (optional)" in output
     assert "Hint: Optional: install RepoMori" in output
     assert "- npx: available (optional)" in output
+
+
+def test_doctor_formats_markdown_without_private_paths() -> None:
+    report = {
+        "schema_version": "agentledger.doctor.v1",
+        "status": "blocked",
+        "required_ok": False,
+        "optional": {
+            "configured": 0,
+            "total": 1,
+            "missing": ["repomori"],
+        },
+        "checks": [
+            {
+                "name": "git",
+                "ok": True,
+                "detail": "C:\\Git\\cmd\\git.exe",
+                "required": True,
+            },
+            {
+                "name": "target_git_repo",
+                "ok": False,
+                "detail": "fatal: cannot change to 'D:\\Private\\CustomerRepo'",
+                "required": True,
+                "hint": "Run from a git checkout or pass --repo <path> to an existing git repo.",
+            },
+            {
+                "name": "repomori",
+                "ok": False,
+                "detail": "/home/tester/private/repo output",
+                "required": False,
+                "hint": "Optional: install RepoMori, or keep using --no-repomori / repomori = false.",
+            },
+        ],
+    }
+
+    output = format_doctor_markdown(report)
+
+    assert output.startswith("## AgentLedger doctor report")
+    assert "### Required checks" in output
+    assert "### Optional integrations" in output
+    assert "### What to try next" in output
+    assert "- Local paths included: no" in output
+    assert "- Raw evidence copied: no" in output
+    assert "- [x] `git`: ok - <local path redacted>" in output
+    assert "- [ ] `target_git_repo`: missing - <local path redacted>" in output
+    assert "python -m agentledger support-packet --format markdown" in output
+    assert "C:\\Git" not in output
+    assert "D:\\Private" not in output
+    assert "/home/tester" not in output
+
+
+def test_doctor_markdown_cli_blocks_without_leaking_repo_path(tmp_path: Path, capsys) -> None:
+    missing_repo = tmp_path / "missing-repo"
+
+    assert cli.main(["doctor", "--repo", str(missing_repo), "--format", "markdown"]) == 2
+
+    output = capsys.readouterr().out
+    assert output.startswith("## AgentLedger doctor report")
+    assert "- Status: blocked - required setup needs attention" in output
+    assert "`target_git_repo`" in output
+    assert "### Troubleshooting map" in output
+    assert "python -m agentledger doctor --repo . --format markdown" in output
+    assert str(missing_repo) not in output
 
 
 def test_cli_version(capsys) -> None:
