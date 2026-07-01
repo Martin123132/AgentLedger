@@ -979,16 +979,23 @@ def test_doctor_formats_markdown_without_private_paths() -> None:
             {
                 "name": "target_git_repo",
                 "ok": False,
-                "detail": "fatal: cannot change to 'D:\\Private\\CustomerRepo'",
+                "detail": "fatal: cannot change to '/tmp/pytest/private/missing-repo'",
                 "required": True,
                 "hint": "Run from a git checkout or pass --repo <path> to an existing git repo.",
             },
             {
                 "name": "repomori",
                 "ok": False,
-                "detail": "/home/tester/private/repo output",
+                "detail": "/opt/hostedtoolcache/Python/3.12.13/x64/bin/python: No module named repomori",
                 "required": False,
                 "hint": "Optional: install RepoMori, or keep using --no-repomori / repomori = false.",
+            },
+            {
+                "name": "jester",
+                "ok": False,
+                "detail": "fatal: cannot change to 'D:\\Private\\CustomerRepo'",
+                "required": False,
+                "hint": "Optional: install Jester, or keep using --no-jester / jester = false.",
             },
         ],
     }
@@ -1006,7 +1013,8 @@ def test_doctor_formats_markdown_without_private_paths() -> None:
     assert "python -m agentledger support-packet --format markdown" in output
     assert "C:\\Git" not in output
     assert "D:\\Private" not in output
-    assert "/home/tester" not in output
+    assert "/tmp/pytest" not in output
+    assert "/opt/hostedtoolcache" not in output
 
 
 def test_doctor_markdown_cli_blocks_without_leaking_repo_path(tmp_path: Path, capsys) -> None:

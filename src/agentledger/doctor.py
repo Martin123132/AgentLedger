@@ -223,7 +223,7 @@ def _contains_local_path(value: str) -> bool:
     home = str(Path.home())
     if home and home.lower() in value.lower():
         return True
-    return bool(re.search(r"(^|\s)/(Users|home|mnt|tmp|var/tmp)/\S+", value))
+    return bool(re.search(r"(^|[\s'\"=])/(Users|home|mnt|tmp|var|opt)(/|\b)", value))
 
 
 def _doctor_markdown_checks(report: dict[str, Any], *, required: bool) -> list[str]:
