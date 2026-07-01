@@ -196,6 +196,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
     assert "python -m agentledger try" in first_run
     assert "python -m agentledger demo" in first_run
     assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
+    assert "python -m agentledger doctor --repo . --format markdown" in first_run
     assert "docs/install.md" in first_run
     assert "docs/alpha-troubleshooting.md" in first_run
     assert "`Read first:` block" in readme
@@ -476,6 +477,7 @@ def test_alpha_docs_prefer_cross_platform_cli_and_keep_windows_extended_path() -
 
 
 def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFixture[str]) -> None:
+    doctor_help = _help_output(capsys, "doctor")
     alpha_guide_help = _help_output(capsys, "alpha-guide")
     alpha_help = _help_output(capsys, "alpha")
     alpha_summary_help = _help_output(capsys, "alpha-summary")
@@ -512,6 +514,8 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
     assert "--format" in open_packet_help
     assert "--out OUT" in support_packet_help
     assert "--format" in support_packet_help
+    assert "--format" in doctor_help
+    assert "--json" in doctor_help
 
     for documented in [
         "--json-output <path>",
@@ -525,6 +529,7 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
         "open-packet --out .agentledger",
         "support-packet --format markdown",
         "support-packet --format json",
+        "doctor --repo . --format markdown",
         "alpha-troubleshooting.md",
         "install, command, packet, and reporting checks",
         "--redact-local-paths",
@@ -534,6 +539,33 @@ def test_alpha_help_and_docs_cover_public_alpha_options(capsys: pytest.CaptureFi
         "agentledger.support_packet.v1",
     ]:
         assert documented in docs_text
+
+
+def test_doctor_markdown_troubleshooting_docs_are_checked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    first_run = (ROOT / "docs" / "first-run.md").read_text(encoding="utf-8")
+    troubleshooting = (ROOT / "docs" / "alpha-troubleshooting.md").read_text(encoding="utf-8")
+    feedback_template = (ROOT / "docs" / "alpha-feedback-template.md").read_text(encoding="utf-8")
+    tester_guide = (ROOT / "docs" / "alpha-tester-guide.md").read_text(encoding="utf-8")
+    docs_text = "\n".join([readme, first_run, troubleshooting, feedback_template, tester_guide])
+
+    command = "python -m agentledger doctor --repo . --format markdown"
+    assert command in docs_text
+    assert "path-redacted" in docs_text
+    assert "Local paths included: no" in docs_text
+    assert "Reviewed doctor Markdown, if setup failed:" in feedback_template
+
+    missing_repo = tmp_path / "private-client" / "missing-repo"
+    assert cli.main(["doctor", "--repo", str(missing_repo), "--format", "markdown"]) == 2
+    output = capsys.readouterr().out
+
+    assert output.startswith("## AgentLedger doctor report")
+    assert "### Troubleshooting map" in output
+    assert "- Local paths included: no" in output
+    assert command in output
+    assert str(missing_repo) not in output
 
 
 def test_support_packet_markdown_example_command_is_checked(

@@ -18,11 +18,13 @@ Git is missing:
 ```powershell
 python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.27-alpha"
 python -m agentledger --version
-python -m agentledger doctor --repo .
+python -m agentledger doctor --repo . --format markdown
 ```
 
 Read any `Hint:` lines from `doctor` first. Missing RepoMori, Jester, or
-Tokometer is okay for the public alpha.
+Tokometer is okay for the public alpha. The Markdown doctor report is
+copy-ready and path-redacted by default, so it is the safest doctor output to
+paste into a GitHub issue or comment after review.
 
 ## Command Problems
 
@@ -67,3 +69,6 @@ Use `.github/ISSUE_TEMPLATE/alpha-feedback.md` for GitHub issues, or
 Run `python -m agentledger support-packet` to print the same checklist and
 privacy reminders, or `python -m agentledger support-packet --format markdown`
 for a sanitized issue/comment body without writing files or copying evidence.
+If setup itself is confusing, include the reviewed output from
+`python -m agentledger doctor --repo . --format markdown` instead of raw
+terminal logs.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -192,6 +193,93 @@ def format_doctor(report: dict[str, Any]) -> str:
         lines.append(f"- {check['name']}: {mark} ({required}) - {check['detail']}")
         if not check["ok"] and check.get("hint"):
             lines.append(f"  Hint: {check['hint']}")
+    return "\n".join(lines)
+
+
+def _doctor_markdown_status(report: dict[str, Any]) -> str:
+    optional = report.get("optional", {}) if isinstance(report.get("optional"), dict) else {}
+    missing_optional = optional.get("missing") or []
+    if report.get("status") == "ready" and missing_optional:
+        return "ready - required checks passed; optional integrations are missing"
+    if report.get("status") == "ready":
+        return "ready - all checks passed"
+    return "blocked - required setup needs attention"
+
+
+def _doctor_markdown_detail(check: dict[str, Any]) -> str:
+    detail = str(check.get("detail") or "").replace("\r", " ").replace("\n", " ").strip()
+    if not detail:
+        return "No detail reported."
+    if _contains_local_path(detail):
+        return "<local path redacted>"
+    if check.get("ok"):
+        return "available"
+    return detail
+
+
+def _contains_local_path(value: str) -> bool:
+    if re.search(r"\b[A-Za-z]:[\\/]", value):
+        return True
+    home = str(Path.home())
+    if home and home.lower() in value.lower():
+        return True
+    return bool(re.search(r"(^|[\s'\"=])/(Users|home|mnt|tmp|var|opt)(/|\b)", value))
+
+
+def _doctor_markdown_checks(report: dict[str, Any], *, required: bool) -> list[str]:
+    lines: list[str] = []
+    checks = [check for check in report.get("checks") or [] if bool(check.get("required")) is required]
+    if not checks:
+        lines.append("- None")
+        return lines
+    for check in checks:
+        mark = "x" if check.get("ok") else " "
+        state = "ok" if check.get("ok") else ("missing" if required else "not configured")
+        lines.append(f"- [{mark}] `{check.get('name', 'unknown')}`: {state} - {_doctor_markdown_detail(check)}")
+        if not check.get("ok") and check.get("hint"):
+            lines.append(f"  - Next: {check['hint']}")
+    return lines
+
+
+def format_doctor_markdown(report: dict[str, Any]) -> str:
+    optional = report.get("optional", {}) if isinstance(report.get("optional"), dict) else {}
+    lines = [
+        "## AgentLedger doctor report",
+        "",
+        "### Summary",
+        f"- Status: {_doctor_markdown_status(report)}",
+        f"- Required setup: {'pass' if report.get('required_ok') else 'fix required'}",
+        f"- Optional integrations configured: {optional.get('configured', 0)}/{optional.get('total', 0)}",
+        "- Raw evidence copied: no",
+        "- Local paths included: no",
+        "- Raw evidence kept private: yes",
+        "",
+        "### Required checks",
+    ]
+    lines.extend(_doctor_markdown_checks(report, required=True))
+    lines.extend(["", "### Optional integrations"])
+    lines.extend(_doctor_markdown_checks(report, required=False))
+    lines.extend(
+        [
+            "",
+            "### What to try next",
+            "- If required checks are blocked, fix the `Next:` hint above and rerun `python -m agentledger doctor --repo . --format markdown`.",
+            "- If required checks pass, run `python -m agentledger try` for the safe demo.",
+            "- For a real repo, run `python -m agentledger alpha-guide --repo . --out .agentledger` before creating evidence.",
+            "- For a copy-ready support report, run `python -m agentledger support-packet --format markdown`.",
+            "",
+            "### Troubleshooting map",
+            "- Install problems: `python -m agentledger doctor --repo . --format markdown`.",
+            "- Command problems: `python -m agentledger status --out .agentledger --allow-warnings`.",
+            "- Packet confusion: `python -m agentledger open-packet --out .agentledger`.",
+            "- Privacy-safe reporting: paste only reviewed packet/export text or redacted errors.",
+            "",
+            "### Keep private by default",
+            "- Raw `.agentledger/` run folders and local evidence output folders.",
+            "- Zip evidence bundles, command transcripts, terminal logs, full reports, and raw diffs.",
+            "- Temporary demo workspaces, signing keys, private repo paths, private URLs, credentials, tokens, and secrets.",
+        ]
+    )
     return "\n".join(lines)
 
 

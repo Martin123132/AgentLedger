@@ -66,6 +66,7 @@ After the demo makes sense, move to the repository you want to test and run:
 
 ```powershell
 python -m agentledger alpha-guide --repo . --out .agentledger
+python -m agentledger doctor --repo . --format markdown
 python -m agentledger alpha --repo . --out .agentledger
 python -m agentledger status --out .agentledger --allow-warnings
 ```
@@ -73,7 +74,9 @@ python -m agentledger status --out .agentledger --allow-warnings
 `alpha-guide` is read-only. It shows setup checks, the fast path, evidence
 locations, what to read first after the alpha run, what to send back, and what
 to keep private. It also prints a troubleshooting map for install problems,
-command failures, packet-output confusion, and privacy-safe reporting.
+command failures, packet-output confusion, and privacy-safe reporting. Use the
+Markdown doctor report when setup is confusing and you need copy-ready,
+path-redacted output for a maintainer.
 
 ## Keep Private
 

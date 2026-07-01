@@ -24,7 +24,7 @@ python -m pip install -e ".[dev]"
 agentledger --version
 python -m agentledger try
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-check.ps1
-python -m agentledger doctor --repo .
+python -m agentledger doctor --repo . --format markdown
 python -m agentledger alpha-guide --repo . --out .agentledger
 ```
 
@@ -38,6 +38,8 @@ Expected result:
   prints each verification step, checks both CLI entry points, and cleans up
 - `doctor` should say `ready` when required checks pass
 - If `doctor` reports a missing check, read the `Hint:` line directly below it
+- `doctor --format markdown` should be copy-ready, path-redacted, and should
+  say `Local paths included: no`
 - `alpha-guide` shows doctor readiness, optional integration counts, install
   verification commands, the command loop, troubleshooting steps, evidence
   paths, and privacy reminders
