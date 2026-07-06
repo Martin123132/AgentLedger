@@ -28,7 +28,7 @@ from .bundle import (
 )
 from .classify import detect_test_command
 from .check import CheckPolicy, build_check, check_exit_code, format_check
-from .config import AgentLedgerConfig, ConfigError, preset_names, preset_text, load_config
+from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_config
 from .contracts import build_contracts_payload, format_contracts_text
 from .doctor import doctor_json, format_doctor, format_doctor_markdown, run_doctor
 from .export import write_html, write_json, write_markdown
@@ -50,7 +50,6 @@ from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_sn
 from .model import CommandResult, LedgerReport, utc_now_iso
 from .process import run_capture, tail_text
 from .redaction import redact_command, redact_text
-from .receipt import RECEIPT_SCHEMA, build_receipt_payload, write_receipt_files
 from .report_reader import (
     artifact_status_counts,
     changed_file_count,
@@ -172,28 +171,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Evidence detail level. summary omits command transcript content and full diffs.",
     )
     run.add_argument("task", nargs=argparse.REMAINDER, help="Command to run after --.")
-
-    receipt = sub.add_parser("receipt", help="Capture a task and write a buyer-facing agent run receipt.")
-    receipt.add_argument("--repo", default=".", help="Target git repository.")
-    receipt.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
-    receipt.add_argument("--out", default=None, help="Evidence output directory.")
-    receipt.add_argument("--no-repomori", action="store_true", help="Skip RepoMori snapshot hooks.")
-    receipt.add_argument("--no-jester", action="store_true", help="Skip Jester diff gate.")
-    receipt.add_argument("--no-tokometer", action="store_true", help="Skip Tokometer path evidence.")
-    receipt.add_argument(
-        "--privacy-mode",
-        choices=["standard", "summary"],
-        default=None,
-        help="Evidence detail level. summary omits command transcript content and full diffs.",
-    )
-    receipt.add_argument(
-        "--signature-key-file",
-        default=None,
-        help="Optional shared-key file for HMAC-SHA256 signing of the final evidence bundle.",
-    )
-    receipt.add_argument("--strict", action="store_true", help="Treat warning status as a receipt failure.")
-    receipt.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
-    receipt.add_argument("task", nargs=argparse.REMAINDER, help="Command to run after --.")
 
     snap = sub.add_parser("snapshot", help="Capture repository state without running a command.")
     snap.add_argument("--repo", default=".", help="Target git repository.")
@@ -397,12 +374,6 @@ def build_parser() -> argparse.ArgumentParser:
     init_config.add_argument("--repo", default=".", help="Target repository or project directory.")
     init_config.add_argument("--config", default=None, help="Path to write config file.")
     init_config.add_argument("--force", action="store_true", help="Overwrite an existing config file.")
-    init_config.add_argument(
-        "--preset",
-        choices=preset_names(),
-        default="solo",
-        help="Policy preset to write.",
-    )
 
     signing_key = sub.add_parser("signing-key", help="Check shared signing-key file safety without printing the key.")
     signing_key.add_argument("--key-file", required=True, help="Text file containing the shared signing key.")
@@ -1381,11 +1352,10 @@ def _handle_init_config(args: argparse.Namespace) -> int:
         print(f"Config parent directory not found: {config_path.parent}")
         return 2
 
-    config_path.write_text(preset_text(args.preset), encoding="utf-8")
+    config_path.write_text(STARTER_CONFIG_TEXT, encoding="utf-8")
     print(f"Wrote AgentLedger config: {config_path}")
-    print(f"Policy preset: {args.preset}")
     print(f"Evidence output: {repo / DEFAULT_OUT}")
-    print(f"Next: python -m agentledger receipt --repo {repo} --out {repo / DEFAULT_OUT} -- python -m pytest")
+    print(f"Next: python -m agentledger run --repo {repo} -- python -m pytest")
     return 0
 
 
@@ -2742,266 +2712,6 @@ def _handle_alpha(args: argparse.Namespace) -> int:
         print("")
         print("Do not send or commit .agentledger folders, zip bundles, secrets, or sensitive evidence unless requested.")
     return 0 if ok else 2
-
-
-def _parse_quiet_json(text: str) -> dict | None:
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1 or end < start:
-        return None
-    try:
-        payload = json.loads(text[start : end + 1])
-    except json.JSONDecodeError:
-        return None
-    return payload if isinstance(payload, dict) else None
-
-
-def _receipt_error_payload(
-    *,
-    repo: Path,
-    out_root: Path | None,
-    errors: list[str],
-    command: list[str] | None = None,
-) -> dict:
-    return {
-        "schema_version": RECEIPT_SCHEMA,
-        "ok": False,
-        "acceptance": "blocked",
-        "generated_at": utc_now_iso(),
-        "agentledger_version": f"agentledger {__version__}",
-        "repo": str(repo),
-        "out": str(out_root) if out_root is not None else None,
-        "run_dir": None,
-        "command": {"requested": command or [], "captured": None, "exit_code": None, "capture_exit_code": None},
-        "privacy_mode": None,
-        "review": None,
-        "evidence": None,
-        "integrations": [],
-        "bundle": None,
-        "signature": None,
-        "next_actions": ["Fix the receipt setup error, then rerun agentledger receipt."],
-        "handling": [
-            "No receipt evidence was written.",
-            "Do not share partial terminal output without reviewing it for secrets and private paths.",
-        ],
-        "errors": errors,
-        "receipt_exit_code": 2,
-    }
-
-
-def _emit_receipt_payload(args: argparse.Namespace, payload: dict, exit_code: int) -> int:
-    if getattr(args, "format", "text") == "json":
-        print(json.dumps(payload, indent=2))
-        return exit_code
-    print(f"AgentLedger receipt: {payload.get('acceptance') or 'blocked'}")
-    if payload.get("run_dir"):
-        print(f"Run: {payload['run_dir']}")
-    review = payload.get("review") if isinstance(payload.get("review"), dict) else {}
-    if review:
-        print(f"Status: {review.get('status')}")
-        print(f"Summary: {review.get('summary')}")
-    evidence = payload.get("evidence") if isinstance(payload.get("evidence"), dict) else {}
-    receipt_files = evidence.get("receipt") if isinstance(evidence.get("receipt"), dict) else {}
-    if receipt_files:
-        print(f"Receipt Markdown: {receipt_files.get('markdown')}")
-        print(f"Receipt HTML: {receipt_files.get('html')}")
-        print(f"Receipt JSON: {receipt_files.get('json')}")
-    if evidence:
-        print(f"Evidence bundle: {evidence.get('bundle') or 'missing'}")
-    bundle = payload.get("bundle") if isinstance(payload.get("bundle"), dict) else {}
-    if bundle:
-        print(f"Bundle verification: {'ok' if bundle.get('ok') else 'failed'}")
-    signature = payload.get("signature") if isinstance(payload.get("signature"), dict) else None
-    if signature:
-        print(f"Bundle signature: {'ok' if signature.get('ok') else 'failed'}")
-    errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
-    if errors:
-        print("Errors:")
-        for error in errors:
-            print(f"- {error}")
-    next_actions = payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else []
-    if next_actions:
-        print("Next:")
-        for action in next_actions:
-            print(f"- {action}")
-    return exit_code
-
-
-def _handle_receipt(args: argparse.Namespace) -> int:
-    repo = Path(args.repo or ".").resolve()
-    task = _clean_task(args.task or [])
-    if not task:
-        payload = _receipt_error_payload(
-            repo=repo,
-            out_root=None,
-            command=[],
-            errors=["No command supplied after --. Receipt captures need a task command."],
-        )
-        return _emit_receipt_payload(args, payload, 2)
-
-    try:
-        config = _load_output_config(args, repo)
-    except ConfigError as exc:
-        payload = _receipt_error_payload(
-            repo=repo,
-            out_root=None,
-            command=task,
-            errors=[f"Config error: {exc}"],
-        )
-        return _emit_receipt_payload(args, payload, 2)
-
-    out_root = _resolve_out_root(args, repo, config)
-    privacy_mode = args.privacy_mode or config.privacy_mode or DEFAULT_PRIVACY_MODE
-    doctor_report = run_doctor(repo)
-    doctor_errors = _alpha_required_setup_errors(doctor_report)
-    if doctor_errors:
-        payload = _receipt_error_payload(
-            repo=repo,
-            out_root=out_root,
-            command=task,
-            errors=doctor_errors,
-        )
-        payload["doctor"] = doctor_report
-        return _emit_receipt_payload(args, payload, 2)
-
-    capture_args = argparse.Namespace(
-        repo=str(repo),
-        config=args.config,
-        out=str(out_root),
-        no_repomori=args.no_repomori,
-        no_jester=args.no_jester,
-        no_tokometer=args.no_tokometer,
-        no_zip=False,
-        privacy_mode=privacy_mode,
-    )
-    capture_exit, _capture_output = _run_alpha_step(
-        "Capture receipt run",
-        lambda capture_args: _capture(capture_args, task),
-        capture_args,
-        quiet=True,
-    )
-    latest_dir, latest_errors = _resolve_latest_run_dir(out_root)
-    if latest_dir is None:
-        payload = _receipt_error_payload(
-            repo=repo,
-            out_root=out_root,
-            command=task,
-            errors=latest_errors or ["Capture did not produce a latest run directory."],
-        )
-        payload["capture_exit_code"] = capture_exit
-        return _emit_receipt_payload(args, payload, 2)
-
-    errors = list(latest_errors)
-    try:
-        report = load_report(latest_dir)
-    except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as exc:
-        payload = _receipt_error_payload(
-            repo=repo,
-            out_root=out_root,
-            command=task,
-            errors=[f"Unable to read captured report: {exc}"],
-        )
-        payload["run_dir"] = str(latest_dir)
-        payload["capture_exit_code"] = capture_exit
-        return _emit_receipt_payload(args, payload, 2)
-
-    check = build_check(latest_dir, _check_policy_from_config(config))
-    paths = _latest_paths(latest_dir)
-    if capture_exit != 0:
-        errors.append(f"Captured command exited {capture_exit}.")
-
-    payload = build_receipt_payload(
-        repo=repo,
-        out_root=out_root,
-        run_dir=latest_dir,
-        report=report,
-        check=check,
-        capture_exit_code=capture_exit,
-        command=task,
-        privacy_mode=privacy_mode,
-        paths=paths,
-        strict=args.strict,
-        signature_requested=bool(args.signature_key_file),
-        errors=errors,
-    )
-    write_receipt_files(payload, latest_dir)
-
-    bundle_path = write_zip_bundle(latest_dir)
-    paths = _latest_paths(latest_dir)
-    payload["evidence"]["bundle"] = paths.get("zip")
-
-    signature_payload = None
-    if args.signature_key_file:
-        sign_exit, sign_json = _run_alpha_step(
-            "Sign receipt bundle",
-            _handle_sign_bundle,
-            argparse.Namespace(
-                bundle=str(bundle_path),
-                key_file=args.signature_key_file,
-                output=None,
-                format="json",
-            ),
-            quiet=True,
-        )
-        signature_payload = _parse_quiet_json(sign_json) or {
-            "schema_version": SIGN_BUNDLE_SCHEMA,
-            "ok": False,
-            "errors": [f"Unable to parse sign-bundle JSON output; exit {sign_exit}."],
-        }
-        if sign_exit != 0:
-            payload["errors"].append(f"Bundle signing exited {sign_exit}.")
-
-    verify_exit, verify_json = _run_alpha_step(
-        "Verify receipt bundle",
-        _handle_verify_bundle,
-        argparse.Namespace(
-            bundle=str(bundle_path),
-            signature_key_file=args.signature_key_file,
-            require_signature=bool(args.signature_key_file),
-            format="json",
-        ),
-        quiet=True,
-    )
-    bundle_payload = _parse_quiet_json(verify_json) or {
-        "schema_version": "agentledger.verify_bundle.v1",
-        "ok": False,
-        "errors": [f"Unable to parse verify-bundle JSON output; exit {verify_exit}."],
-    }
-    if verify_exit != 0:
-        payload["errors"].append(f"Bundle verification exited {verify_exit}.")
-    payload["bundle"] = bundle_payload
-    payload["signature"] = signature_payload
-    payload["doctor"] = doctor_report
-    payload["receipt_exit_code"] = _receipt_exit_code(payload, strict=args.strict)
-    payload["ok"] = payload["receipt_exit_code"] == 0
-    if payload["ok"] and payload.get("acceptance") == "blocked":
-        payload["acceptance"] = "ready"
-    elif payload["receipt_exit_code"] == 2:
-        payload["acceptance"] = "blocked"
-
-    write_receipt_files(payload, latest_dir)
-    return _emit_receipt_payload(args, payload, int(payload["receipt_exit_code"]))
-
-
-def _receipt_exit_code(payload: dict, *, strict: bool) -> int:
-    errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
-    if errors:
-        return 2
-    bundle = payload.get("bundle") if isinstance(payload.get("bundle"), dict) else None
-    if bundle is not None and bundle.get("ok") is not True:
-        return 2
-    signature = payload.get("signature") if isinstance(payload.get("signature"), dict) else None
-    if signature is not None and signature.get("ok") is not True:
-        return 2
-    review = payload.get("review") if isinstance(payload.get("review"), dict) else {}
-    status = str(review.get("status") or "unknown")
-    if status == "block":
-        return 2
-    if status == "warn" and strict:
-        return 1
-    if status in {"pass", "warn"}:
-        return 0
-    return 2
 
 
 def _alpha_summary_error(
@@ -5631,8 +5341,6 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_demo(args)
     if args.command_name == "run":
         return _capture(args, args.task)
-    if args.command_name == "receipt":
-        return _handle_receipt(args)
     if args.command_name == "snapshot":
         return _capture(args, None)
     if args.command_name == "doctor":

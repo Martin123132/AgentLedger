@@ -35,16 +35,6 @@ The first pilot should answer:
 - How much agent usage happened nearby?
 - Can another person or agent reproduce the evidence?
 
-The current MVP command is:
-
-```powershell
-agentledger receipt --repo . --out .agentledger -- python -m pytest
-```
-
-It turns one captured run into a receipt pack, verifies the evidence bundle, and
-optionally signs the bundle for local handoff. See `docs/receipt.md` and
-`docs/commercial-mvp.md`.
-
 ## Non-Goals For The First Cut
 
 - hosted SaaS
