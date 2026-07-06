@@ -13,6 +13,7 @@ from agentledger.contracts import CONTRACTS_DOC, CONTRACTS_SCHEMA, JSON_CONTRACT
 
 SCHEMAS = {
     "contracts": "agentledger.contracts.v1",
+    "receipt": "agentledger.receipt.v1",
     "demo": "agentledger.demo.v1",
     "try": "agentledger.demo.v1",
     "doctor": "agentledger.doctor.v1",
@@ -172,6 +173,25 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
 
     return {
         "contracts": _run_json(capsys, ["contracts", "--format", "json"]),
+        "receipt": _run_json(
+            capsys,
+            [
+                "receipt",
+                "--format",
+                "json",
+                "--repo",
+                str(repo),
+                "--out",
+                str(tmp_path / "receipt-ledger"),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "print('contract receipt')",
+            ],
+        ),
         "demo": _run_json(capsys, ["demo", "--format", "json", "--output-dir", str(tmp_path / "demo-workspace")]),
         "try": _run_json(capsys, ["try", "--format", "json", "--output-dir", str(tmp_path / "try-workspace")]),
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
@@ -308,6 +328,28 @@ def test_json_contract_payloads_use_documented_schemas(json_payloads: dict[str, 
 def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: dict[str, dict]) -> None:
     expected_fields = {
         "contracts": {"schema_version", "agentledger_version", "docs", "compatibility", "contracts"},
+        "receipt": {
+            "schema_version",
+            "ok",
+            "acceptance",
+            "generated_at",
+            "agentledger_version",
+            "repo",
+            "out",
+            "run_dir",
+            "command",
+            "privacy_mode",
+            "review",
+            "evidence",
+            "integrations",
+            "bundle",
+            "signature",
+            "doctor",
+            "next_actions",
+            "handling",
+            "errors",
+            "receipt_exit_code",
+        },
         "demo": {
             "schema_version",
             "ok",
@@ -664,6 +706,21 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     contracts = json_payloads["contracts"]
     assert contracts["contracts"]
     _assert_keys(contracts["contracts"][0], {"command", "schema_version", "purpose", "stable_fields", "exit_codes"})
+
+    receipt = json_payloads["receipt"]
+    assert receipt["ok"] is True
+    assert receipt["acceptance"] in {"ready", "review"}
+    assert receipt["command"]["captured"] == f"{sys.executable} -c print('contract receipt')"
+    _assert_keys(receipt["review"], {"status", "summary", "strict", "blocking_rules", "warning_rules", "changed_files", "artifact_counts", "tokometer"})
+    _assert_keys(receipt["evidence"], {"markdown_report", "json_report", "html_report", "bundle", "receipt", "bundle_verification", "signature_requested"})
+    _assert_keys(receipt["evidence"]["receipt"], {"markdown", "json", "html"})
+    assert receipt["bundle"]["schema_version"] == SCHEMAS["verify_bundle"]
+    assert receipt["bundle"]["ok"] is True
+    assert receipt["signature"] is None
+    assert receipt["doctor"]["schema_version"] == SCHEMAS["doctor"]
+    assert receipt["next_actions"]
+    assert receipt["handling"]
+    assert receipt["errors"] == []
 
     demo = json_payloads["demo"]
     assert demo["ok"] is True

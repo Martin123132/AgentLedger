@@ -143,7 +143,8 @@ def test_init_config_writes_starter_policy(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     config_path = repo / ".agentledger.toml"
     assert f"Wrote AgentLedger config: {config_path.resolve()}" in output
-    assert "Next: python -m agentledger run" in output
+    assert "Policy preset: solo" in output
+    assert "Next: python -m agentledger receipt" in output
     config = load_config(repo)
     assert config.privacy_mode == "summary"
     assert config.out == ".agentledger"
@@ -181,6 +182,33 @@ def test_init_config_force_overwrites_existing_file(tmp_path: Path, capsys) -> N
     config = load_config(repo)
     assert config.privacy_mode == "summary"
     assert config.check_require_tests is True
+
+
+def test_init_config_writes_client_handoff_preset(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+
+    assert cli.main(["init-config", "--repo", str(repo), "--preset", "client-handoff"]) == 0
+
+    output = capsys.readouterr().out
+    config = load_config(repo)
+    assert "Policy preset: client-handoff" in output
+    assert config.privacy_mode == "summary"
+    assert config.check_require_tests is True
+    assert config.check_dirty == "warn"
+    assert config.check_max_changed_files == 10
+    assert config.check_allow_warnings is False
+
+
+def test_init_config_writes_team_strict_preset(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+
+    assert cli.main(["init-config", "--repo", str(repo), "--preset", "team-strict"]) == 0
+
+    capsys.readouterr()
+    config = load_config(repo)
+    assert config.check_dirty == "block"
+    assert config.check_max_changed_files == 10
+    assert config.check_allow_warnings is False
 
 
 def test_demo_command_creates_isolated_report(tmp_path: Path, capsys) -> None:

@@ -87,6 +87,51 @@ Both commands use the same stable fields:
 - `cleanup`: command for removing the isolated workspace, or `null`
 - `errors`: human-readable error list
 
+### `agentledger receipt --format json -- <command>`
+
+Schema: `agentledger.receipt.v1`
+
+Use this as the commercial pilot wrapper for one AI-assisted work session. It
+captures the requested command, writes the normal AgentLedger evidence reports,
+writes `agentledger-receipt.md`, `agentledger-receipt.json`, and
+`agentledger-receipt.html` into the run folder, regenerates the zip evidence
+bundle, optionally signs it, and verifies the final bundle.
+
+Stable fields:
+
+- `ok`: boolean, true when the receipt command exits successfully
+- `acceptance`: `ready`, `review`, or `blocked`
+- `generated_at`
+- `agentledger_version`
+- `repo`
+- `out`
+- `run_dir`
+- `command`: requested command, captured command, command exit code, capture exit
+  code, and test evidence summary
+- `privacy_mode`
+- `review`: policy status, summary, warning and blocking rules, changed-file
+  count, artifact counts, and optional Tokometer summary
+- `evidence`: Markdown/JSON/HTML report paths, zip bundle path, and receipt file
+  paths
+- `integrations`: optional integration artifact summaries, including RepoMori,
+  Jester, and Tokometer when configured and not skipped
+- `bundle`: embedded `agentledger.verify_bundle.v1` payload for the final zip
+  evidence bundle
+- `signature`: embedded `agentledger.sign_bundle.v1` payload when
+  `--signature-key-file` is used, otherwise `null`
+- `doctor`: local readiness snapshot from `agentledger.doctor.v1`
+- `next_actions`
+- `handling`: evidence-handling reminders
+- `errors`
+- `receipt_exit_code`
+
+Exit codes:
+
+- `0`: receipt written and bundle verified. Warning receipts are accepted unless
+  `--strict` is used.
+- `1`: warning receipt in `--strict` mode.
+- `2`: setup, capture, policy, signing, or bundle verification failed.
+
 ### `agentledger doctor --json`
 
 Schema: `agentledger.doctor.v1`

@@ -61,6 +61,27 @@ The Markdown and HTML reports start with a review summary and a short human
 checklist, review notes, and evidence-file pointers so the latest run can be
 triaged quickly before accepting the work.
 
+The first commercial pilot path is the receipt command:
+
+```powershell
+python -m agentledger receipt --repo D:\Projects\your-repo --out .agentledger -- python -m pytest
+```
+
+It captures one task, writes `agentledger-receipt.md`,
+`agentledger-receipt.json`, and `agentledger-receipt.html`, regenerates and
+verifies the zip evidence bundle, and optionally signs the bundle when a shared
+key is supplied. See [docs/receipt.md](docs/receipt.md) and
+[docs/commercial-mvp.md](docs/commercial-mvp.md).
+
+For a commercial pilot, start with a policy preset:
+
+```powershell
+python -m agentledger init-config --repo D:\Projects\your-repo --preset client-handoff
+```
+
+Preset options are `solo`, `agency`, `team-strict`, and `client-handoff`. See
+[docs/policy-presets.md](docs/policy-presets.md).
+
 ## Why This Exists
 
 AI coding agents are now doing real work, changing code, and burning money, but
@@ -591,6 +612,14 @@ Capture state around a command:
 agentledger run --repo D:\Projects\your-repo -- npm test
 ```
 
+Capture a buyer-facing run receipt around a command:
+
+```powershell
+agentledger receipt --repo D:\Projects\your-repo --out .agentledger -- npm test
+agentledger receipt --repo D:\Projects\your-repo --out .agentledger --strict -- npm test
+agentledger receipt --repo D:\Projects\your-repo --out .agentledger --signature-key-file .agentledger-signing-key -- npm test
+```
+
 Capture a lower-detail report:
 
 ```powershell
@@ -627,6 +656,7 @@ Write a starter policy config:
 ```powershell
 agentledger init-config --repo D:\Projects\your-repo
 agentledger init-config --repo D:\Projects\your-repo --force
+agentledger init-config --repo D:\Projects\your-repo --preset client-handoff
 ```
 
 Skip optional integrations:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .receipt import RECEIPT_SCHEMA
+
 
 CONTRACTS_SCHEMA = "agentledger.contracts.v1"
 CONTRACTS_DOC = "docs/json-contracts.md"
@@ -40,6 +42,37 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
         "purpose": "Run the quickest safe first-run demo with a share-safe packet handoff.",
         "stable_fields": DEMO_STABLE_FIELDS,
         "exit_codes": {"0": "demo run captured", "2": "demo setup or capture failed"},
+    },
+    {
+        "command": "receipt --format json -- <command>",
+        "schema_version": RECEIPT_SCHEMA,
+        "purpose": "Capture one task, write a buyer-facing run receipt, regenerate the evidence bundle, and verify it.",
+        "stable_fields": [
+            "ok",
+            "acceptance",
+            "generated_at",
+            "agentledger_version",
+            "repo",
+            "out",
+            "run_dir",
+            "command",
+            "privacy_mode",
+            "review",
+            "evidence",
+            "integrations",
+            "bundle",
+            "signature",
+            "doctor",
+            "next_actions",
+            "handling",
+            "errors",
+            "receipt_exit_code",
+        ],
+        "exit_codes": {
+            "0": "receipt written and bundle verified; warning receipts are allowed unless --strict is used",
+            "1": "warning receipt in --strict mode",
+            "2": "setup, capture, policy, signing, or bundle verification failed",
+        },
     },
     {
         "command": "doctor --json",
