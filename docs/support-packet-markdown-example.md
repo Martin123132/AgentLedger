@@ -26,7 +26,7 @@ path.
 
 ### Summary
 - Result: pass / warn / block / failed / not sure
-- AgentLedger version: `0.1.27a0`
+- AgentLedger version: `0.1.28a0`
 - Platform: `Windows-...`
 - Python: `3.13...`
 - Shell: `powershell.exe`

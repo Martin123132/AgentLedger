@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.1.28-alpha - 2026-07-07
+
+- Added `agentledger doctor --format markdown` so alpha testers can paste a
+  copy-ready, path-redacted setup report without exposing local paths or raw
+  evidence.
+- Updated first-run, troubleshooting, tester, and feedback docs to point setup
+  confusion toward reviewed doctor Markdown instead of raw terminal logs.
+
 ## 0.1.27-alpha - 2026-06-30
 
 - Polished the README first-look path so new public-alpha users see the
