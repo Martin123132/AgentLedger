@@ -136,7 +136,9 @@ tester loop,
 and uninstall commands. If a tester gets stuck, use
 [docs/alpha-troubleshooting.md](docs/alpha-troubleshooting.md) to separate
 install problems, command failures, packet confusion, and privacy-safe
-reporting.
+reporting. If setup itself fails, use
+[docs/doctor-markdown-feedback.md](docs/doctor-markdown-feedback.md) for the
+short doctor Markdown snippet to paste after review.
 
 ## What Stays Local
 

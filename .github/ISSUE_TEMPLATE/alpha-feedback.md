@@ -71,6 +71,34 @@ python -m agentledger pack-alpha --out .agentledger --output-dir $env:TEMP\agent
 
 Reviewed feedback export or packet attached: yes/no
 
+## Doctor Markdown setup feedback
+
+Use this section when install or setup failed before you had useful run
+evidence. Follow `docs/doctor-markdown-feedback.md` and paste only a reviewed,
+redacted snippet from `agentledger doctor --format markdown`.
+
+Command run:
+
+```powershell
+python -m agentledger doctor --repo . --format markdown
+```
+
+Checklist:
+
+- [ ] The snippet includes `Raw evidence copied: no`.
+- [ ] The snippet includes `Local paths included: no`.
+- [ ] Blocked required checks include only the confusing line and `Next:` hint.
+- [ ] No raw terminal logs, `.agentledger/` folders, zip bundles, transcripts,
+  full reports, private paths, private URLs, credentials, tokens, secrets, or
+  customer data are attached or pasted here.
+
+Reviewed doctor Markdown snippet:
+
+```markdown
+Paste a short reviewed snippet here. Replace accidental local paths with
+<local path redacted> or <private repo path> before posting.
+```
+
 ## Support-packet Markdown feedback
 
 Use this section for `agentledger support-packet --format markdown` feedback in
