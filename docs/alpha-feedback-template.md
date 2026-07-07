@@ -34,6 +34,7 @@ Result:
 - Platform / shell / Python version:
 - Try packet issue/comment draft:
 - Reviewed doctor Markdown, if setup failed:
+- Reviewed doctor Markdown snippet follows `docs/doctor-markdown-feedback.md`: yes/no
 - Alpha summary JSON path:
 - Confusing:
 
@@ -116,6 +117,8 @@ body. `docs/support-packet-markdown-example.md` shows the checked output shape.
 Markdown support-packet problem. GitHub issue reports should use the
 `Support-packet Markdown feedback` section in
 `.github/ISSUE_TEMPLATE/alpha-feedback.md`.
+Use `docs/doctor-markdown-feedback.md` when setup failed before there was a
+useful run report.
 Neither mode writes files or copies evidence.
 
 ## Overall readiness

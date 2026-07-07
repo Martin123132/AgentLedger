@@ -63,6 +63,7 @@ ALPHA_DOCS = [
 
 SUPPORT_PACKET_MARKDOWN_EXAMPLE = ROOT / "docs" / "support-packet-markdown-example.md"
 SUPPORT_PACKET_MARKDOWN_QA = ROOT / "docs" / "support-packet-markdown-qa.md"
+DOCTOR_MARKDOWN_FEEDBACK = ROOT / "docs" / "doctor-markdown-feedback.md"
 ALPHA_FEEDBACK_ISSUE_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "alpha-feedback.md"
 ALPHA_FEEDBACK_READINESS = ROOT / "docs" / "alpha-feedback-readiness.md"
 PUBLIC_ALPHA_TRIAL = ROOT / "docs" / "public-alpha-trial.md"
@@ -566,6 +567,73 @@ def test_doctor_markdown_troubleshooting_docs_are_checked(
     assert "- Local paths included: no" in output
     assert command in output
     assert str(missing_repo) not in output
+
+
+def test_doctor_markdown_feedback_note_is_checked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    note = DOCTOR_MARKDOWN_FEEDBACK.read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    first_run = (ROOT / "docs" / "first-run.md").read_text(encoding="utf-8")
+    troubleshooting = (ROOT / "docs" / "alpha-troubleshooting.md").read_text(encoding="utf-8")
+    feedback_template = (ROOT / "docs" / "alpha-feedback-template.md").read_text(encoding="utf-8")
+    issue_template = ALPHA_FEEDBACK_ISSUE_TEMPLATE.read_text(encoding="utf-8")
+
+    assert "[docs/doctor-markdown-feedback.md](docs/doctor-markdown-feedback.md)" in readme
+    assert "[docs/doctor-markdown-feedback.md](doctor-markdown-feedback.md)" in first_run
+    assert "[docs/doctor-markdown-feedback.md](doctor-markdown-feedback.md)" in troubleshooting
+    assert "`docs/doctor-markdown-feedback.md`" in feedback_template
+    assert "docs/doctor-markdown-feedback.md" in issue_template
+    assert "Doctor Markdown setup feedback" in issue_template
+    assert "Reviewed doctor Markdown snippet" in issue_template
+
+    match = re.search(
+        r"```powershell\n(?P<command>python -m agentledger doctor --repo \. --format markdown)\n```",
+        note,
+    )
+    assert match is not None, "doctor Markdown feedback note should document the checked command"
+    documented_command = match.group("command")
+
+    for marker in [
+        "## What To Paste",
+        "## Check Before Posting",
+        "### Summary",
+        "### Required checks",
+        "Raw evidence copied: no",
+        "Local paths included: no",
+        "<local path redacted>",
+        "<private repo path>",
+        "raw `.agentledger/` folders",
+        "zip bundles",
+        "transcripts",
+        "full reports",
+        "terminal logs",
+        "private repo paths",
+        "private URLs",
+        "credentials",
+        "tokens",
+        "secrets",
+        "customer names",
+    ]:
+        assert marker in note
+
+    private_repo = tmp_path / "doctor-private" / "customer-workspace"
+    assert cli.main(["doctor", "--repo", str(private_repo), "--format", "markdown"]) == 2
+    output = capsys.readouterr().out
+
+    for marker in [
+        "## AgentLedger doctor report",
+        "### Summary",
+        "### Required checks",
+        "### Keep private by default",
+        "- Raw evidence copied: no",
+        "- Local paths included: no",
+        documented_command,
+    ]:
+        assert marker in output
+
+    assert str(private_repo) not in output
+    assert private_repo.name not in output
 
 
 def test_support_packet_markdown_example_command_is_checked(

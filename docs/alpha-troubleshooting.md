@@ -25,6 +25,8 @@ Read any `Hint:` lines from `doctor` first. Missing RepoMori, Jester, or
 Tokometer is okay for the public alpha. The Markdown doctor report is
 copy-ready and path-redacted by default, so it is the safest doctor output to
 paste into a GitHub issue or comment after review.
+Use [docs/doctor-markdown-feedback.md](doctor-markdown-feedback.md) for the
+short checklist of exactly what to paste when setup is the problem.
 
 ## Command Problems
 
@@ -71,4 +73,6 @@ privacy reminders, or `python -m agentledger support-packet --format markdown`
 for a sanitized issue/comment body without writing files or copying evidence.
 If setup itself is confusing, include the reviewed output from
 `python -m agentledger doctor --repo . --format markdown` instead of raw
-terminal logs.
+terminal logs. Keep it short: use
+[docs/doctor-markdown-feedback.md](doctor-markdown-feedback.md) and paste only
+the summary, blocked required checks, and redacted `Next:` hint.

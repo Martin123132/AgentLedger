@@ -76,7 +76,9 @@ locations, what to read first after the alpha run, what to send back, and what
 to keep private. It also prints a troubleshooting map for install problems,
 command failures, packet-output confusion, and privacy-safe reporting. Use the
 Markdown doctor report when setup is confusing and you need copy-ready,
-path-redacted output for a maintainer.
+path-redacted output for a maintainer. See
+[docs/doctor-markdown-feedback.md](doctor-markdown-feedback.md) for what to
+paste and what to keep private.
 
 ## Keep Private
 
