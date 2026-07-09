@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.29-alpha - 2026-07-09
+
 - Added command-scoped change attribution that separates pre-existing dirty
   files from persistent changes made during a recorded command, including
   files changed in commits that leave the working tree clean.
