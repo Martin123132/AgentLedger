@@ -45,13 +45,15 @@ from .feedback import (
     summarize_feedback,
     write_feedback_export,
 )
-from .gittools import snapshot
+from .gittools import build_change_attribution, snapshot
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
 from .model import CommandResult, LedgerReport, utc_now_iso
 from .process import run_capture, tail_text
 from .redaction import redact_command, redact_text
 from .report_reader import (
     artifact_status_counts,
+    attributed_file_count,
+    change_attribution,
     changed_file_count,
     command_exit_code,
     command_exit_trend,
@@ -428,6 +430,8 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     exit_code = command_exit_code(report)
     test_framework = command_test_framework(report)
     changed_files = changed_file_count(report)
+    attribution = change_attribution(report)
+    attributed_files = attributed_file_count(report)
     passed, warned = artifact_status_counts([artifact for artifact in report.get("artifacts", []) if isinstance(artifact, dict)])
     warnings = integration_warnings(report)
     tokometer = tokometer_summary(report)
@@ -441,6 +445,8 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
             "exit_code": exit_code if exit_code is not None else None,
             "test_framework": test_framework,
             "changed_files": changed_files,
+            "attributed_files": attributed_files,
+            "change_attribution": attribution,
             "artifacts": {"ok": passed, "warn": warned},
             "tokometer": tokometer,
             "privacy_mode": report.get("privacy_mode", "standard"),
@@ -455,6 +461,10 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     print(f"Privacy mode: {report.get('privacy_mode', 'standard')}")
     print(f"Diff stat: {after.get('diff_stat') or 'no tracked diff'}")
     print(f"Changed files: {changed_files}")
+    if attributed_files is not None:
+        preexisting = len(attribution.get("preexisting_dirty") or []) if attribution else 0
+        print(f"Changed during command: {attributed_files}")
+        print(f"Pre-existing dirty files: {preexisting}")
     print(f"Artifacts: {passed} ok, {warned} warn")
     if tokometer:
         print(f"Tokometer: {tokometer}")
@@ -5265,7 +5275,7 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     warnings: list[str] = []
     artifacts = []
     started = utc_now_iso()
-    before = snapshot(repo)
+    before = snapshot(repo, excluded_paths=[out_root])
     privacy_summary = privacy_mode == "summary"
 
     if not skip_repomori and not privacy_summary:
@@ -5280,7 +5290,8 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     elif task is not None:
         warnings.append("No command supplied after --; captured repository state only.")
 
-    after = snapshot(repo)
+    after = snapshot(repo, excluded_paths=[out_root])
+    change_attribution = build_change_attribution(repo, before, after, available=command_result is not None)
 
     if not skip_repomori and not privacy_summary:
         artifacts.append(run_repomori_snapshot(repo, artifacts_dir, "after"))
@@ -5306,6 +5317,7 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
         privacy_mode=privacy_mode,
         artifacts=artifacts,
         warnings=warnings,
+        change_attribution=change_attribution,
     )
     _apply_privacy_mode(report, privacy_mode)
     write_json(report, run_dir / "agentledger-report.json")

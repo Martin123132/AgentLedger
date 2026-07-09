@@ -563,6 +563,8 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "exit_code",
             "test_framework",
             "changed_files",
+            "attributed_files",
+            "change_attribution",
             "artifacts",
             "tokometer",
             "privacy_mode",
@@ -932,6 +934,23 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
 
     for name in ("inspect_report", "verify_bundle"):
         _assert_keys(json_payloads[name]["artifacts"], {"ok", "warn"})
+
+    inspect_report = json_payloads["inspect_report"]
+    assert inspect_report["attributed_files"] == 2
+    _assert_keys(
+        inspect_report["change_attribution"],
+        {
+            "available",
+            "basis",
+            "preexisting_dirty",
+            "changed_during_run",
+            "committed_during_run",
+            "working_tree_during_run",
+            "unchanged_preexisting",
+            "head_changed",
+            "limitations",
+        },
+    )
 
     check = json_payloads["check"]
     assert check["status"] in {"pass", "warn", "block"}

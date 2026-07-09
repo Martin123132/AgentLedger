@@ -125,13 +125,14 @@ def run_doctor(repo: Path | None = None) -> dict[str, Any]:
         )
     )
 
-    tokometer_root = Path(os.environ.get("AGENTLEDGER_TOKOMETER_ROOT", Path.home() / "OneDrive" / "Documents" / "codex-token-gauge"))
-    tokometer_usage = tokometer_root / "server" / "usage.ts"
+    tokometer_root_value = os.environ.get("AGENTLEDGER_TOKOMETER_ROOT")
+    tokometer_root = Path(tokometer_root_value) if tokometer_root_value else None
+    tokometer_usage = tokometer_root / "server" / "usage.ts" if tokometer_root else None
     checks.append(
         Check(
             "tokometer_checkout",
-            tokometer_usage.exists(),
-            str(tokometer_usage),
+            bool(tokometer_usage and tokometer_usage.exists()),
+            str(tokometer_usage) if tokometer_usage else "AGENTLEDGER_TOKOMETER_ROOT is not set",
             hint="Optional: set AGENTLEDGER_TOKOMETER_ROOT to a codex-token-gauge checkout, or keep tokometer = false.",
         )
     )

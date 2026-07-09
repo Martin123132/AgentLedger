@@ -21,7 +21,10 @@ evidence. Gate risky outputs.
 8. zip evidence bundle
 9. Marked Bench eval gate
 10. signed evidence records
-11. desktop dashboard
+11. command-scoped file attribution
+12. privacy-safe environment fingerprint
+13. tamper-evident run history chain
+14. desktop dashboard
 
 ## Buyer-Facing MVP
 

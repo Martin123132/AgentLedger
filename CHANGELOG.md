@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Added command-scoped change attribution that separates pre-existing dirty
+  files from persistent changes made during a recorded command, including
+  files changed in commits that leave the working tree clean.
+- Added privacy-safe dirty-file size and SHA-256 fingerprints so further edits
+  to an already-dirty file can be detected without copying file contents.
+- Removed the implicit OneDrive Tokometer checkout fallback; optional
+  Tokometer collection now requires an explicit
+  `AGENTLEDGER_TOKOMETER_ROOT`.
+- Excluded AgentLedger's selected evidence output directory from Git boundary
+  snapshots so recorder-generated files are not attributed to the command.
+
 ## 0.1.28-alpha - 2026-07-07
 
 - Added `agentledger doctor --format markdown` so alpha testers can paste a

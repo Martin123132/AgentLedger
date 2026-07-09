@@ -137,7 +137,25 @@ def read_tokometer_usage(out_dir: Path) -> ToolArtifact:
     sessions = codex_home / "sessions"
     archived = codex_home / "archived_sessions"
     script = Path(__file__).resolve().parents[2] / "scripts" / "tokometer-summary.mjs"
-    tokometer_root = Path(os.environ.get("AGENTLEDGER_TOKOMETER_ROOT", Path.home() / "OneDrive" / "Documents" / "codex-token-gauge"))
+    tokometer_root_value = os.environ.get("AGENTLEDGER_TOKOMETER_ROOT")
+    tokometer_root = Path(tokometer_root_value) if tokometer_root_value else None
+    if tokometer_root is None:
+        payload = {
+            "schema_version": "agentledger.tokometer_summary.v1",
+            "codex_home": str(codex_home),
+            "sessions_exists": sessions.exists(),
+            "archived_sessions_exists": archived.exists(),
+            "tokometer_root": None,
+            "error": "AGENTLEDGER_TOKOMETER_ROOT is not set",
+            "note": "Set the explicit Tokometer checkout path, or disable the optional integration.",
+        }
+        report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return ToolArtifact(
+            name="tokometer_summary",
+            ok=False,
+            output_path=str(report_path),
+            summary="Tokometer summary import skipped because AGENTLEDGER_TOKOMETER_ROOT is not set.",
+        )
     command = [
         _npx_executable(),
         "-y",
