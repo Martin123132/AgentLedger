@@ -344,6 +344,8 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "exit_code",
             "test_framework",
             "changed_files",
+            "attributed_files",
+            "change_attribution",
             "artifacts",
             "tokometer",
             "privacy_mode",

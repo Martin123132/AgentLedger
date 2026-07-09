@@ -60,6 +60,22 @@ def changed_file_count(report: dict[str, Any]) -> int:
     return max(tracked_from_diff, status_tracked) + status_untracked
 
 
+def change_attribution(report: dict[str, Any]) -> dict[str, Any] | None:
+    payload = report.get("change_attribution")
+    return payload if isinstance(payload, dict) else None
+
+
+def attributed_file_count(report: dict[str, Any]) -> int | None:
+    attribution = change_attribution(report)
+    if not attribution or attribution.get("available") is not True:
+        return None
+    changes = attribution.get("changed_during_run")
+    if not isinstance(changes, dict):
+        return None
+    value = changes.get("changed_file_count")
+    return value if isinstance(value, int) and value >= 0 else None
+
+
 def _first_non_empty(payload: dict[str, Any] | None, keys: tuple[str, ...]) -> Any | None:
     if not isinstance(payload, dict):
         return None

@@ -61,6 +61,17 @@ The Markdown and HTML reports start with a review summary and a short human
 checklist, review notes, and evidence-file pointers so the latest run can be
 triaged quickly before accepting the work.
 
+Each command report also separates repository state that was already dirty
+from persistent changes made during the recorded command. Attribution covers
+added, modified, deleted, renamed, and restored files in the working tree, plus
+changes committed between the starting and ending Git HEAD values. Dirty-file
+size and SHA-256 fingerprints detect further edits without copying file
+contents. The report states the boundary limitation explicitly: a change made
+and fully reverted before the command exits cannot be observed.
+The selected evidence output directory is excluded from these boundary
+snapshots, even when the target repository has not ignored `.agentledger/`, so
+the recorder does not attribute its own reports to the captured command.
+
 ## Why This Exists
 
 AI coding agents are now doing real work, changing code, and burning money, but
@@ -951,6 +962,10 @@ Override the Tokometer checkout path when needed:
 ```powershell
 $env:AGENTLEDGER_TOKOMETER_ROOT='D:\Projects\codex-token-gauge'
 ```
+
+AgentLedger does not guess a Tokometer checkout location. Set
+`AGENTLEDGER_TOKOMETER_ROOT` explicitly when enabling this optional
+integration; otherwise keep `tokometer = false` or use `--no-tokometer`.
 
 ## Product Shape
 

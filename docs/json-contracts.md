@@ -409,6 +409,34 @@ Stable fields:
 JSON export files use `agentledger.feedback_export.v1` and include reviewed
 feedback entries without raw local evidence paths.
 
+### Evidence report change attribution
+
+Schema: `agentledger.report.v1`
+
+New reports include the additive `change_attribution` object. Consumers of
+older reports must continue to accept a missing or `null` value.
+
+- `available`: `true` for command runs and `false` for snapshot-only evidence
+- `basis`: `git-head-range` when commits occurred and
+  `working-tree-fingerprint` for boundary state comparison
+- `preexisting_dirty`: files already dirty before the command
+- `changed_during_run`: combined added, modified, deleted, renamed, and
+  restored paths, plus `changed_file_count`
+- `committed_during_run`: files changed between the starting and ending Git
+  HEAD values
+- `working_tree_during_run`: persistent working-tree changes between command
+  boundaries
+- `unchanged_preexisting`: dirty files whose status and content fingerprint
+  did not change during the command
+- `head_changed`: whether Git HEAD changed during the command
+- `limitations`: explicit boundary-observation limits
+
+The snapshots also include a `files` array for dirty tracked and untracked
+files. Each item contains `path`, two-character Git `status`, `tracked`,
+`size`, `sha256`, and optional `original_path`. Content is never copied into
+this array. Hashes support comparison of a file that was already dirty without
+exposing its contents.
+
 ### `agentledger inspect-report --format json <run-dir>`
 
 Schema: `agentledger.inspect_report.v1`
@@ -422,6 +450,9 @@ Stable fields:
 - `exit_code`
 - `test_framework`
 - `changed_files`
+- `attributed_files`: persistent files attributed to the command, or `null`
+  for legacy/snapshot-only reports
+- `change_attribution`: the report attribution object, or `null`
 - `artifacts`: `ok` and `warn` counts
 - `tokometer`: optional summary string
 - `privacy_mode`

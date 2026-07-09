@@ -4,7 +4,7 @@ import json
 from html import escape
 
 from .integrations import summarize_repomori_artifact
-from .model import LedgerReport
+from .model import ChangeSet, LedgerReport
 from .report_reader import changed_file_count, tokometer_summary
 
 
@@ -55,6 +55,15 @@ def _review_notes(report: LedgerReport, changed_files: int, artifact_warn: int) 
     else:
         notes.append("No changed files were detected after the run.")
 
+    if report.change_attribution and report.change_attribution.available:
+        attributed = report.change_attribution.changed_during_run.changed_file_count
+        preexisting = len(report.change_attribution.preexisting_dirty)
+        notes.append(
+            f"Boundary attribution found {attributed} persistent file change"
+            f"{'s' if attributed != 1 else ''} during the command; "
+            f"{preexisting} file{'s were' if preexisting != 1 else ' was'} already dirty."
+        )
+
     if artifact_warn:
         suffix = "warning" if artifact_warn == 1 else "warnings"
         notes.append(f"Resolve or explicitly accept {artifact_warn} optional artifact {suffix}.")
@@ -69,6 +78,36 @@ def _review_notes(report: LedgerReport, changed_files: int, artifact_warn: int) 
         notes.append("Summary privacy mode omits command transcript content and full diffs from reports.")
 
     return notes
+
+
+def _format_paths(paths: list[str]) -> str:
+    return ", ".join(f"`{path}`" for path in paths) if paths else "none"
+
+
+def _change_set_markdown(changes: ChangeSet) -> list[str]:
+    renamed = [f"{item['from']} -> {item['to']}" for item in changes.renamed]
+    return [
+        f"- Added: {_format_paths(changes.added)}",
+        f"- Modified: {_format_paths(changes.modified)}",
+        f"- Deleted: {_format_paths(changes.deleted)}",
+        f"- Renamed: {_format_paths(renamed)}",
+        f"- Restored to clean: {_format_paths(changes.restored)}",
+    ]
+
+
+def _change_set_html(changes: ChangeSet) -> str:
+    renamed = [f"{item['from']} -> {item['to']}" for item in changes.renamed]
+    items = (
+        ("Added", changes.added),
+        ("Modified", changes.modified),
+        ("Deleted", changes.deleted),
+        ("Renamed", renamed),
+        ("Restored to clean", changes.restored),
+    )
+    return "".join(
+        f"<li><strong>{label}:</strong> {escape(', '.join(paths) if paths else 'none')}</li>"
+        for label, paths in items
+    )
 
 
 def write_json(report: LedgerReport, path):
@@ -89,6 +128,9 @@ def write_markdown(report: LedgerReport, path):
     json_path = path.parent / "agentledger-report.json"
     html_path = path.parent / "agentledger-report.html"
     review_notes = _review_notes(report, changed_files, artifact_warn)
+    attribution = report.change_attribution
+    attributed_files = attribution.changed_during_run.changed_file_count if attribution and attribution.available else None
+    preexisting_files = len(attribution.preexisting_dirty) if attribution else 0
     lines = [
         "# AgentLedger Evidence Report",
         "",
@@ -96,6 +138,8 @@ def write_markdown(report: LedgerReport, path):
         "",
         f"- Outcome: `{outcome}`",
         f"- Changed files: `{changed_files}`",
+        f"- Changed during command: `{attributed_files if attributed_files is not None else 'n/a'}`",
+        f"- Pre-existing dirty files: `{preexisting_files}`",
         f"- Artifacts: `{artifact_ok} ok / {artifact_warn} warn`",
         f"- Evidence bundle: `{zip_path}`",
         f"- Command: `{command_text}`",
@@ -155,6 +199,37 @@ def write_markdown(report: LedgerReport, path):
     else:
         lines.append("No command was executed; this report captured repository state only.\n")
 
+    lines.extend(["## Command Change Attribution", ""])
+    if attribution and attribution.available:
+        lines.extend(
+            [
+                f"- Basis: `{', '.join(attribution.basis)}`",
+                f"- Persistent files changed during command: `{attributed_files}`",
+                f"- Git HEAD changed: `{attribution.head_changed}`",
+                f"- Pre-existing dirty: {_format_paths(attribution.preexisting_dirty)}",
+                f"- Unchanged pre-existing dirt: {_format_paths(attribution.unchanged_preexisting)}",
+                "",
+                "### Combined Boundary Changes",
+                "",
+                *_change_set_markdown(attribution.changed_during_run),
+                "",
+                "### Committed During Command",
+                "",
+                *_change_set_markdown(attribution.committed_during_run),
+                "",
+                "### Working-Tree Changes During Command",
+                "",
+                *_change_set_markdown(attribution.working_tree_during_run),
+                "",
+                "### Attribution Limits",
+                "",
+                *[f"- {item}" for item in attribution.limitations],
+                "",
+            ]
+        )
+    else:
+        lines.extend(["Unavailable for snapshot-only evidence; no command boundary was recorded.", ""])
+
     lines.extend(["## Changes", ""])
     lines.append("```text")
     lines.append(report.after.diff_stat or "No tracked file diff.")
@@ -208,6 +283,25 @@ def write_html(report: LedgerReport, path):
     artifacts = "\n".join(artifact_items)
     warnings = "\n".join(f"<li>{escape(warning)}</li>" for warning in report.warnings)
     review_notes = "\n".join(f"<li>{escape(note)}</li>" for note in _review_notes(report, changed_files, artifact_warn))
+    attribution = report.change_attribution
+    attributed_files = attribution.changed_during_run.changed_file_count if attribution and attribution.available else None
+    preexisting_files = len(attribution.preexisting_dirty) if attribution else 0
+    if attribution and attribution.available:
+        attribution_html = f"""
+  <p><strong>Basis:</strong> <code>{escape(', '.join(attribution.basis))}</code><br>
+  <strong>Git HEAD changed:</strong> <code>{str(attribution.head_changed).lower()}</code><br>
+  <strong>Pre-existing dirty:</strong> <code>{escape(', '.join(attribution.preexisting_dirty) or 'none')}</code><br>
+  <strong>Unchanged pre-existing dirt:</strong> <code>{escape(', '.join(attribution.unchanged_preexisting) or 'none')}</code></p>
+  <h3>Combined Boundary Changes</h3>
+  <ul>{_change_set_html(attribution.changed_during_run)}</ul>
+  <h3>Committed During Command</h3>
+  <ul>{_change_set_html(attribution.committed_during_run)}</ul>
+  <h3>Working-Tree Changes During Command</h3>
+  <ul>{_change_set_html(attribution.working_tree_during_run)}</ul>
+  <h3>Attribution Limits</h3>
+  <ul>{''.join(f'<li>{escape(item)}</li>' for item in attribution.limitations)}</ul>"""
+    else:
+        attribution_html = "<p>Unavailable for snapshot-only evidence; no command boundary was recorded.</p>"
     zip_path = path.parent.with_suffix(".zip")
     json_path = path.parent / "agentledger-report.json"
     checklist = "\n".join(
@@ -276,6 +370,8 @@ def write_html(report: LedgerReport, path):
     <div class="box"><strong>Exit Code</strong><br><code>{escape(exit_code)}</code></div>
     <div class="box"><strong>Test Command</strong><br><code>{escape(test_text)}</code></div>
     <div class="box"><strong>Changed Files</strong><br><code>{changed_files}</code></div>
+    <div class="box"><strong>Changed During Command</strong><br><code>{attributed_files if attributed_files is not None else 'n/a'}</code></div>
+    <div class="box"><strong>Pre-existing Dirty Files</strong><br><code>{preexisting_files}</code></div>
     <div class="box"><strong>Artifact Results</strong><br><code>{artifact_ok} ok / {artifact_warn} warn</code></div>
     <div class="box"><strong>Tokometer</strong><br><code>{escape(tokometer_text)}</code></div>
   </section>
@@ -294,6 +390,8 @@ def write_html(report: LedgerReport, path):
   Stderr transcript: <code>{escape(command.stderr_path if command and command.stderr_path else 'n/a')}</code></p>
   <h2>Command Tail</h2>
   <pre>{escape(command_tail)}</pre>
+  <h2>Command Change Attribution</h2>
+  {attribution_html}
   <h2>Changes</h2>
   <pre>{escape(report.after.diff_stat or 'No tracked file diff.')}</pre>
   <h2>Artifacts</h2>

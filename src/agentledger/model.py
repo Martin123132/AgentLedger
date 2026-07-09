@@ -40,6 +40,26 @@ class CommandResult:
 
 
 @dataclass
+class GitFileState:
+    path: str
+    status: str
+    tracked: bool
+    size: int | None = None
+    sha256: str | None = None
+    original_path: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "status": self.status,
+            "tracked": self.tracked,
+            "size": self.size,
+            "sha256": self.sha256,
+            "original_path": self.original_path,
+        }
+
+
+@dataclass
 class GitSnapshot:
     repo: str
     head: str | None
@@ -47,6 +67,7 @@ class GitSnapshot:
     status: str
     diff_stat: str
     diff: str
+    files: list[GitFileState] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -56,6 +77,58 @@ class GitSnapshot:
             "status": self.status,
             "diff_stat": self.diff_stat,
             "diff": self.diff,
+            "files": [file.to_dict() for file in self.files],
+        }
+
+
+@dataclass
+class ChangeSet:
+    added: list[str] = field(default_factory=list)
+    modified: list[str] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
+    renamed: list[dict[str, str]] = field(default_factory=list)
+    restored: list[str] = field(default_factory=list)
+
+    @property
+    def changed_file_count(self) -> int:
+        paths = set(self.added + self.modified + self.deleted + self.restored)
+        paths.update(item["to"] for item in self.renamed)
+        return len(paths)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "added": self.added,
+            "modified": self.modified,
+            "deleted": self.deleted,
+            "renamed": self.renamed,
+            "restored": self.restored,
+            "changed_file_count": self.changed_file_count,
+        }
+
+
+@dataclass
+class ChangeAttribution:
+    available: bool
+    basis: list[str]
+    preexisting_dirty: list[str]
+    changed_during_run: ChangeSet
+    committed_during_run: ChangeSet
+    working_tree_during_run: ChangeSet
+    unchanged_preexisting: list[str]
+    head_changed: bool
+    limitations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "available": self.available,
+            "basis": self.basis,
+            "preexisting_dirty": self.preexisting_dirty,
+            "changed_during_run": self.changed_during_run.to_dict(),
+            "committed_during_run": self.committed_during_run.to_dict(),
+            "working_tree_during_run": self.working_tree_during_run.to_dict(),
+            "unchanged_preexisting": self.unchanged_preexisting,
+            "head_changed": self.head_changed,
+            "limitations": self.limitations,
         }
 
 
@@ -92,6 +165,7 @@ class LedgerReport:
     privacy_mode: str = "standard"
     artifacts: list[ToolArtifact] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    change_attribution: ChangeAttribution | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -106,4 +180,5 @@ class LedgerReport:
             "privacy_mode": self.privacy_mode,
             "artifacts": [artifact.to_dict() for artifact in self.artifacts],
             "warnings": self.warnings,
+            "change_attribution": self.change_attribution.to_dict() if self.change_attribution else None,
         }

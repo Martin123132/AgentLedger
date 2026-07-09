@@ -520,6 +520,13 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     assert Path(report["command"]["stderr_path"]).exists()
     assert report["command"]["test_detected"] is False
     assert "?? note.txt" in report["after"]["status"]
+    attribution = report["change_attribution"]
+    assert attribution["available"] is True
+    assert attribution["basis"] == ["working-tree-fingerprint"]
+    assert attribution["preexisting_dirty"] == []
+    assert attribution["changed_during_run"]["added"] == ["note.txt"]
+    assert attribution["changed_during_run"]["changed_file_count"] == 1
+    assert attribution["committed_during_run"]["changed_file_count"] == 0
     markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
     html = (latest / "agentledger-report.html").read_text(encoding="utf-8")
     assert "## Review Summary" in markdown
@@ -528,6 +535,10 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     assert "## Review Notes" in markdown
     assert "No recognized test command detected; run a verification command before accepting the work." in markdown
     assert "Review 1 changed file in the diff/status output." in markdown
+    assert "- Changed during command: `1`" in markdown
+    assert "## Command Change Attribution" in markdown
+    assert "- Added: `note.txt`" in markdown
+    assert "Changes made and fully reverted during the command are not observable." in markdown
     assert "## Evidence Files" in markdown
     assert f"- Markdown report: `{latest / 'agentledger-report.md'}`" in markdown
     assert f"- JSON report: `{latest / 'agentledger-report.json'}`" in markdown
@@ -539,6 +550,198 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     assert "<h2>Evidence Files</h2>" in html
     assert "Human Review Checklist" in html
     assert "Review focus:" in html
+    assert "Changed During Command" in html
+    assert "Command Change Attribution" in html
+
+
+def test_run_separates_unchanged_preexisting_dirt_from_command_changes(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    (repo / "README.md").write_text("# Existing local edit\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('new')",
+            ]
+        )
+        == 0
+    )
+
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    attribution = report["change_attribution"]
+    assert attribution["preexisting_dirty"] == ["README.md"]
+    assert attribution["unchanged_preexisting"] == ["README.md"]
+    assert attribution["changed_during_run"]["added"] == ["note.txt"]
+    assert attribution["changed_during_run"]["modified"] == []
+    assert attribution["changed_during_run"]["changed_file_count"] == 1
+    assert report_reader.changed_file_count(report) == 2
+
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    assert "- Changed files: `2`" in markdown
+    assert "- Changed during command: `1`" in markdown
+    assert "- Pre-existing dirty files: `1`" in markdown
+    assert "- Unchanged pre-existing dirt: `README.md`" in markdown
+
+
+def test_run_attributes_further_edit_to_preexisting_dirty_file(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    (repo / "README.md").write_text("# Existing local edit\n", encoding="utf-8")
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('README.md').write_text('# Changed again\\n')",
+            ]
+        )
+        == 0
+    )
+
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    attribution = report["change_attribution"]
+    assert attribution["preexisting_dirty"] == ["README.md"]
+    assert attribution["unchanged_preexisting"] == []
+    assert attribution["working_tree_during_run"]["modified"] == ["README.md"]
+    assert attribution["changed_during_run"]["changed_file_count"] == 1
+
+
+def test_run_attributes_changes_committed_by_command(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    script = (
+        "from pathlib import Path; import subprocess; "
+        "Path('README.md').write_text('# Committed by command\\n'); "
+        "subprocess.run(['git', 'add', 'README.md'], check=True); "
+        "subprocess.run(['git', 'commit', '-m', 'command commit'], check=True)"
+    )
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                script,
+            ]
+        )
+        == 0
+    )
+
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    attribution = report["change_attribution"]
+    assert report["after"]["status"] == ""
+    assert attribution["head_changed"] is True
+    assert attribution["basis"] == ["git-head-range", "working-tree-fingerprint"]
+    assert attribution["committed_during_run"]["modified"] == ["README.md"]
+    assert attribution["working_tree_during_run"]["changed_file_count"] == 0
+    assert attribution["changed_during_run"]["changed_file_count"] == 1
+
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    assert "- Changed files: `0`" in markdown
+    assert "- Changed during command: `1`" in markdown
+    assert "### Committed During Command" in markdown
+    assert "- Modified: `README.md`" in markdown
+
+
+def test_run_attributes_git_rename(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                "git",
+                "mv",
+                "README.md",
+                "GUIDE.md",
+            ]
+        )
+        == 0
+    )
+
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    attribution = report["change_attribution"]
+    assert attribution["working_tree_during_run"]["renamed"] == [
+        {"from": "README.md", "to": "GUIDE.md"}
+    ]
+    assert attribution["changed_during_run"]["changed_file_count"] == 1
+
+
+def test_run_excludes_its_unignored_output_from_attribution(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    out = repo / ".agentledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('new')",
+            ]
+        )
+        == 0
+    )
+
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
+    attribution = report["change_attribution"]
+    assert report["after"]["status"] == "?? note.txt"
+    assert attribution["changed_during_run"]["added"] == ["note.txt"]
+    assert attribution["changed_during_run"]["changed_file_count"] == 1
+    assert ".agentledger" not in json.dumps(attribution)
 
 
 def test_run_detects_pytest_command(tmp_path: Path) -> None:
@@ -902,6 +1105,25 @@ def test_doctor_returns_status() -> None:
     assert report["checks"]
     assert all("hint" in check for check in report["checks"])
     assert all(check["hint"] == "No action needed." for check in report["checks"] if check["ok"])
+
+
+def test_tokometer_requires_explicit_checkout_path(tmp_path: Path, monkeypatch) -> None:
+    import agentledger.integrations as integrations
+
+    monkeypatch.delenv("AGENTLEDGER_TOKOMETER_ROOT", raising=False)
+    report = run_doctor()
+    checkout = next(check for check in report["checks"] if check["name"] == "tokometer_checkout")
+    assert checkout["ok"] is False
+    assert checkout["detail"] == "AGENTLEDGER_TOKOMETER_ROOT is not set"
+    assert "OneDrive" not in checkout["detail"]
+
+    artifact = integrations.read_tokometer_usage(tmp_path / "artifacts")
+    assert artifact.ok is False
+    assert artifact.command == []
+    assert "AGENTLEDGER_TOKOMETER_ROOT is not set" in artifact.summary
+    payload = json.loads(Path(artifact.output_path).read_text(encoding="utf-8"))
+    assert payload["tokometer_root"] is None
+    assert "OneDrive" not in json.dumps(payload)
 
 
 def test_doctor_reports_missing_repo_without_raising(tmp_path: Path) -> None:
@@ -4366,6 +4588,8 @@ def test_inspect_report_json_output(tmp_path: Path, capsys) -> None:
     assert payload["command"] == "python -c from pathlib import Path; Path('note.txt').write_text('hello')"
     assert payload["exit_code"] == 0
     assert payload["changed_files"] == 1
+    assert payload["attributed_files"] == 1
+    assert payload["change_attribution"]["changed_during_run"]["added"] == ["note.txt"]
     assert payload["artifacts"]["ok"] == 0
     assert payload["test_framework"] == "n/a"
 
