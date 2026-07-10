@@ -18,6 +18,7 @@ from agentledger.bundle import (
 )
 from agentledger.config import load_config
 from agentledger.doctor import format_doctor, format_doctor_markdown, run_doctor
+from agentledger.integrity import REPORT_INTEGRITY_SCHEMA, report_sha256
 from agentledger import report_reader
 
 
@@ -1465,6 +1466,159 @@ def test_history_json_output(tmp_path: Path, capsys) -> None:
     assert payload["runs"][0]["command"] == "No command executed"
     assert payload["runs"][0]["exit_code"] is None
     assert payload["runs"][0]["changed_files"] == 0
+    assert payload["runs"][0]["integrity"]["status"] == "valid"
+
+
+def test_verify_chain_links_runs_and_surfaces_integrity(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    capture_args = [
+        "snapshot",
+        "--repo",
+        str(repo),
+        "--out",
+        str(out),
+        "--no-repomori",
+        "--no-tokometer",
+        "--no-zip",
+    ]
+
+    assert cli.main(capture_args) == 0
+    first_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    first = json.loads((first_dir / "agentledger-report.json").read_text(encoding="utf-8"))
+    capsys.readouterr()
+
+    assert cli.main(capture_args) == 0
+    second_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    second = json.loads((second_dir / "agentledger-report.json").read_text(encoding="utf-8"))
+    capsys.readouterr()
+
+    assert first["integrity"]["schema_version"] == REPORT_INTEGRITY_SCHEMA
+    assert first["integrity"]["previous_run_id"] is None
+    assert first["integrity"]["report_sha256"] == report_sha256(first)
+    assert second["integrity"]["previous_run_id"] == first["run_id"]
+    assert second["integrity"]["previous_report_sha256"] == first["integrity"]["report_sha256"]
+    assert second["integrity"]["report_sha256"] == report_sha256(second)
+    assert str(repo.resolve()) not in json.dumps(second["integrity"])
+
+    assert cli.main(["verify-chain", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 0
+    chain = _parse_json_output(capsys.readouterr().out)
+    assert chain["schema_version"] == "agentledger.verify_chain.v1"
+    assert chain["ok"] is True
+    assert chain["status"] == "valid"
+    assert chain["head_run_id"] == second["run_id"]
+    assert chain["head_sha256"] == second["integrity"]["report_sha256"]
+    assert chain["total_runs"] == 2
+    assert chain["chained_runs"] == 2
+    assert chain["legacy_runs"] == 0
+    assert chain["roots"] == [first["run_id"]]
+    assert all(item["status"] == "valid" for item in chain["runs"])
+
+    assert cli.main(["inspect-report", "--format", "json", str(second_dir)]) == 0
+    inspected = _parse_json_output(capsys.readouterr().out)
+    assert inspected["integrity"]["status"] == "valid"
+    assert inspected["integrity"]["previous_run_id"] == first["run_id"]
+    markdown = (second_dir / "agentledger-report.md").read_text(encoding="utf-8")
+    html = (second_dir / "agentledger-report.html").read_text(encoding="utf-8")
+    assert "## History Integrity" in markdown
+    assert second["integrity"]["report_sha256"] in markdown
+    assert "<h2>History Integrity</h2>" in html
+
+
+def test_verify_chain_detects_edited_report(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    args = ["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer", "--no-zip"]
+
+    assert cli.main(args) == 0
+    first_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    capsys.readouterr()
+    assert cli.main(args) == 0
+    capsys.readouterr()
+
+    report_path = first_dir / "agentledger-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["privacy_mode"] = "tampered"
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+    assert cli.main(["verify-chain", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 2
+    chain = _parse_json_output(capsys.readouterr().out)
+    assert chain["ok"] is False
+    assert chain["status"] == "broken"
+    edited = next(item for item in chain["runs"] if item["run_id"] == report["run_id"])
+    assert edited["status"] == "invalid"
+    assert "Report SHA-256 does not match" in " ".join(edited["errors"])
+
+
+def test_verify_chain_detects_missing_predecessor(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    args = ["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer", "--no-zip"]
+
+    assert cli.main(args) == 0
+    first_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    first = json.loads((first_dir / "agentledger-report.json").read_text(encoding="utf-8"))
+    capsys.readouterr()
+    assert cli.main(args) == 0
+    capsys.readouterr()
+    (first_dir / "agentledger-report.json").unlink()
+
+    assert cli.main(["verify-chain", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 2
+    chain = _parse_json_output(capsys.readouterr().out)
+    assert chain["status"] == "broken"
+    assert f"Previous run is missing: {first['run_id']}" in " ".join(chain["runs"][0]["errors"])
+
+
+def test_verify_chain_detects_removed_integrity_from_head(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    args = ["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer", "--no-zip"]
+
+    assert cli.main(args) == 0
+    capsys.readouterr()
+    assert cli.main(args) == 0
+    head_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    head_path = head_dir / "agentledger-report.json"
+    head = json.loads(head_path.read_text(encoding="utf-8"))
+    head.pop("integrity")
+    head_path.write_text(json.dumps(head, indent=2) + "\n", encoding="utf-8")
+    capsys.readouterr()
+
+    assert cli.main(["verify-chain", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 2
+    chain = _parse_json_output(capsys.readouterr().out)
+    assert chain["status"] == "broken"
+    latest = next(item for item in chain["runs"] if item["run_id"] == head["run_id"])
+    assert latest["status"] == "invalid"
+    assert "no integrity record after chained history began" in " ".join(latest["errors"])
+
+
+def test_verify_chain_accepts_linked_legacy_report_as_partial(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    args = ["snapshot", "--repo", str(repo), "--out", str(out), "--no-repomori", "--no-tokometer", "--no-zip"]
+
+    assert cli.main(args) == 0
+    legacy_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    legacy_path = legacy_dir / "agentledger-report.json"
+    legacy = json.loads(legacy_path.read_text(encoding="utf-8"))
+    legacy.pop("integrity")
+    legacy_path.write_text(json.dumps(legacy, indent=2) + "\n", encoding="utf-8")
+    capsys.readouterr()
+
+    assert cli.main(args) == 0
+    current_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    current = json.loads((current_dir / "agentledger-report.json").read_text(encoding="utf-8"))
+    capsys.readouterr()
+    assert current["integrity"]["previous_run_id"] == legacy["run_id"]
+    assert current["integrity"]["previous_report_sha256"] == report_sha256(legacy)
+
+    assert cli.main(["verify-chain", "--repo", str(repo), "--out", str(out), "--format", "json"]) == 0
+    chain = _parse_json_output(capsys.readouterr().out)
+    assert chain["ok"] is True
+    assert chain["status"] == "partial"
+    assert chain["legacy_runs"] == 1
+    assert chain["chained_runs"] == 1
+    assert "legacy report" in " ".join(chain["warnings"])
 
 
 def test_status_summarizes_latest_run_and_feedback(tmp_path: Path, capsys) -> None:
@@ -4729,6 +4883,7 @@ def test_inspect_report_accepts_legacy_report_without_environment_or_duration(tm
     report_path = run_dir / "agentledger-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
     report.pop("environment")
+    report.pop("integrity")
     report["command"].pop("duration_seconds")
     report_path.write_text(json.dumps(report) + "\n", encoding="utf-8")
 
@@ -4737,6 +4892,7 @@ def test_inspect_report_accepts_legacy_report_without_environment_or_duration(tm
     payload = _parse_json_output(capsys.readouterr().out)
     assert payload["environment"] is None
     assert payload["command_duration_seconds"] is None
+    assert payload["integrity"]["status"] == "legacy"
 
 
 def test_compare_json_output(tmp_path: Path, capsys) -> None:

@@ -88,6 +88,26 @@ class EnvironmentFingerprint:
 
 
 @dataclass
+class ReportIntegrity:
+    schema_version: str
+    algorithm: str
+    canonicalization: str
+    report_sha256: str
+    previous_run_id: str | None
+    previous_report_sha256: str | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "algorithm": self.algorithm,
+            "canonicalization": self.canonicalization,
+            "report_sha256": self.report_sha256,
+            "previous_run_id": self.previous_run_id,
+            "previous_report_sha256": self.previous_report_sha256,
+        }
+
+
+@dataclass
 class GitFileState:
     path: str
     status: str
@@ -215,6 +235,7 @@ class LedgerReport:
     warnings: list[str] = field(default_factory=list)
     change_attribution: ChangeAttribution | None = None
     environment: EnvironmentFingerprint | None = None
+    integrity: ReportIntegrity | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -231,4 +252,5 @@ class LedgerReport:
             "warnings": self.warnings,
             "change_attribution": self.change_attribution.to_dict() if self.change_attribution else None,
             "environment": self.environment.to_dict() if self.environment else None,
+            "integrity": self.integrity.to_dict() if self.integrity else None,
         }

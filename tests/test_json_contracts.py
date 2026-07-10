@@ -18,6 +18,7 @@ SCHEMAS = {
     "doctor": "agentledger.doctor.v1",
     "open_latest": "agentledger.open_latest.v1",
     "history": "agentledger.history.v1",
+    "verify_chain": "agentledger.verify_chain.v1",
     "status": "agentledger.status.v1",
     "alpha_guide": "agentledger.alpha_guide.v1",
     "alpha": "agentledger.alpha_summary.v1",
@@ -177,6 +178,7 @@ def json_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
         "doctor": _run_json(capsys, ["doctor", "--json"], {0, 2}),
         "open_latest": _run_json(capsys, ["open-latest", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "history": _run_json(capsys, ["history", "--format", "json", "--repo", str(repo), "--out", str(out)]),
+        "verify_chain": _run_json(capsys, ["verify-chain", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "status": _run_json(capsys, ["status", "--format", "json", "--repo", str(repo), "--out", str(out), "--allow-warnings"]),
         "alpha_guide": _run_json(capsys, ["alpha-guide", "--format", "json", "--repo", str(repo), "--out", str(out)]),
         "alpha": _run_json(
@@ -395,6 +397,22 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "errors",
         },
         "history": {"schema_version", "out", "runs"},
+        "verify_chain": {
+            "schema_version",
+            "ok",
+            "status",
+            "out",
+            "latest_run",
+            "head_run_id",
+            "head_sha256",
+            "total_runs",
+            "chained_runs",
+            "legacy_runs",
+            "roots",
+            "runs",
+            "warnings",
+            "errors",
+        },
         "status": {
             "schema_version",
             "ok",
@@ -567,6 +585,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "attributed_files",
             "change_attribution",
             "environment",
+            "integrity",
             "artifacts",
             "tokometer",
             "privacy_mode",
@@ -713,10 +732,33 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
             "test_framework",
             "privacy_mode",
             "artifacts",
+            "integrity",
             "markdown",
             "json",
             "html",
             "zip",
+        },
+    )
+
+    verify_chain = json_payloads["verify_chain"]
+    assert verify_chain["ok"] is True
+    assert verify_chain["status"] == "valid"
+    assert verify_chain["total_runs"] >= 2
+    assert verify_chain["chained_runs"] == verify_chain["total_runs"]
+    assert verify_chain["legacy_runs"] == 0
+    assert verify_chain["head_run_id"]
+    assert len(verify_chain["head_sha256"]) == 64
+    _assert_keys(
+        verify_chain["runs"][0],
+        {
+            "run_id",
+            "run_dir",
+            "status",
+            "report_sha256",
+            "computed_sha256",
+            "previous_run_id",
+            "previous_report_sha256",
+            "errors",
         },
     )
 
@@ -981,6 +1023,21 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
             "file_contents_included",
         },
     )
+    _assert_keys(
+        inspect_report["integrity"],
+        {
+            "status",
+            "schema_version",
+            "algorithm",
+            "canonicalization",
+            "report_sha256",
+            "computed_sha256",
+            "previous_run_id",
+            "previous_report_sha256",
+            "errors",
+        },
+    )
+    assert inspect_report["integrity"]["status"] == "valid"
 
     check = json_payloads["check"]
     assert check["status"] in {"pass", "warn", "block"}

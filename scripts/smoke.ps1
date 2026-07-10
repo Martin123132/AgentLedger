@@ -228,6 +228,8 @@ try {
     )
 
     $run2 = (Get-Content (Join-Path $out "latest.txt") -Raw).Trim()
+    Invoke-AgentLedger @("verify-chain", "--out", $out)
+    Invoke-AgentLedger @("verify-chain", "--format", "json", "--out", $out)
     Invoke-AgentLedger @("review", "--format", "json", "--out", $out, "--allow-warnings", "--history-limit", "2")
     Invoke-AgentLedger @("compare", "--format", "json", $run, $run2)
 }
