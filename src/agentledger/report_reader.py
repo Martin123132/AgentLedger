@@ -170,6 +170,21 @@ def command_exit_code(report: dict[str, Any]) -> int | None:
     return int(value) if isinstance(value, int) else None
 
 
+def command_duration_seconds(report: dict[str, Any]) -> float | None:
+    command = report.get("command")
+    if not isinstance(command, dict):
+        return None
+    value = command.get("duration_seconds")
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+        return float(value)
+    return None
+
+
+def environment_fingerprint(report: dict[str, Any]) -> dict[str, Any] | None:
+    payload = report.get("environment")
+    return payload if isinstance(payload, dict) else None
+
+
 def command_test_framework(report: dict[str, Any]) -> str:
     command = report.get("command")
     if not isinstance(command, dict):

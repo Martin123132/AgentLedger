@@ -64,6 +64,13 @@ def _review_notes(report: LedgerReport, changed_files: int, artifact_warn: int) 
             f"{preexisting} file{'s were' if preexisting != 1 else ' was'} already dirty."
         )
 
+    if report.environment:
+        lock_count = report.environment.dependency_lock_count
+        notes.append(
+            f"Environment fingerprint captured runtime versions and {lock_count} recognized dependency lock"
+            f"{'s' if lock_count != 1 else ''} without environment variables or file contents."
+        )
+
     if artifact_warn:
         suffix = "warning" if artifact_warn == 1 else "warnings"
         notes.append(f"Resolve or explicitly accept {artifact_warn} optional artifact {suffix}.")
@@ -129,6 +136,7 @@ def write_markdown(report: LedgerReport, path):
     html_path = path.parent / "agentledger-report.html"
     review_notes = _review_notes(report, changed_files, artifact_warn)
     attribution = report.change_attribution
+    environment = report.environment
     attributed_files = attribution.changed_during_run.changed_file_count if attribution and attribution.available else None
     preexisting_files = len(attribution.preexisting_dirty) if attribution else 0
     lines = [
@@ -140,6 +148,8 @@ def write_markdown(report: LedgerReport, path):
         f"- Changed files: `{changed_files}`",
         f"- Changed during command: `{attributed_files if attributed_files is not None else 'n/a'}`",
         f"- Pre-existing dirty files: `{preexisting_files}`",
+        f"- Command duration: `{f'{command.duration_seconds:.3f}s' if command and command.duration_seconds is not None else 'n/a'}`",
+        f"- Dependency locks fingerprinted: `{environment.dependency_lock_count if environment else 'n/a'}`",
         f"- Artifacts: `{artifact_ok} ok / {artifact_warn} warn`",
         f"- Evidence bundle: `{zip_path}`",
         f"- Command: `{command_text}`",
@@ -185,6 +195,7 @@ def write_markdown(report: LedgerReport, path):
                 f"- Test framework: `{command.test_framework or 'n/a'}`",
                 f"- Started: `{command.started_at}`",
                 f"- Ended: `{command.ended_at}`",
+                f"- Duration: `{f'{command.duration_seconds:.3f}s' if command.duration_seconds is not None else 'n/a'}`",
                 f"- Stdout: `{command.stdout_path or 'n/a'}`",
                 f"- Stderr: `{command.stderr_path or 'n/a'}`",
                 "",
@@ -198,6 +209,39 @@ def write_markdown(report: LedgerReport, path):
                 lines.extend(["Stderr:", "", "```text", command.stderr_tail, "```", ""])
     else:
         lines.append("No command was executed; this report captured repository state only.\n")
+
+    lines.extend(["## Environment Fingerprint", ""])
+    if environment:
+        lines.extend(
+            [
+                f"- Schema: `{environment.schema_version}`",
+                f"- AgentLedger: `{environment.agentledger_version}`",
+                f"- OS: `{environment.os.get('system', 'unknown')} {environment.os.get('release', 'unknown')} ({environment.os.get('machine', 'unknown')})`",
+                f"- Python: `{environment.python.get('implementation', 'unknown')} {environment.python.get('version', 'unknown')}`",
+                f"- Git: `{environment.git_version}`",
+                f"- Base commit: `{environment.base_commit or 'unborn/unknown'}`",
+                f"- Recognized dependency locks: `{environment.dependency_lock_count}`",
+                f"- Fingerprint limit: `{environment.dependency_lock_limit}`",
+                f"- Lock list truncated: `{environment.dependency_locks_truncated}`",
+                f"- Environment variables included: `{environment.privacy.get('environment_variables_included', False)}`",
+                f"- Executable paths included: `{environment.privacy.get('executable_paths_included', False)}`",
+                f"- Hostnames included: `{environment.privacy.get('hostnames_included', False)}`",
+                f"- File contents included: `{environment.privacy.get('file_contents_included', False)}`",
+                "",
+                "### Dependency Lock Hashes",
+                "",
+            ]
+        )
+        if environment.dependency_locks:
+            for lock in environment.dependency_locks:
+                lines.append(
+                    f"- `{lock.path}` ({lock.ecosystem}, {lock.size} bytes): `sha256:{lock.sha256}`"
+                )
+            lines.append("")
+        else:
+            lines.extend(["No recognized tracked dependency locks were found.", ""])
+    else:
+        lines.extend(["Unavailable in this legacy report.", ""])
 
     lines.extend(["## Command Change Attribution", ""])
     if attribution and attribution.available:
@@ -284,6 +328,7 @@ def write_html(report: LedgerReport, path):
     warnings = "\n".join(f"<li>{escape(warning)}</li>" for warning in report.warnings)
     review_notes = "\n".join(f"<li>{escape(note)}</li>" for note in _review_notes(report, changed_files, artifact_warn))
     attribution = report.change_attribution
+    environment = report.environment
     attributed_files = attribution.changed_during_run.changed_file_count if attribution and attribution.available else None
     preexisting_files = len(attribution.preexisting_dirty) if attribution else 0
     if attribution and attribution.available:
@@ -302,6 +347,34 @@ def write_html(report: LedgerReport, path):
   <ul>{''.join(f'<li>{escape(item)}</li>' for item in attribution.limitations)}</ul>"""
     else:
         attribution_html = "<p>Unavailable for snapshot-only evidence; no command boundary was recorded.</p>"
+    duration_text = f"{command.duration_seconds:.3f}s" if command and command.duration_seconds is not None else "n/a"
+    if environment:
+        lock_items = "".join(
+            f"<li><code>{escape(lock.path)}</code> ({escape(lock.ecosystem)}, {lock.size} bytes): "
+            f"<code>sha256:{escape(lock.sha256)}</code></li>"
+            for lock in environment.dependency_locks
+        ) or "<li>No recognized tracked dependency locks were found.</li>"
+        environment_html = f"""
+  <p><strong>Schema:</strong> <code>{escape(environment.schema_version)}</code><br>
+  <strong>AgentLedger:</strong> <code>{escape(environment.agentledger_version)}</code><br>
+  <strong>OS:</strong> <code>{escape(environment.os.get('system', 'unknown'))} {escape(environment.os.get('release', 'unknown'))} ({escape(environment.os.get('machine', 'unknown'))})</code><br>
+  <strong>Python:</strong> <code>{escape(environment.python.get('implementation', 'unknown'))} {escape(environment.python.get('version', 'unknown'))}</code><br>
+  <strong>Git:</strong> <code>{escape(environment.git_version)}</code><br>
+  <strong>Base commit:</strong> <code>{escape(environment.base_commit or 'unborn/unknown')}</code><br>
+  <strong>Recognized dependency locks:</strong> <code>{environment.dependency_lock_count}</code><br>
+  <strong>Fingerprint limit:</strong> <code>{environment.dependency_lock_limit}</code><br>
+  <strong>Lock list truncated:</strong> <code>{str(environment.dependency_locks_truncated).lower()}</code></p>
+  <h3>Privacy Boundary</h3>
+  <ul>
+    <li>Environment variables included: <code>{str(environment.privacy.get('environment_variables_included', False)).lower()}</code></li>
+    <li>Executable paths included: <code>{str(environment.privacy.get('executable_paths_included', False)).lower()}</code></li>
+    <li>Hostnames included: <code>{str(environment.privacy.get('hostnames_included', False)).lower()}</code></li>
+    <li>File contents included: <code>{str(environment.privacy.get('file_contents_included', False)).lower()}</code></li>
+  </ul>
+  <h3>Dependency Lock Hashes</h3>
+  <ul>{lock_items}</ul>"""
+    else:
+        environment_html = "<p>Unavailable in this legacy report.</p>"
     zip_path = path.parent.with_suffix(".zip")
     json_path = path.parent / "agentledger-report.json"
     checklist = "\n".join(
@@ -368,10 +441,12 @@ def write_html(report: LedgerReport, path):
     <div class="box"><strong>Branch</strong><br><code>{escape(report.after.branch or 'detached/unknown')}</code></div>
     <div class="box"><strong>Privacy Mode</strong><br><code>{escape(report.privacy_mode)}</code></div>
     <div class="box"><strong>Exit Code</strong><br><code>{escape(exit_code)}</code></div>
+    <div class="box"><strong>Command Duration</strong><br><code>{escape(duration_text)}</code></div>
     <div class="box"><strong>Test Command</strong><br><code>{escape(test_text)}</code></div>
     <div class="box"><strong>Changed Files</strong><br><code>{changed_files}</code></div>
     <div class="box"><strong>Changed During Command</strong><br><code>{attributed_files if attributed_files is not None else 'n/a'}</code></div>
     <div class="box"><strong>Pre-existing Dirty Files</strong><br><code>{preexisting_files}</code></div>
+    <div class="box"><strong>Dependency Locks</strong><br><code>{environment.dependency_lock_count if environment else 'n/a'}</code></div>
     <div class="box"><strong>Artifact Results</strong><br><code>{artifact_ok} ok / {artifact_warn} warn</code></div>
     <div class="box"><strong>Tokometer</strong><br><code>{escape(tokometer_text)}</code></div>
   </section>
@@ -390,6 +465,8 @@ def write_html(report: LedgerReport, path):
   Stderr transcript: <code>{escape(command.stderr_path if command and command.stderr_path else 'n/a')}</code></p>
   <h2>Command Tail</h2>
   <pre>{escape(command_tail)}</pre>
+  <h2>Environment Fingerprint</h2>
+  {environment_html}
   <h2>Command Change Attribution</h2>
   {attribution_html}
   <h2>Changes</h2>

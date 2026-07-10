@@ -72,6 +72,13 @@ The selected evidence output directory is excluded from these boundary
 snapshots, even when the target repository has not ignored `.agentledger/`, so
 the recorder does not attribute its own reports to the captured command.
 
+Reports also include a privacy-safe environment fingerprint captured before
+the command. It records the AgentLedger, OS, Python, and Git versions, starting
+commit, measured command duration, and SHA-256 hashes for up to 50 recognized
+tracked dependency lockfiles. It does not copy environment variables,
+hostnames, executable paths, or lockfile contents. These additive fields remain
+optional so existing `agentledger.report.v1` evidence stays readable.
+
 ## Why This Exists
 
 AI coding agents are now doing real work, changing code, and burning money, but

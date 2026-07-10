@@ -22,6 +22,7 @@ class CommandResult:
     stderr_path: str | None = None
     test_detected: bool = False
     test_framework: str | None = None
+    duration_seconds: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -30,12 +31,59 @@ class CommandResult:
             "started_at": self.started_at,
             "ended_at": self.ended_at,
             "exit_code": self.exit_code,
+            "duration_seconds": self.duration_seconds,
             "stdout_tail": self.stdout_tail,
             "stderr_tail": self.stderr_tail,
             "stdout_path": self.stdout_path,
             "stderr_path": self.stderr_path,
             "test_detected": self.test_detected,
             "test_framework": self.test_framework,
+        }
+
+
+@dataclass
+class DependencyLockFingerprint:
+    path: str
+    ecosystem: str
+    size: int
+    sha256: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "ecosystem": self.ecosystem,
+            "size": self.size,
+            "sha256": self.sha256,
+        }
+
+
+@dataclass
+class EnvironmentFingerprint:
+    schema_version: str
+    agentledger_version: str
+    os: dict[str, str]
+    python: dict[str, str]
+    git_version: str
+    base_commit: str | None
+    dependency_locks: list[DependencyLockFingerprint]
+    dependency_lock_count: int
+    dependency_lock_limit: int
+    dependency_locks_truncated: bool
+    privacy: dict[str, bool]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "agentledger_version": self.agentledger_version,
+            "os": self.os,
+            "python": self.python,
+            "git_version": self.git_version,
+            "base_commit": self.base_commit,
+            "dependency_locks": [item.to_dict() for item in self.dependency_locks],
+            "dependency_lock_count": self.dependency_lock_count,
+            "dependency_lock_limit": self.dependency_lock_limit,
+            "dependency_locks_truncated": self.dependency_locks_truncated,
+            "privacy": self.privacy,
         }
 
 
@@ -166,6 +214,7 @@ class LedgerReport:
     artifacts: list[ToolArtifact] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     change_attribution: ChangeAttribution | None = None
+    environment: EnvironmentFingerprint | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -181,4 +230,5 @@ class LedgerReport:
             "artifacts": [artifact.to_dict() for artifact in self.artifacts],
             "warnings": self.warnings,
             "change_attribution": self.change_attribution.to_dict() if self.change_attribution else None,
+            "environment": self.environment.to_dict() if self.environment else None,
         }

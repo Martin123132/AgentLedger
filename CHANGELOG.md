@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added a privacy-safe `agentledger.environment.v1` fingerprint to evidence
+  reports with AgentLedger, OS, Python, and Git versions plus the starting Git
+  commit.
+- Added bounded SHA-256 fingerprints for up to 50 recognized tracked
+  dependency lockfiles without copying lockfile contents, environment
+  variables, hostnames, or executable paths.
+- Added measured command duration to report JSON, Markdown, HTML, and
+  `inspect-report` output.
+
 ## 0.1.29-alpha - 2026-07-09
 
 - Added command-scoped change attribution that separates pre-existing dirty

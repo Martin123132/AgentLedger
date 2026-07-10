@@ -437,6 +437,32 @@ files. Each item contains `path`, two-character Git `status`, `tracked`,
 this array. Hashes support comparison of a file that was already dirty without
 exposing its contents.
 
+### Evidence report environment fingerprint
+
+Schema: `agentledger.environment.v1`
+
+New `agentledger.report.v1` reports include the additive `environment` object.
+Consumers of older reports must continue to accept a missing or `null` value.
+The fingerprint is captured before the recorded command and contains:
+
+- `agentledger_version`
+- `os`: `system`, `release`, and CPU `machine`; no hostname
+- `python`: implementation and version; no executable path
+- `git_version`
+- `base_commit`: Git HEAD at the start of the run
+- `dependency_locks`: at most 50 recognized tracked lockfiles with relative
+  path, ecosystem, byte size, and SHA-256 hash
+- `dependency_lock_count`, `dependency_lock_limit`, and
+  `dependency_locks_truncated` for bounded collection
+- `privacy`: explicit false flags for environment variables, executable
+  paths, hostnames, and file contents
+
+Recognized locks cover common Python, JavaScript, Rust, Go, Ruby, PHP, Java,
+.NET, Nix, Dart, and Swift filenames. Untracked lockfiles are not fingerprinted.
+The report never includes lockfile contents or process environment values.
+The additive command field `duration_seconds` records elapsed wall-clock time
+using a monotonic timer.
+
 ### `agentledger inspect-report --format json <run-dir>`
 
 Schema: `agentledger.inspect_report.v1`
@@ -448,11 +474,14 @@ Stable fields:
 - `run_dir`
 - `command`
 - `exit_code`
+- `command_duration_seconds`: measured elapsed command time, or `null` for
+  snapshot-only and legacy reports
 - `test_framework`
 - `changed_files`
 - `attributed_files`: persistent files attributed to the command, or `null`
   for legacy/snapshot-only reports
 - `change_attribution`: the report attribution object, or `null`
+- `environment`: `agentledger.environment.v1`, or `null` for legacy reports
 - `artifacts`: `ok` and `warn` counts
 - `tokometer`: optional summary string
 - `privacy_mode`
