@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from zipfile import ZipFile
 import subprocess
@@ -486,6 +487,9 @@ def test_snapshot_writes_json_and_markdown(tmp_path: Path) -> None:
     report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
     assert report["schema_version"] == "agentledger.report.v1"
     assert report["target_repo"] == str(repo.resolve())
+    assert report["environment"]["schema_version"] == "agentledger.environment.v1"
+    assert report["environment"]["base_commit"] == report["before"]["head"]
+    assert report["environment"]["dependency_lock_count"] == 0
     assert (latest / "agentledger-report.md").exists()
     assert (latest / "agentledger-report.html").exists()
     assert latest.with_suffix(".zip").exists()
@@ -516,6 +520,7 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     latest = Path((out / "latest.txt").read_text(encoding="utf-8"))
     report = json.loads((latest / "agentledger-report.json").read_text(encoding="utf-8"))
     assert report["command"]["exit_code"] == 0
+    assert report["command"]["duration_seconds"] >= 0
     assert Path(report["command"]["stdout_path"]).exists()
     assert Path(report["command"]["stderr_path"]).exists()
     assert report["command"]["test_detected"] is False
@@ -537,6 +542,8 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     assert "Review 1 changed file in the diff/status output." in markdown
     assert "- Changed during command: `1`" in markdown
     assert "## Command Change Attribution" in markdown
+    assert "## Environment Fingerprint" in markdown
+    assert "- Environment variables included: `False`" in markdown
     assert "- Added: `note.txt`" in markdown
     assert "Changes made and fully reverted during the command are not observable." in markdown
     assert "## Evidence Files" in markdown
@@ -552,6 +559,107 @@ def test_run_captures_command_and_diff(tmp_path: Path) -> None:
     assert "Review focus:" in html
     assert "Changed During Command" in html
     assert "Command Change Attribution" in html
+    assert "Environment Fingerprint" in html
+
+
+def test_environment_fingerprint_hashes_tracked_locks_without_copying_private_values(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    web = repo / "web"
+    web.mkdir()
+    package_lock_text = '{"private_dependency_token":"lock-secret-12345"}\n'
+    requirements_text = "private-package==1.2.3 # requirements-secret-67890\n"
+    environment_secret = "environment-secret-24680"
+    env_file_secret = "tracked-env-secret-13579"
+    untracked_lock_secret = "untracked-lock-secret-11223"
+    (web / "package-lock.json").write_text(package_lock_text, encoding="utf-8")
+    (repo / "requirements-dev.txt").write_text(requirements_text, encoding="utf-8")
+    (repo / ".env").write_text(f"TOKEN={env_file_secret}\n", encoding="utf-8")
+    git(repo, "add", "web/package-lock.json", "requirements-dev.txt", ".env")
+    git(repo, "commit", "-m", "add dependency locks")
+    expected_requirements_hash = hashlib.sha256((repo / "requirements-dev.txt").read_bytes()).hexdigest()
+    expected_package_lock_hash = hashlib.sha256((web / "package-lock.json").read_bytes()).hexdigest()
+    (repo / "poetry.lock").write_text(untracked_lock_secret, encoding="utf-8")
+    monkeypatch.setenv("AGENTLEDGER_PRIVATE_TEST_VALUE", environment_secret)
+    base_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    ).stdout.strip()
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('note.txt').write_text('new')",
+            ]
+        )
+        == 0
+    )
+
+    latest = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_text = (latest / "agentledger-report.json").read_text(encoding="utf-8")
+    report = json.loads(report_text)
+    markdown = (latest / "agentledger-report.md").read_text(encoding="utf-8")
+    html = (latest / "agentledger-report.html").read_text(encoding="utf-8")
+    bundle_text = _bundle_text(latest.with_suffix(".zip"))
+    combined = "\n".join([report_text, markdown, html, bundle_text])
+    environment = report["environment"]
+
+    assert environment["schema_version"] == "agentledger.environment.v1"
+    assert environment["agentledger_version"] == __version__
+    assert environment["base_commit"] == base_commit
+    assert set(environment["os"]) == {"system", "release", "machine"}
+    assert set(environment["python"]) == {"implementation", "version"}
+    assert environment["git_version"].startswith("git version")
+    assert environment["dependency_lock_count"] == 2
+    assert environment["dependency_locks_truncated"] is False
+    assert [item["path"] for item in environment["dependency_locks"]] == [
+        "requirements-dev.txt",
+        "web/package-lock.json",
+    ]
+    assert environment["dependency_locks"][0]["sha256"] == expected_requirements_hash
+    assert environment["dependency_locks"][1]["sha256"] == expected_package_lock_hash
+    assert environment["privacy"] == {
+        "environment_variables_included": False,
+        "executable_paths_included": False,
+        "hostnames_included": False,
+        "file_contents_included": False,
+    }
+    assert report["command"]["duration_seconds"] >= 0
+
+    for private_value in (
+        package_lock_text.strip(),
+        requirements_text.strip(),
+        environment_secret,
+        env_file_secret,
+        untracked_lock_secret,
+    ):
+        assert private_value not in combined
+    assert "poetry.lock" not in json.dumps(environment)
+    assert "AGENTLEDGER_PRIVATE_TEST_VALUE" not in combined
+    assert "Environment fingerprint captured runtime versions and 2 recognized dependency locks" in markdown
+    assert "<h2>Environment Fingerprint</h2>" in html
+
+    capsys.readouterr()
+    assert cli.main(["inspect-report", "--format", "json", str(latest)]) == 0
+    inspected = _parse_json_output(capsys.readouterr().out)
+    assert inspected["environment"] == environment
+    assert inspected["command_duration_seconds"] == report["command"]["duration_seconds"]
 
 
 def test_run_separates_unchanged_preexisting_dirt_from_command_changes(tmp_path: Path) -> None:
@@ -4592,6 +4700,43 @@ def test_inspect_report_json_output(tmp_path: Path, capsys) -> None:
     assert payload["change_attribution"]["changed_during_run"]["added"] == ["note.txt"]
     assert payload["artifacts"]["ok"] == 0
     assert payload["test_framework"] == "n/a"
+
+
+def test_inspect_report_accepts_legacy_report_without_environment_or_duration(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-c",
+                "print('legacy')",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_path = run_dir / "agentledger-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report.pop("environment")
+    report["command"].pop("duration_seconds")
+    report_path.write_text(json.dumps(report) + "\n", encoding="utf-8")
+
+    capsys.readouterr()
+    assert cli.main(["inspect-report", "--format", "json", str(run_dir)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["environment"] is None
+    assert payload["command_duration_seconds"] is None
 
 
 def test_compare_json_output(tmp_path: Path, capsys) -> None:

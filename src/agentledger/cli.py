@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from zipfile import BadZipFile, ZipFile
 from pathlib import Path
@@ -31,6 +32,7 @@ from .check import CheckPolicy, build_check, check_exit_code, format_check
 from .config import AgentLedgerConfig, ConfigError, STARTER_CONFIG_TEXT, load_config
 from .contracts import build_contracts_payload, format_contracts_text
 from .doctor import doctor_json, format_doctor, format_doctor_markdown, run_doctor
+from .environment import capture_environment
 from .export import write_html, write_json, write_markdown
 from .feedback import (
     FEEDBACK_CATEGORIES,
@@ -55,11 +57,13 @@ from .report_reader import (
     attributed_file_count,
     change_attribution,
     changed_file_count,
+    command_duration_seconds,
     command_exit_code,
     command_exit_trend,
     command_test_framework,
     integration_warnings,
     load_report,
+    environment_fingerprint,
     report_command_text,
     tokometer_summary,
 )
@@ -428,6 +432,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
         return 2
 
     exit_code = command_exit_code(report)
+    duration_seconds = command_duration_seconds(report)
     test_framework = command_test_framework(report)
     changed_files = changed_file_count(report)
     attribution = change_attribution(report)
@@ -436,6 +441,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     warnings = integration_warnings(report)
     tokometer = tokometer_summary(report)
     after = report.get("after") or {}
+    environment = environment_fingerprint(report)
 
     if getattr(args, "format", "text") == "json":
         payload = {
@@ -443,10 +449,12 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
             "run_dir": str(run_dir),
             "command": report_command_text(report),
             "exit_code": exit_code if exit_code is not None else None,
+            "command_duration_seconds": duration_seconds,
             "test_framework": test_framework,
             "changed_files": changed_files,
             "attributed_files": attributed_files,
             "change_attribution": attribution,
+            "environment": environment,
             "artifacts": {"ok": passed, "warn": warned},
             "tokometer": tokometer,
             "privacy_mode": report.get("privacy_mode", "standard"),
@@ -457,6 +465,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     print(f"Report: {run_dir / 'agentledger-report.json'}")
     print(f"Command: {report_command_text(report)}")
     print(f"Exit code: {exit_code if exit_code is not None else 'n/a'}")
+    print(f"Command duration: {duration_seconds:.3f}s" if duration_seconds is not None else "Command duration: n/a")
     print(f"Test framework: {test_framework}")
     print(f"Privacy mode: {report.get('privacy_mode', 'standard')}")
     print(f"Diff stat: {after.get('diff_stat') or 'no tracked diff'}")
@@ -465,6 +474,22 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
         preexisting = len(attribution.get("preexisting_dirty") or []) if attribution else 0
         print(f"Changed during command: {attributed_files}")
         print(f"Pre-existing dirty files: {preexisting}")
+    if environment:
+        os_facts = environment.get("os") if isinstance(environment.get("os"), dict) else {}
+        python_facts = environment.get("python") if isinstance(environment.get("python"), dict) else {}
+        print(
+            "Environment: "
+            f"AgentLedger {environment.get('agentledger_version') or 'unknown'}; "
+            f"{os_facts.get('system') or 'unknown'} {os_facts.get('release') or 'unknown'} "
+            f"({os_facts.get('machine') or 'unknown'}); "
+            f"{python_facts.get('implementation') or 'Python'} {python_facts.get('version') or 'unknown'}; "
+            f"{environment.get('git_version') or 'git unavailable'}"
+        )
+        print(f"Base commit: {environment.get('base_commit') or 'unborn/unknown'}")
+        print(
+            f"Dependency locks: {environment.get('dependency_lock_count', 0)}"
+            f"{' (truncated)' if environment.get('dependency_locks_truncated') else ''}"
+        )
     print(f"Artifacts: {passed} ok, {warned} warn")
     if tokometer:
         print(f"Tokometer: {tokometer}")
@@ -5196,6 +5221,7 @@ def _handle_demo(args: argparse.Namespace) -> int:
 
 def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandResult:
     started = utc_now_iso()
+    started_monotonic = time.monotonic()
     try:
         result = run_capture(command, repo)
         exit_code = result.returncode
@@ -5206,6 +5232,7 @@ def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandRes
         stdout = exc.stdout or ""
         stderr = exc.stderr or "Command timed out."
     ended = utc_now_iso()
+    duration_seconds = round(max(0.0, time.monotonic() - started_monotonic), 3)
     redacted_stdout = redact_text(stdout)
     redacted_stderr = redact_text(stderr)
     transcripts = artifacts_dir / "command"
@@ -5221,6 +5248,7 @@ def _run_task(command: list[str], repo: Path, artifacts_dir: Path) -> CommandRes
         started_at=started,
         ended_at=ended,
         exit_code=exit_code,
+        duration_seconds=duration_seconds,
         stdout_tail=tail_text(redacted_stdout),
         stderr_tail=tail_text(redacted_stderr),
         stdout_path=str(stdout_path),
@@ -5276,6 +5304,7 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     artifacts = []
     started = utc_now_iso()
     before = snapshot(repo, excluded_paths=[out_root])
+    environment = capture_environment(repo, base_commit=before.head, agentledger_version=__version__)
     privacy_summary = privacy_mode == "summary"
 
     if not skip_repomori and not privacy_summary:
@@ -5318,6 +5347,7 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
         artifacts=artifacts,
         warnings=warnings,
         change_attribution=change_attribution,
+        environment=environment,
     )
     _apply_privacy_mode(report, privacy_mode)
     write_json(report, run_dir / "agentledger-report.json")

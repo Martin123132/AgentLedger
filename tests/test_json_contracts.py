@@ -561,10 +561,12 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "run_dir",
             "command",
             "exit_code",
+            "command_duration_seconds",
             "test_framework",
             "changed_files",
             "attributed_files",
             "change_attribution",
+            "environment",
             "artifacts",
             "tokometer",
             "privacy_mode",
@@ -937,6 +939,7 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
 
     inspect_report = json_payloads["inspect_report"]
     assert inspect_report["attributed_files"] == 2
+    assert inspect_report["command_duration_seconds"] >= 0
     _assert_keys(
         inspect_report["change_attribution"],
         {
@@ -949,6 +952,33 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
             "unchanged_preexisting",
             "head_changed",
             "limitations",
+        },
+    )
+    _assert_keys(
+        inspect_report["environment"],
+        {
+            "schema_version",
+            "agentledger_version",
+            "os",
+            "python",
+            "git_version",
+            "base_commit",
+            "dependency_locks",
+            "dependency_lock_count",
+            "dependency_lock_limit",
+            "dependency_locks_truncated",
+            "privacy",
+        },
+    )
+    _assert_keys(inspect_report["environment"]["os"], {"system", "release", "machine"})
+    _assert_keys(inspect_report["environment"]["python"], {"implementation", "version"})
+    _assert_keys(
+        inspect_report["environment"]["privacy"],
+        {
+            "environment_variables_included",
+            "executable_paths_included",
+            "hostnames_included",
+            "file_contents_included",
         },
     )
 
