@@ -48,6 +48,12 @@ from .feedback import (
     write_feedback_export,
 )
 from .gittools import build_change_attribution, snapshot
+from .integrity import (
+    attach_report_integrity,
+    previous_report_link,
+    report_integrity_summary,
+    verify_history_chain,
+)
 from .integrations import read_tokometer_usage, run_jester_diff, run_repomori_snapshot
 from .model import CommandResult, LedgerReport, utc_now_iso
 from .process import run_capture, tail_text
@@ -233,6 +239,12 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_argument("--out", default=None, help="Evidence output directory.")
     history.add_argument("--limit", type=int, default=10, help="Maximum number of runs to show.")
     history.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+
+    verify_chain = sub.add_parser("verify-chain", help="Verify tamper-evident links between run reports.")
+    verify_chain.add_argument("--repo", default=".", help="Target git repository for config lookup.")
+    verify_chain.add_argument("--config", default=None, help="Path to .agentledger.toml policy config.")
+    verify_chain.add_argument("--out", default=None, help="Evidence output directory.")
+    verify_chain.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
 
     status = sub.add_parser("status", help="Show latest run policy, evidence, and feedback status.")
     status.add_argument("--repo", default=".", help="Target git repository for config/output lookup.")
@@ -442,6 +454,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
     tokometer = tokometer_summary(report)
     after = report.get("after") or {}
     environment = environment_fingerprint(report)
+    integrity = report_integrity_summary(report)
 
     if getattr(args, "format", "text") == "json":
         payload = {
@@ -455,6 +468,7 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
             "attributed_files": attributed_files,
             "change_attribution": attribution,
             "environment": environment,
+            "integrity": integrity,
             "artifacts": {"ok": passed, "warn": warned},
             "tokometer": tokometer,
             "privacy_mode": report.get("privacy_mode", "standard"),
@@ -490,6 +504,13 @@ def _handle_inspect_report(args: argparse.Namespace) -> int:
             f"Dependency locks: {environment.get('dependency_lock_count', 0)}"
             f"{' (truncated)' if environment.get('dependency_locks_truncated') else ''}"
         )
+    print(f"History integrity: {integrity['status']}")
+    if integrity["report_sha256"]:
+        print(f"Report SHA-256: {integrity['report_sha256']}")
+    if integrity["previous_run_id"]:
+        print(f"Previous run: {integrity['previous_run_id']}")
+    for error in integrity["errors"]:
+        print(f"Integrity warning: {error}")
     print(f"Artifacts: {passed} ok, {warned} warn")
     if tokometer:
         print(f"Tokometer: {tokometer}")
@@ -1712,6 +1733,7 @@ def _handle_open_packet(args: argparse.Namespace) -> int:
 def _report_summary(run_dir: Path) -> dict:
     report = load_report(run_dir)
     passed, warned = artifact_status_counts([artifact for artifact in report.get("artifacts", []) if isinstance(artifact, dict)])
+    integrity = report_integrity_summary(report)
     return {
         "run_id": str(report.get("run_id") or run_dir.name),
         "run_dir": str(run_dir),
@@ -1723,11 +1745,58 @@ def _report_summary(run_dir: Path) -> dict:
         "test_framework": command_test_framework(report),
         "privacy_mode": str(report.get("privacy_mode") or "standard"),
         "artifacts": {"ok": passed, "warn": warned},
+        "integrity": integrity,
         "markdown": str(run_dir / "agentledger-report.md"),
         "json": str(run_dir / "agentledger-report.json"),
         "html": str(run_dir / "agentledger-report.html"),
         "zip": str(run_dir.with_suffix(".zip")) if run_dir.with_suffix(".zip").exists() else None,
     }
+
+
+def _handle_verify_chain(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    try:
+        config = _load_output_config(args, repo)
+    except ConfigError as exc:
+        payload = {
+            "schema_version": "agentledger.verify_chain.v1",
+            "ok": False,
+            "status": "broken",
+            "out": None,
+            "latest_run": None,
+            "head_run_id": None,
+            "head_sha256": None,
+            "total_runs": 0,
+            "chained_runs": 0,
+            "legacy_runs": 0,
+            "roots": [],
+            "runs": [],
+            "warnings": [],
+            "errors": [f"Config error: {exc}"],
+        }
+    else:
+        payload = verify_history_chain(_resolve_out_root(args, repo, config))
+
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(payload, indent=2))
+        return 0 if payload["ok"] else 2
+
+    print(f"AgentLedger history integrity: {payload['status']}")
+    if payload["out"]:
+        print(f"Output: {payload['out']}")
+    print(
+        f"Runs: {payload['total_runs']} total, {payload['chained_runs']} chained, "
+        f"{payload['legacy_runs']} legacy"
+    )
+    if payload["head_run_id"]:
+        print(f"Head run: {payload['head_run_id']}")
+    if payload["head_sha256"]:
+        print(f"Head SHA-256: {payload['head_sha256']}")
+    for warning in payload["warnings"]:
+        print(f"Warning: {warning}")
+    for error in payload["errors"]:
+        print(f"Error: {error}")
+    return 0 if payload["ok"] else 2
 
 
 def _handle_history(args: argparse.Namespace) -> int:
@@ -1772,7 +1841,8 @@ def _handle_history(args: argparse.Namespace) -> int:
         exit_code = item["exit_code"] if item["exit_code"] is not None else "n/a"
         print(
             f"{item['run_id']} | exit={exit_code} | changed={item['changed_files']} | "
-            f"test={item['test_framework']} | privacy={item['privacy_mode']} | command={item['command']}"
+            f"test={item['test_framework']} | privacy={item['privacy_mode']} | "
+            f"integrity={item['integrity']['status']} | command={item['command']}"
         )
         print(f"  report={item['markdown']}")
     return 0
@@ -5300,7 +5370,8 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
     artifacts_dir = run_dir / "artifacts"
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    warnings: list[str] = []
+    previous_link, integrity_warnings = previous_report_link(out_root)
+    warnings: list[str] = list(integrity_warnings)
     artifacts = []
     started = utc_now_iso()
     before = snapshot(repo, excluded_paths=[out_root])
@@ -5350,6 +5421,7 @@ def _capture(args: argparse.Namespace, task: list[str] | None) -> int:
         environment=environment,
     )
     _apply_privacy_mode(report, privacy_mode)
+    attach_report_integrity(report, previous_link)
     write_json(report, run_dir / "agentledger-report.json")
     write_markdown(report, run_dir / "agentledger-report.md")
     write_html(report, run_dir / "agentledger-report.html")
@@ -5405,6 +5477,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_support_packet(args)
     if args.command_name == "history":
         return _handle_history(args)
+    if args.command_name == "verify-chain":
+        return _handle_verify_chain(args)
     if args.command_name == "status":
         return _handle_status(args)
     if args.command_name == "alpha-guide":

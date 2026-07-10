@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added `agentledger.report_integrity.v1` canonical SHA-256 self-digests and
+  previous-run links to new evidence reports.
+- Added `agentledger verify-chain` text and JSON checks for edited reports,
+  missing predecessors, forks, cycles, and legacy history coverage.
+- Added report integrity status to history, inspect-report, Markdown, and HTML
+  without adding repository paths or evidence contents to chain metadata.
+
 ## 0.1.30-alpha - 2026-07-10
 
 - Added a privacy-safe `agentledger.environment.v1` fingerprint to evidence

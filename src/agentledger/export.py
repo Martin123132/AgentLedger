@@ -71,6 +71,12 @@ def _review_notes(report: LedgerReport, changed_files: int, artifact_warn: int) 
             f"{'s' if lock_count != 1 else ''} without environment variables or file contents."
         )
 
+    if report.integrity:
+        chain_position = "linked" if report.integrity.previous_run_id else "root"
+        notes.append(
+            f"History integrity recorded a canonical SHA-256 self-digest at a {chain_position} chain position."
+        )
+
     if artifact_warn:
         suffix = "warning" if artifact_warn == 1 else "warnings"
         notes.append(f"Resolve or explicitly accept {artifact_warn} optional artifact {suffix}.")
@@ -137,6 +143,7 @@ def write_markdown(report: LedgerReport, path):
     review_notes = _review_notes(report, changed_files, artifact_warn)
     attribution = report.change_attribution
     environment = report.environment
+    integrity = report.integrity
     attributed_files = attribution.changed_during_run.changed_file_count if attribution and attribution.available else None
     preexisting_files = len(attribution.preexisting_dirty) if attribution else 0
     lines = [
@@ -150,6 +157,7 @@ def write_markdown(report: LedgerReport, path):
         f"- Pre-existing dirty files: `{preexisting_files}`",
         f"- Command duration: `{f'{command.duration_seconds:.3f}s' if command and command.duration_seconds is not None else 'n/a'}`",
         f"- Dependency locks fingerprinted: `{environment.dependency_lock_count if environment else 'n/a'}`",
+        f"- History integrity: `{'linked' if integrity and integrity.previous_run_id else 'root' if integrity else 'legacy'}`",
         f"- Artifacts: `{artifact_ok} ok / {artifact_warn} warn`",
         f"- Evidence bundle: `{zip_path}`",
         f"- Command: `{command_text}`",
@@ -243,6 +251,25 @@ def write_markdown(report: LedgerReport, path):
     else:
         lines.extend(["Unavailable in this legacy report.", ""])
 
+    lines.extend(["## History Integrity", ""])
+    if integrity:
+        lines.extend(
+            [
+                f"- Schema: `{integrity.schema_version}`",
+                f"- Algorithm: `{integrity.algorithm}`",
+                f"- Canonicalization: `{integrity.canonicalization}`",
+                f"- Report SHA-256: `{integrity.report_sha256}`",
+                f"- Previous run: `{integrity.previous_run_id or 'none (chain root)'}`",
+                f"- Previous report SHA-256: `{integrity.previous_report_sha256 or 'none (chain root)'}`",
+                "",
+                "The digest covers canonical report JSON except its own digest field. "
+                "This detects later edits and broken links but does not authenticate an unsigned history.",
+                "",
+            ]
+        )
+    else:
+        lines.extend(["Unavailable in this legacy report.", ""])
+
     lines.extend(["## Command Change Attribution", ""])
     if attribution and attribution.available:
         lines.extend(
@@ -329,6 +356,7 @@ def write_html(report: LedgerReport, path):
     review_notes = "\n".join(f"<li>{escape(note)}</li>" for note in _review_notes(report, changed_files, artifact_warn))
     attribution = report.change_attribution
     environment = report.environment
+    integrity = report.integrity
     attributed_files = attribution.changed_during_run.changed_file_count if attribution and attribution.available else None
     preexisting_files = len(attribution.preexisting_dirty) if attribution else 0
     if attribution and attribution.available:
@@ -375,6 +403,19 @@ def write_html(report: LedgerReport, path):
   <ul>{lock_items}</ul>"""
     else:
         environment_html = "<p>Unavailable in this legacy report.</p>"
+    if integrity:
+        integrity_html = f"""
+  <p><strong>Schema:</strong> <code>{escape(integrity.schema_version)}</code><br>
+  <strong>Algorithm:</strong> <code>{escape(integrity.algorithm)}</code><br>
+  <strong>Canonicalization:</strong> <code>{escape(integrity.canonicalization)}</code><br>
+  <strong>Report SHA-256:</strong> <code>{escape(integrity.report_sha256)}</code><br>
+  <strong>Previous run:</strong> <code>{escape(integrity.previous_run_id or 'none (chain root)')}</code><br>
+  <strong>Previous report SHA-256:</strong> <code>{escape(integrity.previous_report_sha256 or 'none (chain root)')}</code></p>
+  <p>This detects later report edits and broken links but does not authenticate an unsigned history.</p>"""
+        integrity_status = "linked" if integrity.previous_run_id else "root"
+    else:
+        integrity_html = "<p>Unavailable in this legacy report.</p>"
+        integrity_status = "legacy"
     zip_path = path.parent.with_suffix(".zip")
     json_path = path.parent / "agentledger-report.json"
     checklist = "\n".join(
@@ -447,6 +488,7 @@ def write_html(report: LedgerReport, path):
     <div class="box"><strong>Changed During Command</strong><br><code>{attributed_files if attributed_files is not None else 'n/a'}</code></div>
     <div class="box"><strong>Pre-existing Dirty Files</strong><br><code>{preexisting_files}</code></div>
     <div class="box"><strong>Dependency Locks</strong><br><code>{environment.dependency_lock_count if environment else 'n/a'}</code></div>
+    <div class="box"><strong>History Integrity</strong><br><code>{escape(integrity_status)}</code></div>
     <div class="box"><strong>Artifact Results</strong><br><code>{artifact_ok} ok / {artifact_warn} warn</code></div>
     <div class="box"><strong>Tokometer</strong><br><code>{escape(tokometer_text)}</code></div>
   </section>
@@ -467,6 +509,8 @@ def write_html(report: LedgerReport, path):
   <pre>{escape(command_tail)}</pre>
   <h2>Environment Fingerprint</h2>
   {environment_html}
+  <h2>History Integrity</h2>
+  {integrity_html}
   <h2>Command Change Attribution</h2>
   {attribution_html}
   <h2>Changes</h2>

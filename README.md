@@ -38,6 +38,7 @@ run commands, touch repositories, and claim work is done:
 - Tokometer local usage summary when available
 - Markdown, JSON, and HTML audit reports
 - zip evidence bundle with a manifest and SHA-256 checksums
+- tamper-evident SHA-256 links between consecutive run reports
 
 The first product wedge is intentionally simple:
 
@@ -78,6 +79,22 @@ commit, measured command duration, and SHA-256 hashes for up to 50 recognized
 tracked dependency lockfiles. It does not copy environment variables,
 hostnames, executable paths, or lockfile contents. These additive fields remain
 optional so existing `agentledger.report.v1` evidence stays readable.
+
+New reports also contain `agentledger.report_integrity.v1`: a canonical
+SHA-256 self-digest plus the previous run ID and report digest. Check the local
+history with:
+
+```powershell
+agentledger verify-chain --out .agentledger
+agentledger verify-chain --out .agentledger --format json
+```
+
+This detects edited reports, missing predecessors, forks, and cycles. Legacy
+reports remain readable and are reported as partial coverage. The chain adds
+no repository path or evidence content beyond data already present in the
+report. It is tamper-evident rather than authenticated: someone able to rewrite
+the complete local history can rebuild an unsigned chain. Use the existing
+HMAC bundle-signing flow when keyed authentication is required.
 
 ## Why This Exists
 
@@ -228,6 +245,7 @@ python -m agentledger alpha-guide --out .agentledger
 python -m agentledger open-latest --out .agentledger
 python -m agentledger open-latest --format json --out .agentledger
 python -m agentledger history --out .agentledger
+python -m agentledger verify-chain --out .agentledger
 python -m agentledger feedback --out .agentledger --note "First confusing thing: ..."
 python -m agentledger feedback --out .agentledger --list
 python -m agentledger feedback-summary --out .agentledger
@@ -274,7 +292,7 @@ check_max_changed_files = 25
 check_allow_warnings = true
 ```
 
-`run`, `snapshot`, `open-latest`, `open-packet`, `history`, `status`, `alpha-guide`, `alpha`, and
+`run`, `snapshot`, `open-latest`, `open-packet`, `history`, `verify-chain`, `status`, `alpha-guide`, `alpha`, and
 `alpha-summary` read that file from the target repo when it exists. `--out`
 overrides only the evidence directory for a single command; the repo policy
 still applies. `--privacy-mode` overrides the privacy setting for a single
@@ -759,7 +777,15 @@ List recent runs:
 agentledger history --out .agentledger
 agentledger history --out .agentledger --format json
 agentledger history --out .agentledger --limit 5
+agentledger verify-chain --out .agentledger
+agentledger verify-chain --out .agentledger --format json
 ```
+
+`valid` means every discovered chained report and previous-run link verified.
+`partial` means the verified chain also touches legacy reports without stored
+self-digests. `broken` returns exit code 2 and identifies edited, missing,
+forked, cyclic, or malformed records. Keep the JSON local unless reviewed: run
+summaries still contain local evidence paths.
 
 Record local alpha feedback against the latest run:
 
@@ -822,6 +848,7 @@ agentledger status --out .agentledger --allow-warnings
 agentledger open-latest --out .agentledger
 agentledger open-latest --out .agentledger --format json
 agentledger history --out .agentledger
+agentledger verify-chain --out .agentledger
 agentledger feedback --out .agentledger --note "First confusing thing: ..."
 agentledger feedback-summary --out .agentledger
 agentledger feedback-export --out .agentledger --output $env:TEMP\agentledger-feedback.md
@@ -1020,7 +1047,7 @@ Core assets it can use:
 - first-class RepoMori handoff capsule links
 - changed-file source context
 - before/after pack comparison summary
-- chain/anchor verification section
+- optional external anchor verification for report-chain heads
 
 ### v0.5 Eval Gate
 

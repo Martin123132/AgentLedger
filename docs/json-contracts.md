@@ -130,7 +130,31 @@ Stable fields:
 
 Each run summary includes `run_id`, `run_dir`, timestamps, `command`,
 `exit_code`, `changed_files`, `test_framework`, `privacy_mode`, artifact counts,
-and report paths.
+report paths, and an additive `integrity` summary.
+
+### `agentledger verify-chain --format json`
+
+Schema: `agentledger.verify_chain.v1`
+
+Use this to recompute canonical report SHA-256 digests and verify previous-run
+links across one local output directory.
+
+Stable fields:
+
+- `ok`: true for `valid` and `partial` histories
+- `status`: `valid`, `partial`, `broken`, or `empty`
+- `out`: resolved local evidence output directory
+- `latest_run`, `head_run_id`, and `head_sha256`: latest-pointer chain head
+- `total_runs`, `chained_runs`, and `legacy_runs`: coverage counts
+- `roots`: run IDs that begin independent stored chains
+- `runs`: newest-first verification records with run ID/directory, status,
+  stored and computed digests, previous-run link, and errors
+- `warnings`: legacy coverage or multiple-root notices
+- `errors`: missing output/latest pointers and aggregate verification failures
+
+The command returns 0 for a valid chain or partial legacy coverage and 2 for
+empty, unreadable, malformed, or broken history. Output contains local run
+directories and is not a share-safe packet.
 
 ### `agentledger status --format json`
 
@@ -463,6 +487,27 @@ The report never includes lockfile contents or process environment values.
 The additive command field `duration_seconds` records elapsed wall-clock time
 using a monotonic timer.
 
+### Evidence report history integrity
+
+Schema: `agentledger.report_integrity.v1`
+
+New `agentledger.report.v1` reports include the additive `integrity` object:
+
+- `algorithm`: `sha256`
+- `canonicalization`: `json-sort-keys-v1`
+- `report_sha256`: SHA-256 of canonical report JSON after removing only this
+  self-digest field
+- `previous_run_id`: previous latest run ID, or `null` for a chain root
+- `previous_report_sha256`: previous report's stored digest, or the computed
+  canonical digest for a linked legacy report; `null` for a chain root
+
+The integrity object adds only generated run IDs and digests, not repository
+paths, environment values, transcripts, file contents, or secrets. Missing
+integrity is valid legacy evidence. The chain detects later report edits,
+missing predecessors, forks, and cycles, but it is not a signature or external
+anchor. An actor able to rewrite every local report can rebuild it. Optional
+HMAC bundle signing remains the keyed authentication path.
+
 ### `agentledger inspect-report --format json <run-dir>`
 
 Schema: `agentledger.inspect_report.v1`
@@ -482,6 +527,8 @@ Stable fields:
   for legacy/snapshot-only reports
 - `change_attribution`: the report attribution object, or `null`
 - `environment`: `agentledger.environment.v1`, or `null` for legacy reports
+- `integrity`: verification summary with stored/computed report digests,
+  previous-run link, status, and errors; `status=legacy` when absent
 - `artifacts`: `ok` and `warn` counts
 - `tokometer`: optional summary string
 - `privacy_mode`
