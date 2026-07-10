@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.30-alpha - 2026-07-10
+
 - Added a privacy-safe `agentledger.environment.v1` fingerprint to evidence
   reports with AgentLedger, OS, Python, and Git versions plus the starting Git
   commit.
