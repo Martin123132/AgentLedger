@@ -102,13 +102,13 @@ Paste a short reviewed snippet here. Replace accidental local paths with
 ## Support-packet Markdown feedback
 
 Use this section for `agentledger support-packet --format markdown` feedback in
-`v0.1.29-alpha` or newer. Paste only a reviewed, sanitized snippet from the
+`v0.1.30-alpha` or newer. Paste only a reviewed, sanitized snippet from the
 generated Markdown body.
 
 Install method:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.29-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.30-alpha"
 python -m agentledger --version
 ```
 
