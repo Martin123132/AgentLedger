@@ -1357,6 +1357,7 @@ def _check_policy_from_config(config: AgentLedgerConfig) -> CheckPolicy:
         require_tests=config.check_require_tests is True,
         dirty=config.check_dirty or "warn",
         max_changed_files=config.check_max_changed_files,
+        history_integrity=config.check_history_integrity or "pass",
     )
 
 
@@ -1926,6 +1927,7 @@ def _status_payload(
     next_actions: list[str],
     errors: list[str],
     status_exit_code: int,
+    history_integrity: dict | None = None,
 ) -> dict:
     return {
         "schema_version": STATUS_SCHEMA,
@@ -1937,6 +1939,7 @@ def _status_payload(
         "paths": paths,
         "missing_reports": missing_reports,
         "check": check,
+        "history_integrity": history_integrity,
         "feedback": feedback,
         "next_actions": next_actions,
         "errors": errors,
@@ -2092,6 +2095,7 @@ def _alpha_guide_payload(args: argparse.Namespace) -> tuple[dict, int]:
         ],
         "inspect": [
             f"python -m agentledger status --out {out_arg} --allow-warnings",
+            f"python -m agentledger verify-chain --out {out_arg}",
             f"python -m agentledger history --out {out_arg}",
             f"python -m agentledger open-latest --out {out_arg}",
         ],
@@ -2272,9 +2276,12 @@ def _build_status_payload_for_latest(
         feedback = _empty_status_feedback(feedback_errors)
 
     status = str(check.get("status") or "unknown")
+    history_integrity = check.get("history_integrity")
     errors = missing_reports + feedback_errors
     status_exit_code = 2 if errors else check_exit_code(status, allow_warnings)
     next_actions = _status_next_actions(status, feedback, errors)
+    if isinstance(history_integrity, dict) and history_integrity.get("status") == "broken":
+        next_actions.insert(0, f"Run agentledger verify-chain --out {out_root} and review the broken links.")
     return _status_payload(
         ok=check.get("ok") is True and not errors,
         status=status,
@@ -2288,6 +2295,7 @@ def _build_status_payload_for_latest(
         next_actions=next_actions,
         errors=errors,
         status_exit_code=status_exit_code,
+        history_integrity=history_integrity if isinstance(history_integrity, dict) else None,
     )
 
 
@@ -2316,6 +2324,7 @@ def _handle_status(args: argparse.Namespace) -> int:
     paths = payload["paths"]
     check = payload["check"]
     feedback = payload["feedback"]
+    history_integrity = payload["history_integrity"] or {}
     status = payload["status"]
     errors = payload["errors"]
     next_actions = payload["next_actions"]
@@ -2334,6 +2343,11 @@ def _handle_status(args: argparse.Namespace) -> int:
         print(f"Changed files: {check['changed_files']}")
         print(f"Test framework: {check['test_framework']}")
         print(f"Privacy mode: {check['privacy_mode']}")
+    print(
+        f"History integrity: {history_integrity.get('status') or 'unavailable'} "
+        f"({history_integrity.get('chained_runs', 0)} chained, "
+        f"{history_integrity.get('legacy_runs', 0)} legacy)"
+    )
     print(
         f"Feedback: {feedback['total_entries']} total entries across "
         f"{feedback['runs_with_feedback']} runs; latest run has {feedback['latest_run_entries']}"

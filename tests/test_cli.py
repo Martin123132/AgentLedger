@@ -135,6 +135,7 @@ def test_repository_policy_config_parses() -> None:
     assert config.check_dirty == "warn"
     assert config.check_max_changed_files == 25
     assert config.check_allow_warnings is True
+    assert config.check_history_integrity == "warn"
 
 
 def test_init_config_writes_starter_policy(tmp_path: Path, capsys) -> None:
@@ -157,6 +158,7 @@ def test_init_config_writes_starter_policy(tmp_path: Path, capsys) -> None:
     assert config.check_dirty == "warn"
     assert config.check_max_changed_files == 25
     assert config.check_allow_warnings is True
+    assert config.check_history_integrity == "warn"
 
 
 def test_init_config_refuses_existing_file_without_force(tmp_path: Path, capsys) -> None:
@@ -1050,7 +1052,7 @@ def test_privacy_summary_note_does_not_create_warning_status(tmp_path: Path, cap
     assert cli.main(["check", "--format", "json", str(latest)]) == 0
     payload = _parse_json_output(capsys.readouterr().out)
     assert payload["status"] == "pass"
-    assert payload["summary"] == "All 9 checks passed."
+    assert payload["summary"] == "All 10 checks passed."
     assert _rule_by_id(payload, "report_warnings")["status"] == "pass"
 
 
@@ -1692,6 +1694,7 @@ def test_status_summarizes_latest_run_and_feedback(tmp_path: Path, capsys) -> No
     assert payload["missing_reports"] == []
     assert payload["check"]["schema_version"] == "agentledger.check.v1"
     assert payload["check"]["status"] == "warn"
+    assert payload["history_integrity"]["status"] == "valid"
     assert payload["feedback"]["total_entries"] == 1
     assert payload["feedback"]["latest_run_entries"] == 1
     assert payload["feedback"]["categories"] == {"friction": 1}
@@ -3308,7 +3311,7 @@ def test_review_json_output(tmp_path: Path, capsys) -> None:
     assert payload["schema_version"] == "agentledger.review.v1"
     assert payload["status"] == "pass"
     assert payload["ok"] is True
-    assert payload["summary"] == "All 9 checks passed."
+    assert payload["summary"] == "All 10 checks passed."
     assert payload["run_dir"] == str(run_dir.resolve())
     assert payload["paths"]["markdown"] == str(run_dir / "agentledger-report.md")
     assert payload["paths"]["zip"] == f"{run_dir}.zip"
@@ -3596,8 +3599,11 @@ def test_check_passes_test_run(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     payload = _parse_json_output(output)
     assert payload["ok"] is True
-    assert payload["summary"] == "All 9 checks passed."
-    assert payload["rule_counts"] == {"pass": 9, "warn": 0, "block": 0, "total": 9}
+    assert payload["summary"] == "All 10 checks passed."
+    assert payload["rule_counts"] == {"pass": 10, "warn": 0, "block": 0, "total": 10}
+    assert payload["history_integrity"]["status"] == "valid"
+    assert payload["policy"]["history_integrity"] == "pass"
+    assert _rule_by_id(payload, "history_integrity")["status"] == "pass"
     assert payload["warning_rules"] == []
     assert payload["blocking_rules"] == []
 
@@ -3634,7 +3640,7 @@ def test_check_warns_for_non_test_dirty_run(tmp_path: Path, capsys) -> None:
     assert payload["status"] == "warn"
     assert payload["ok"] is False
     assert payload["summary"] == "2 warnings; review before accepting."
-    assert payload["rule_counts"] == {"pass": 7, "warn": 2, "block": 0, "total": 9}
+    assert payload["rule_counts"] == {"pass": 8, "warn": 2, "block": 0, "total": 10}
     assert [rule["id"] for rule in payload["warning_rules"]] == ["test_evidence", "repo_state"]
     assert payload["blocking_rules"] == []
     assert _rule_by_id(payload, "command_exit")["status"] == "pass"
@@ -3800,6 +3806,104 @@ def test_check_config_max_changed_files_blocks(tmp_path: Path, capsys) -> None:
     assert _rule_by_id(payload, "repo_state")["status"] == "block"
 
 
+@pytest.mark.parametrize(
+    ("policy", "expected_exit", "expected_status"),
+    [
+        ("pass", 0, "pass"),
+        ("warn", 1, "warn"),
+        ("block", 2, "block"),
+    ],
+)
+def test_status_applies_history_integrity_policy(
+    tmp_path: Path,
+    capsys,
+    policy: str,
+    expected_exit: int,
+    expected_status: str,
+) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_path = run_dir / "agentledger-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["privacy_mode"] = "tampered"
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (repo / ".agentledger.toml").write_text(
+        f'check_history_integrity = "{policy}"\n',
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+
+    assert cli.main(["status", "--repo", str(repo), "--out", str(out), "--format", "json"]) == expected_exit
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["status"] == expected_status
+    assert payload["history_integrity"]["status"] == "broken"
+    assert payload["check"]["history_integrity"] == payload["history_integrity"]
+    assert payload["check"]["policy"]["history_integrity"] == policy
+    assert _rule_by_id(payload["check"], "history_integrity")["status"] == policy
+    assert any("verify-chain" in action for action in payload["next_actions"])
+
+
+def test_check_block_policy_accepts_partial_legacy_history(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path)
+    out = tmp_path / "ledger"
+    assert (
+        cli.main(
+            [
+                "run",
+                "--repo",
+                str(repo),
+                "--out",
+                str(out),
+                "--no-repomori",
+                "--no-jester",
+                "--no-tokometer",
+                "--",
+                sys.executable,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        == 0
+    )
+    run_dir = Path((out / "latest.txt").read_text(encoding="utf-8").strip())
+    report_path = run_dir / "agentledger-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report.pop("integrity")
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (repo / ".agentledger.toml").write_text(
+        'check_history_integrity = "block"\n',
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+
+    assert cli.main(["check", "--repo", str(repo), "--format", "json", str(run_dir)]) == 0
+    payload = _parse_json_output(capsys.readouterr().out)
+    assert payload["history_integrity"]["status"] == "partial"
+    assert _rule_by_id(payload, "history_integrity")["status"] == "pass"
+
+
 def test_check_config_errors_are_clear(tmp_path: Path, capsys) -> None:
     repo = make_repo(tmp_path)
     out = tmp_path / "ledger"
@@ -3832,6 +3936,14 @@ def test_check_config_errors_are_clear(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     assert "Config error:" in output
     assert "check_dirty must be 'pass', 'warn', or 'block'" in output
+
+    (repo / ".agentledger.toml").write_text(
+        'check_history_integrity = "loud"\n',
+        encoding="utf-8",
+    )
+    assert cli.main(["check", str(run_dir)]) == 2
+    output = capsys.readouterr().out
+    assert "check_history_integrity must be 'pass', 'warn', or 'block'" in output
 
 
 def test_check_warns_for_failed_optional_artifact(tmp_path: Path, capsys) -> None:

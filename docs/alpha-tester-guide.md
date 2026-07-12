@@ -157,7 +157,7 @@ Expected result:
 - `history` shows the pytest run
 - `review` prints the latest report paths, pass/warn/block policy status, recent run context, and previous-run comparison when available
 - `review --format markdown --output <path>` writes a compact review handoff file without copying raw `.agentledger` evidence
-- `status` rolls latest run policy, evidence paths, feedback counts, and next action into one view
+- `status` rolls latest run policy, report-chain health, evidence paths, feedback counts, and next action into one view
 - `feedback` records local notes in the latest run folder and lists them back
 - `feedback-summary` rolls local notes up across run folders
 - `feedback-export` writes a reviewed Markdown or JSON feedback handoff without local evidence paths

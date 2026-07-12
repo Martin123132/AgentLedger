@@ -104,6 +104,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "paths",
             "missing_reports",
             "check",
+            "history_integrity",
             "feedback",
             "next_actions",
             "errors",
@@ -390,6 +391,7 @@ JSON_CONTRACTS: list[dict[str, Any]] = [
             "warning_rules",
             "blocking_rules",
             "rules",
+            "history_integrity",
             "policy",
         ],
         "exit_codes": {

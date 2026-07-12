@@ -423,6 +423,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "paths",
             "missing_reports",
             "check",
+            "history_integrity",
             "feedback",
             "next_actions",
             "errors",
@@ -601,6 +602,7 @@ def test_json_contract_payloads_include_stable_top_level_fields(json_payloads: d
             "warning_rules",
             "blocking_rules",
             "rules",
+            "history_integrity",
             "policy",
         },
         "review": {
@@ -766,6 +768,26 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     assert status["status"] in {"pass", "warn", "block"}
     _assert_keys(status["paths"], {"markdown", "json", "html", "zip"})
     assert status["check"]["schema_version"] == SCHEMAS["check"]
+    assert status["history_integrity"] == status["check"]["history_integrity"]
+    _assert_keys(
+        status["history_integrity"],
+        {
+            "schema_version",
+            "ok",
+            "status",
+            "out",
+            "latest_run",
+            "head_run_id",
+            "head_sha256",
+            "total_runs",
+            "chained_runs",
+            "legacy_runs",
+            "roots",
+            "runs",
+            "warnings",
+            "errors",
+        },
+    )
     _assert_keys(
         status["feedback"],
         {
@@ -1044,7 +1066,11 @@ def test_json_contract_payloads_include_nested_summary_shapes(json_payloads: dic
     _assert_keys(check["rule_counts"], {"pass", "warn", "block", "total"})
     assert check["rules"]
     _assert_keys(check["rules"][0], {"id", "status", "message"})
-    _assert_keys(check["policy"], {"require_tests", "dirty", "max_changed_files"})
+    _assert_keys(
+        check["policy"],
+        {"require_tests", "dirty", "max_changed_files", "history_integrity"},
+    )
+    assert check["history_integrity"]["status"] == "valid"
 
     review = json_payloads["review"]
     _assert_keys(review["paths"], {"markdown", "json", "html", "zip"})

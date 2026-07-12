@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added report-chain health to `agentledger status` text and JSON output.
+- Added `check_history_integrity = "pass" | "warn" | "block"` policy for
+  promoting broken or empty report history while keeping legacy partial
+  history non-blocking.
+
 ## 0.1.31-alpha - 2026-07-10
 
 - Added `agentledger.report_integrity.v1` canonical SHA-256 self-digests and
