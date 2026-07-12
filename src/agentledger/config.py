@@ -22,6 +22,7 @@ class AgentLedgerConfig:
     check_dirty: str | None = None
     check_max_changed_files: int | None = None
     check_allow_warnings: bool | None = None
+    check_history_integrity: str | None = None
 
 
 SUPPORTED_KEYS = {
@@ -35,6 +36,7 @@ SUPPORTED_KEYS = {
     "check_dirty": "string",
     "check_max_changed_files": "int",
     "check_allow_warnings": "bool",
+    "check_history_integrity": "string",
 }
 
 
@@ -52,6 +54,7 @@ check_require_tests = true
 check_dirty = "warn"
 check_max_changed_files = 25
 check_allow_warnings = true
+check_history_integrity = "warn"
 """
 
 
@@ -166,6 +169,10 @@ def _validate_value(path: Path, lineno: int, key: str, value: object) -> object:
         raise ConfigError(f"{path}:{lineno}: out must not be empty")
     if key == "check_dirty" and value not in {"pass", "warn", "block"}:
         raise ConfigError(f"{path}:{lineno}: check_dirty must be 'pass', 'warn', or 'block'")
+    if key == "check_history_integrity" and value not in {"pass", "warn", "block"}:
+        raise ConfigError(
+            f"{path}:{lineno}: check_history_integrity must be 'pass', 'warn', or 'block'"
+        )
     if key == "check_max_changed_files" and isinstance(value, int) and value < 0:
         raise ConfigError(f"{path}:{lineno}: check_max_changed_files must be zero or greater")
     return value

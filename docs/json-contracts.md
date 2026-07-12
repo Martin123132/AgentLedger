@@ -175,6 +175,8 @@ Stable fields:
 - `missing_reports`: expected report files that are absent
 - `check`: embedded `agentledger.check.v1` payload, or `null` when no latest
   run is available
+- `history_integrity`: embedded `agentledger.verify_chain.v1` payload for the
+  local report history, or `null` when no latest run is available
 - `feedback`: local feedback counts and category/severity totals
 - `next_actions`: human-readable next action list
 - `errors`: human-readable error list
@@ -550,7 +552,13 @@ Stable fields:
 - `warning_rules`
 - `blocking_rules`
 - `rules`: ordered rule results with `id`, `status`, and `message`
-- `policy`: effective check policy when the report loaded
+- `history_integrity`: embedded `agentledger.verify_chain.v1` payload
+- `policy`: effective check policy when the report loaded, including
+  `history_integrity` as `pass`, `warn`, or `block`
+
+The history policy is applied only to broken or empty history. Valid history
+passes, and partial legacy history remains non-blocking because older reports
+do not contain chain metadata.
 
 ### `agentledger review --format json [--output <path>]`
 

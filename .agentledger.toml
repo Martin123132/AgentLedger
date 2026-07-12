@@ -13,3 +13,4 @@ check_require_tests = true
 check_dirty = "warn"
 check_max_changed_files = 25
 check_allow_warnings = true
+check_history_integrity = "warn"

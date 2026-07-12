@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .integrity import verify_history_chain
 from .redaction import REDACTED
 from .report_reader import (
     changed_file_count,
@@ -25,12 +26,14 @@ class CheckPolicy:
     require_tests: bool = False
     dirty: str = WARN
     max_changed_files: int | None = None
+    history_integrity: str = PASS
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "require_tests": self.require_tests,
             "dirty": self.dirty,
             "max_changed_files": self.max_changed_files,
+            "history_integrity": self.history_integrity,
         }
 
 
@@ -38,10 +41,11 @@ def build_check(run_dir: Path, policy: CheckPolicy | None = None) -> dict[str, A
     policy = policy or CheckPolicy()
     run_dir = run_dir.resolve()
     report_path = run_dir / "agentledger-report.json"
+    history_integrity = verify_history_chain(run_dir.parent)
     try:
         report = load_report(run_dir)
     except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as exc:
-        return _result(
+        payload = _result(
             run_dir,
             report_path,
             [
@@ -52,10 +56,18 @@ def build_check(run_dir: Path, policy: CheckPolicy | None = None) -> dict[str, A
                 )
             ],
         )
+        payload.update(
+            {
+                "history_integrity": history_integrity,
+                "policy": policy.to_dict(),
+            }
+        )
+        return payload
 
     rules = [_rule("report_loaded", PASS, f"Loaded report: {report_path}")]
     rules.extend(_schema_rules(report))
     rules.extend(_report_file_rules(run_dir))
+    rules.extend(_history_integrity_rules(history_integrity, policy))
     rules.extend(_command_rules(report))
     rules.extend(_test_evidence_rules(report, policy))
     rules.extend(_repo_state_rules(report, policy))
@@ -72,6 +84,7 @@ def build_check(run_dir: Path, policy: CheckPolicy | None = None) -> dict[str, A
             "changed_files": changed_file_count(report),
             "test_framework": command_test_framework(report),
             "privacy_mode": str(report.get("privacy_mode") or "standard"),
+            "history_integrity": history_integrity,
             "policy": policy.to_dict(),
         }
     )
@@ -132,6 +145,38 @@ def _command_rules(report: dict[str, Any]) -> list[dict[str, str]]:
     if exit_code is None:
         return [_rule("command_exit", BLOCK, "Captured command is missing an exit code.")]
     return [_rule("command_exit", BLOCK, f"Captured command failed with exit code {exit_code}.")]
+
+
+def _history_integrity_rules(history: dict[str, Any], policy: CheckPolicy) -> list[dict[str, str]]:
+    status = str(history.get("status") or "broken")
+    total_runs = int(history.get("total_runs") or 0)
+    if status == "valid":
+        return [
+            _rule(
+                "history_integrity",
+                PASS,
+                f"History integrity verified {total_runs} chained report{'s' if total_runs != 1 else ''}.",
+            )
+        ]
+    if status == "partial":
+        legacy_runs = int(history.get("legacy_runs") or 0)
+        return [
+            _rule(
+                "history_integrity",
+                PASS,
+                f"History integrity is partial with {legacy_runs} legacy report{'s' if legacy_runs != 1 else ''}; no broken links were found.",
+            )
+        ]
+
+    errors = [str(item) for item in history.get("errors") or [] if str(item).strip()]
+    detail = errors[0] if errors else "History integrity verification did not complete."
+    return [
+        _rule(
+            "history_integrity",
+            policy.history_integrity,
+            f"History integrity is {status}: {detail}",
+        )
+    ]
 
 
 def _test_evidence_rules(report: dict[str, Any], policy: CheckPolicy) -> list[dict[str, str]]:

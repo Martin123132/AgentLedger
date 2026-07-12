@@ -290,6 +290,7 @@ check_require_tests = true
 check_dirty = "warn"
 check_max_changed_files = 25
 check_allow_warnings = true
+check_history_integrity = "warn"
 ```
 
 `run`, `snapshot`, `open-latest`, `open-packet`, `history`, `verify-chain`, `status`, `alpha-guide`, `alpha`, and
@@ -746,6 +747,7 @@ check_require_tests = true
 check_dirty = "block"
 check_max_changed_files = 10
 check_allow_warnings = false
+check_history_integrity = "warn"
 ```
 
 `check_require_tests = true` turns missing test evidence into a block.
@@ -753,6 +755,9 @@ check_allow_warnings = false
 state. `check_max_changed_files` blocks runs above the configured changed-file
 count, even when dirty state is otherwise allowed. `check_allow_warnings = true`
 makes warnings exit `0`, the same as passing `--allow-warnings`.
+`check_history_integrity` accepts `"pass"`, `"warn"`, or `"block"` for broken
+or empty report history. Partial history containing legacy reports remains
+non-blocking because those reports predate chain metadata.
 
 Discover machine-readable command contracts:
 
