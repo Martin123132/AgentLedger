@@ -8,7 +8,7 @@ evidence, private paths, or customer data.
 Run this from any normal working folder:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.31-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"
 python -m agentledger try
 python -m agentledger support-packet --format markdown
 ```
@@ -36,7 +36,7 @@ Demo caption:
 ```text
 I tried AgentLedger with the safe public alpha demo:
 
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.31-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"
 python -m agentledger try
 
 It produced local Markdown, HTML, and JSON reports plus a share-safe packet to
