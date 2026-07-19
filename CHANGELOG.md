@@ -6,6 +6,8 @@
   report-chain verification over the existing AgentLedger engine.
 - Added reproducible portable executable and per-user installer builds with a
   hashed desktop package manifest for future app-store ingestion.
+- Polished desktop release labels and run timestamps, and embedded a checked
+  AgentLedger application icon in Windows builds.
 
 ## 0.1.32-alpha - 2026-07-12
 
