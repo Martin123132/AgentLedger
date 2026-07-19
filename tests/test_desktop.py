@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from agentledger.desktop_core import capture_repository, load_dashboard, split_command_line
+from scripts.write_desktop_icon import write_icon
 from scripts.write_desktop_manifest import SCHEMA_VERSION, build_manifest
 
 
@@ -33,6 +34,19 @@ def test_desktop_main_supports_packaged_smoke_test(monkeypatch) -> None:
 
     assert desktop.main(["--smoke-test"]) == 0
     assert events == ["app", "withdraw", "update", "destroy"]
+    assert desktop.public_version("0.1.33a0") == "v0.1.33-alpha"
+    assert desktop.format_run_id("2026-07-19T192521Z0000-abc12345") == "2026-07-19 19:25 UTC"
+
+
+def test_desktop_icon_is_valid_embedded_png(tmp_path: Path) -> None:
+    icon = tmp_path / "agentledger.ico"
+
+    write_icon(icon)
+    data = icon.read_bytes()
+
+    assert data[:6] == b"\x00\x00\x01\x00\x01\x00"
+    assert data[22:30] == b"\x89PNG\r\n\x1a\n"
+    assert len(data) > 1_000
 
 
 def _git(repo: Path, *args: str) -> None:

@@ -38,6 +38,10 @@ and ignored by git:
 - `LICENSE`
 - `COMMERCIAL.md`
 
+The build creates the checked AgentLedger icon deterministically and embeds it
+in both the application window and Windows executable; no generated image file
+is stored in the source tree.
+
 The setup installs per user under `%LOCALAPPDATA%\Programs\AgentLedger`, adds a
 Start menu shortcut and uninstaller, and does not require administrator access.
 

@@ -13,6 +13,7 @@ $OutputDir = [System.IO.Path]::GetFullPath($OutputDir)
 $workRoot = Join-Path $env:TEMP "agentledger-desktop-build-$([guid]::NewGuid())"
 $env:PYINSTALLER_CONFIG_DIR = Join-Path $env:TEMP "pyinstaller"
 $entry = Join-Path $PSScriptRoot "desktop_entry.py"
+$icon = Join-Path $workRoot "agentledger.ico"
 $iss = Join-Path $repoRoot "packaging\windows\AgentLedger.iss"
 $versionMatch = [regex]::Match((Get-Content (Join-Path $repoRoot "pyproject.toml") -Raw), '(?m)^version = "([^"]+)"\r?$')
 if (-not $versionMatch.Success) {
@@ -23,6 +24,11 @@ $version = $versionMatch.Groups[1].Value
 try {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
     New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
+
+    & $Python (Join-Path $repoRoot "scripts\write_desktop_icon.py") --output $icon
+    if ($LASTEXITCODE -ne 0) {
+        throw "Desktop icon generation failed with code $LASTEXITCODE"
+    }
 
     & $Python -m PyInstaller --version | Out-Null
     if ($LASTEXITCODE -ne 0) {
@@ -35,6 +41,8 @@ try {
         --onefile `
         --windowed `
         --name AgentLedger `
+        --icon $icon `
+        --add-data "$icon;." `
         --paths (Join-Path $repoRoot "src") `
         --distpath $OutputDir `
         --workpath (Join-Path $workRoot "work") `

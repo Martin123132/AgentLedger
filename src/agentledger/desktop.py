@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import threading
 import webbrowser
 from pathlib import Path
-from tkinter import StringVar, Text, Tk, filedialog, messagebox
+from tkinter import StringVar, TclError, Text, Tk, filedialog, messagebox
 from tkinter import ttk
 from typing import Any, Callable
 
@@ -22,12 +23,39 @@ MUTED = "#9ba7b3"
 ACCENT = "#46b981"
 WARNING = "#e4b44c"
 BLOCK = "#e26767"
+_ALPHA_VERSION_RE = re.compile(r"^(\d+\.\d+\.\d+)a\d+$")
+_RUN_ID_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})\d{2}Z\d{4}-[0-9a-f]+$")
+
+
+def public_version(version: str = __version__) -> str:
+    match = _ALPHA_VERSION_RE.fullmatch(version)
+    return f"v{match.group(1)}-alpha" if match else f"v{version}"
+
+
+def format_run_id(value: str) -> str:
+    run_id = Path(value).name
+    match = _RUN_ID_RE.fullmatch(run_id)
+    if not match:
+        return run_id
+    return f"{match.group(1)} {match.group(2)}:{match.group(3)} UTC"
+
+
+def _apply_window_icon(root: Tk) -> None:
+    bundle_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    icon = bundle_root / "agentledger.ico"
+    if not icon.is_file():
+        return
+    try:
+        root.iconbitmap(default=str(icon))
+    except TclError:
+        pass
 
 
 class AgentLedgerDesktop:
     def __init__(self, root: Tk) -> None:
         self.root = root
-        self.root.title(f"AgentLedger {__version__}")
+        self.root.title(f"AgentLedger {public_version()}")
+        _apply_window_icon(self.root)
         self.root.geometry("1120x760")
         self.root.minsize(900, 620)
         self.root.configure(background=BACKGROUND)
@@ -88,7 +116,7 @@ class AgentLedgerDesktop:
         header = ttk.Frame(self.root, style="Header.TFrame", padding=(22, 14))
         header.pack(fill="x")
         ttk.Label(header, text="AgentLedger", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text=f"Desktop alpha  |  {__version__}", style="Header.TLabel").pack(side="left", padx=(14, 0))
+        ttk.Label(header, text=f"Desktop alpha  |  {public_version()}", style="Header.TLabel").pack(side="left", padx=(14, 0))
         self.demo_button = ttk.Button(header, text="Safe demo", command=self.run_demo)
         self.demo_button.pack(side="right")
         self.refresh_button = ttk.Button(header, text="Refresh", style="Accent.TButton", command=self.refresh)
@@ -336,7 +364,7 @@ class AgentLedgerDesktop:
         self.summary_var.set(str(check.get("summary") or "; ".join(payload.get("errors") or []) or "No run available"))
         self.chain_var.set(str(chain.get("status") or "unavailable"))
         latest = payload.get("latest_run")
-        self.latest_var.set(Path(str(latest)).name if latest else "No run")
+        self.latest_var.set(format_run_id(str(latest)) if latest else "No run")
         self.feedback_var.set(f"{feedback.get('total_entries', 0)} notes")
         self.latest_paths = dict(payload.get("paths") or {})
         self._replace_actions(payload.get("next_actions") or payload.get("errors") or ["Run and capture a command."])
@@ -446,7 +474,7 @@ class AgentLedgerDesktop:
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args == ["--version"]:
-        print(f"AgentLedger Desktop {__version__}")
+        print(f"AgentLedger Desktop {public_version()}")
         return 0
 
     smoke_test = args == ["--smoke-test"]
