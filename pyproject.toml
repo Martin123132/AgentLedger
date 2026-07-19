@@ -14,9 +14,11 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "setuptools>=68"]
+desktop = ["pyinstaller>=6.10,<7"]
 
 [project.scripts]
 agentledger = "agentledger.cli:main"
+agentledger-desktop = "agentledger.desktop:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
