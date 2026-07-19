@@ -76,6 +76,7 @@ def test_wheel_exposes_console_entry_point(wheel_members: dict[str, bytes]) -> N
     entry_points.read_string(wheel_members[_dist_info_member(wheel_members, "entry_points.txt")].decode("utf-8"))
 
     assert entry_points["console_scripts"]["agentledger"] == "agentledger.cli:main"
+    assert entry_points["console_scripts"]["agentledger-desktop"] == "agentledger.desktop:main"
 
 
 def test_wheel_includes_agentledger_package_modules(wheel_members: dict[str, bytes]) -> None:

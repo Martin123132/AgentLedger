@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added an initial Windows desktop dashboard for status, capture, history, and
+  report-chain verification over the existing AgentLedger engine.
+- Added reproducible portable executable and per-user installer builds with a
+  hashed desktop package manifest for future app-store ingestion.
+
 ## 0.1.32-alpha - 2026-07-12
 
 - Added report-chain health to `agentledger status` text and JSON output.

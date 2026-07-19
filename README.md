@@ -73,6 +73,23 @@ The selected evidence output directory is excluded from these boundary
 snapshots, even when the target repository has not ignored `.agentledger/`, so
 the recorder does not attribute its own reports to the captured command.
 
+## Windows Desktop Alpha
+
+AgentLedger now has a desktop application in development on `master`. It keeps
+the CLI as the evidence engine while providing Overview, Capture, History, and
+Activity views for day-to-day use. Run it from a source checkout with:
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m agentledger.desktop
+```
+
+Windows build automation produces a portable executable, a per-user setup and
+uninstaller, and `agentledger-desktop-manifest.json` with artifact hashes. See
+[docs/desktop-app.md](docs/desktop-app.md) for build and privacy details. The
+current public `v0.1.32-alpha` tag remains CLI-only; the desktop package will be
+included in the next checked alpha release.
+
 Reports also include a privacy-safe environment fingerprint captured before
 the command. It records the AgentLedger, OS, Python, and Git versions, starting
 commit, measured command duration, and SHA-256 hashes for up to 50 recognized
@@ -1063,11 +1080,11 @@ Core assets it can use:
 
 ### v1.0 Buyer Pilot
 
-- desktop dashboard
+- code-signed production desktop package
 - signed evidence bundles
 - team policy config
 - pilot report template
-- packaged alpha installer
+- app-store distribution contract
 
 ## License
 
