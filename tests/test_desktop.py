@@ -119,6 +119,7 @@ def test_desktop_build_contract_is_checked() -> None:
 
     assert "release:\n    types: [published]" in workflow
     assert "gh release upload" in workflow
+    assert '--repo "${{ github.repository }}"' in workflow
     assert "AgentLedger-$releaseVersion-windows-x64-setup.exe" in build
     assert "AgentLedger-$releaseVersion-windows-x64-portable.zip" in build
     assert "DefaultDirName={localappdata}\\Programs\\AgentLedger" in installer
