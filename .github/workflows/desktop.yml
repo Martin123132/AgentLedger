@@ -77,4 +77,4 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" desktop-artifacts/* --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" desktop-artifacts/* --repo "${{ github.repository }}" --clobber
