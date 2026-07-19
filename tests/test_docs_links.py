@@ -193,7 +193,7 @@ def test_first_run_doc_is_linked_from_readme() -> None:
     assert "[docs/first-run.md](docs/first-run.md)" in readme
     assert "[docs/install.md](docs/install.md)" in readme
     assert "[docs/alpha-troubleshooting.md](docs/alpha-troubleshooting.md)" in readme
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"' in readme
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"' in readme
     assert "python -m agentledger try" in first_run
     assert "python -m agentledger demo" in first_run
     assert "python -m agentledger alpha-guide --repo . --out .agentledger" in first_run
@@ -213,7 +213,7 @@ def test_readme_opening_has_safe_first_look_path() -> None:
     assert "Run the safe demo first" in opening
     assert "temporary repo" in opening
     assert "keeps raw evidence local by default" in opening
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"' in opening
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"' in opening
     assert "python -m agentledger try" in opening
     assert "python -m agentledger support-packet --format markdown" in opening
     assert "Markdown/HTML/JSON reports" in opening
@@ -262,7 +262,7 @@ def test_sanitized_first_run_example_is_checked() -> None:
 def test_install_doc_covers_public_tag_and_source_check() -> None:
     install_doc = (ROOT / "docs" / "install.md").read_text(encoding="utf-8")
 
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"' in install_doc
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"' in install_doc
     assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@master"' in install_doc
     assert 'python -m pip install -e ".[dev]"' in install_doc
     assert "scripts/install-source-check.ps1" in install_doc
@@ -282,12 +282,12 @@ def test_alpha_install_confidence_doc_is_checked() -> None:
     assert "docs/alpha-install-confidence.md" in install_doc
     assert "docs/alpha-install-confidence.md" in first_run
     assert "docs/alpha-install-confidence.md" in trial
-    assert "`v0.1.32-alpha` is the current checked public alpha tag." in confidence
-    assert "agentledger 0.1.32a0" in confidence
+    assert "`v0.1.33-alpha` is the current checked public alpha tag." in confidence
+    assert "agentledger 0.1.33a0" in confidence
     assert "public install-from-tag smoke check" in confidence
 
     for command in [
-        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"',
+        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"',
         "python -m agentledger --version",
         "python -m agentledger try",
         "python -m agentledger alpha-guide --repo . --out .agentledger",
@@ -326,7 +326,7 @@ def test_public_demo_script_doc_is_checked() -> None:
     assert "Keep Private" in demo_script
 
     for command in [
-        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"',
+        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"',
         "python -m agentledger try",
         "python -m agentledger support-packet --format markdown",
         "python -m agentledger alpha-guide --repo . --out .agentledger",
@@ -364,7 +364,7 @@ def test_public_alpha_recipes_doc_is_checked() -> None:
     assert "[public-demo-script.md](public-demo-script.md)" in recipes
 
     for command in [
-        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"',
+        'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"',
         "python -m agentledger --version",
         "python -m agentledger try",
         "python -m agentledger run --repo . --out .agentledger -- python -m pytest",
@@ -416,8 +416,8 @@ def test_public_alpha_trial_doc_is_checked() -> None:
     commercial_license = (ROOT / "COMMERCIAL-LICENSE.md").read_text(encoding="utf-8")
 
     assert "[docs/public-alpha-trial.md](docs/public-alpha-trial.md)" in readme
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"' in trial
-    assert "agentledger 0.1.32a0" in trial
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"' in trial
+    assert "agentledger 0.1.33a0" in trial
 
     for command in [
         "python -m agentledger --version",
@@ -736,9 +736,9 @@ def test_support_packet_markdown_issue_template_is_checked(
     assert "Support-packet Markdown feedback" in issue_template
     assert "Support-packet Markdown feedback" in qa_note
     assert "Support-packet Markdown feedback" in feedback_template
-    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"' in issue_template
+    assert 'python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"' in issue_template
     assert "python -m agentledger --version" in issue_template
-    assert "v0.1.32-alpha" in issue_template
+    assert "v0.1.33-alpha" in issue_template
 
     match = re.search(
         r"```powershell\n(?P<command>python -m agentledger support-packet --format markdown --out <private-output-dir>)\n```",
@@ -801,7 +801,7 @@ def test_alpha_feedback_readiness_note_is_checked(
     assert ".github/ISSUE_TEMPLATE/alpha-feedback.md" in readiness
     assert "Support-packet Markdown feedback" in readiness
     assert "Support-packet Markdown feedback" in issue_template
-    assert "v0.1.32-alpha" in readiness
+    assert "v0.1.33-alpha" in readiness
     assert "installed version and install method" in readiness
     assert "sanitized Markdown snippets" in release_process
     assert "copy-ready headings" in release_process

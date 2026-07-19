@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.33-alpha - 2026-07-19
+
 - Added an initial Windows desktop dashboard for status, capture, history, and
   report-chain verification over the existing AgentLedger engine.
 - Added reproducible portable executable and per-user installer builds with a

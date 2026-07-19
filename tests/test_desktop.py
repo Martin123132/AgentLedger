@@ -114,9 +114,12 @@ def test_desktop_manifest_hashes_artifacts_without_absolute_paths(tmp_path: Path
 def test_desktop_build_contract_is_checked() -> None:
     root = Path(__file__).resolve().parents[1]
     workflow = (root / ".github" / "workflows" / "desktop.yml").read_text(encoding="utf-8")
+    build = (root / "scripts" / "build-desktop.ps1").read_text(encoding="utf-8")
     installer = (root / "packaging" / "windows" / "AgentLedger.iss").read_text(encoding="utf-8")
 
     assert "release:\n    types: [published]" in workflow
     assert "gh release upload" in workflow
+    assert "AgentLedger-$releaseVersion-windows-x64-setup.exe" in build
+    assert "AgentLedger-$releaseVersion-windows-x64-portable.zip" in build
     assert "DefaultDirName={localappdata}\\Programs\\AgentLedger" in installer
     assert "UninstallDisplayIcon={app}\\AgentLedger.exe" in installer
