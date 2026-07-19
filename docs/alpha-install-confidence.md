@@ -5,12 +5,12 @@ running AgentLedger against a real repository.
 
 ## Known Good Alpha
 
-`v0.1.32-alpha` is the current checked public alpha tag.
+`v0.1.33-alpha` is the current checked public alpha tag.
 
 Expected version:
 
 ```text
-agentledger 0.1.32a0
+agentledger 0.1.33a0
 ```
 
 The tag has passed the repo CI, release-readiness gate, tag CI, post-release
@@ -21,7 +21,7 @@ check, and a public install-from-tag smoke check.
 Run these commands from any normal working folder:
 
 ```powershell
-python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.32-alpha"
+python -m pip install "git+https://github.com/Martin123132/AgentLedger.git@v0.1.33-alpha"
 python -m agentledger --version
 python -m agentledger try
 ```

@@ -20,6 +20,8 @@ if (-not $versionMatch.Success) {
     throw "Unable to read project version."
 }
 $version = $versionMatch.Groups[1].Value
+$alphaMatch = [regex]::Match($version, '^(\d+\.\d+\.\d+)a\d+$')
+$releaseVersion = if ($alphaMatch.Success) { "$($alphaMatch.Groups[1].Value)-alpha" } else { $version }
 
 try {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
@@ -63,7 +65,7 @@ try {
     Copy-Item -LiteralPath $exe -Destination (Join-Path $portableRoot "AgentLedger.exe")
     Copy-Item -LiteralPath (Join-Path $repoRoot "LICENSE") -Destination $portableRoot
     Copy-Item -LiteralPath (Join-Path $repoRoot "COMMERCIAL.md") -Destination $portableRoot
-    $portable = Join-Path $OutputDir "AgentLedger-$version-windows-x64-portable.zip"
+    $portable = Join-Path $OutputDir "AgentLedger-$releaseVersion-windows-x64-portable.zip"
     Compress-Archive -Path (Join-Path $portableRoot "*") -DestinationPath $portable -Force
 
     $installer = $null
@@ -75,11 +77,11 @@ try {
         if (-not $iscc) {
             throw "Inno Setup 6 was not found. Install it or pass -SkipInstaller for a portable-only build."
         }
-        & $iscc "/DAppVersion=$version" "/DSourceExe=$exe" "/DOutputDir=$OutputDir" "/DRepoRoot=$repoRoot" $iss
+        & $iscc "/DAppVersion=$releaseVersion" "/DSourceExe=$exe" "/DOutputDir=$OutputDir" "/DRepoRoot=$repoRoot" $iss
         if ($LASTEXITCODE -ne 0) {
             throw "Inno Setup build failed with code $LASTEXITCODE"
         }
-        $installer = Join-Path $OutputDir "AgentLedger-$version-windows-x64-setup.exe"
+        $installer = Join-Path $OutputDir "AgentLedger-$releaseVersion-windows-x64-setup.exe"
     }
 
     $commit = (& git -C $repoRoot rev-parse HEAD 2>$null)
